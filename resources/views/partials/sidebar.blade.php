@@ -13,6 +13,11 @@
             Categories
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.brands.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.brands.index') }}">
+            Brands
+        </a>
+
     </nav>
 
 </aside>

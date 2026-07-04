@@ -2,10 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-
+use App\Domains\Catalog\Contracts\BrandRepositoryInterface;
 use App\Domains\Catalog\Contracts\CategoryRepositoryInterface;
+use App\Domains\Catalog\Repositories\BrandRepository;
 use App\Domains\Catalog\Repositories\CategoryRepository;
+use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -17,6 +18,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             CategoryRepositoryInterface::class,
             CategoryRepository::class
+        );
+
+        $this->app->bind(
+            BrandRepositoryInterface::class,
+            BrandRepository::class
         );
     }
 

@@ -28,4 +28,11 @@ class MediaService
 
         return $this->store($file, $directory, $disk);
     }
+
+    public function delete(?string $path, string $disk = 'public'): void
+    {
+        if ($path) {
+            Storage::disk($disk)->delete($path);
+        }
+    }
 }

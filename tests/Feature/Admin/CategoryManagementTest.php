@@ -20,6 +20,8 @@ class CategoryManagementTest extends TestCase
     {
         parent::setUp();
 
+        config(['grihasthikart.admin_emails' => ['admin@example.com']]);
+
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
     }
 
