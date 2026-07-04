@@ -2,15 +2,19 @@
 
 @section('content')
 
-<div class="admin-wrapper">
+<div class="d-flex min-vh-100 bg-light">
 
     @include('partials.sidebar')
 
-    <div class="admin-content">
+    <div class="flex-grow-1">
 
         @include('partials.topbar')
 
-        @yield('admin-content')
+        <main class="container-fluid py-4">
+
+            @yield('admin-content')
+
+        </main>
 
     </div>
 

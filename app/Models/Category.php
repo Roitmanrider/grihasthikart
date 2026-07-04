@@ -28,6 +28,7 @@ class Category extends Model
         'status',
         'created_by',
         'updated_by',
+        'deleted_by',
     ];
 
     protected $casts = [
@@ -52,6 +53,11 @@ class Category extends Model
     {
         return $this->hasMany(Category::class, 'parent_id')
                     ->orderBy('display_order');
+    }
+
+    public function childrenRecursive()
+    {
+        return $this->children()->with('childrenRecursive');
     }
 
     /*
@@ -83,5 +89,18 @@ class Category extends Model
     public function scopeRoot($query)
     {
         return $query->whereNull('parent_id');
+    }
+
+    public function scopeSearch($query, ?string $search)
+    {
+        return $query->when($search, function ($query) use ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('slug', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%')
+                    ->orWhere('meta_title', 'like', '%'.$search.'%')
+                    ->orWhere('meta_keywords', 'like', '%'.$search.'%');
+            });
+        });
     }
 }

@@ -49,9 +49,19 @@ return new class extends Migration
 
             $table->unsignedBigInteger('updated_by')->nullable();
 
+            $table->unsignedBigInteger('deleted_by')->nullable();
+
             $table->timestamps();
 
             $table->softDeletes();
+
+            $table->index('parent_id');
+
+            $table->index('display_order');
+
+            $table->index('status');
+
+            $table->index('is_featured');
 
         });
     }

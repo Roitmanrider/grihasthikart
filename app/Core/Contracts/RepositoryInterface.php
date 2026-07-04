@@ -2,6 +2,8 @@
 
 namespace App\Core\Contracts;
 
+use Illuminate\Database\Eloquent\Model;
+
 interface RepositoryInterface
 {
     public function all();
@@ -12,7 +14,7 @@ interface RepositoryInterface
 
     public function create(array $data);
 
-    public function update(int $id, array $data);
+    public function update(Model|int $record, array $data);
 
-    public function delete(int $id);
+    public function delete(Model|int $record);
 }

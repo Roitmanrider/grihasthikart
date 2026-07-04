@@ -38,17 +38,26 @@ abstract class BaseRepository implements RepositoryInterface
         return $this->model->create($data);
     }
 
-    public function update(int $id, array $data)
+    public function update(Model|int $record, array $data)
     {
-        $record = $this->find($id);
+        $record = $this->resolveRecord($record);
 
         $record->update($data);
 
         return $record;
     }
 
-    public function delete(int $id)
+    public function delete(Model|int $record)
     {
-        return $this->find($id)->delete();
+        return $this->resolveRecord($record)->delete();
+    }
+
+    protected function resolveRecord(Model|int $record): Model
+    {
+        if ($record instanceof Model) {
+            return $record;
+        }
+
+        return $this->find($record);
     }
 }
