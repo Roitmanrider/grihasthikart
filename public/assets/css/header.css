@@ -1,0 +1,247 @@
+/* ========================================
+   HEADER
+======================================== */
+
+/* Top Offer Bar */
+
+.topbar{
+
+    background:var(--primary);
+
+    color:#fff;
+
+    font-size:15px;
+
+    font-weight:600;
+
+}
+
+.topbar .container{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    height:42px;
+
+}
+
+/* Header */
+
+header{
+
+    background:#fff;
+
+    position:sticky;
+
+    top:0;
+
+    z-index:999;
+
+    box-shadow:var(--shadow-sm);
+
+}
+
+.header-wrapper{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    height:90px;
+
+}
+
+.logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+.logo img{
+
+    width:58px;
+
+}
+
+.logo h2{
+
+    color:var(--primary);
+
+    font-size:34px;
+
+    font-weight:800;
+
+}
+
+.logo span{
+
+    color:var(--secondary);
+
+}
+
+/* Search */
+
+.search-box{
+
+    flex:1;
+
+    margin:0 45px;
+
+    display:flex;
+
+}
+
+.search-box input{
+
+    flex:1;
+
+    height:52px;
+
+    border:2px solid var(--border);
+
+    border-right:none;
+
+    padding:0 18px;
+
+    border-radius:12px 0 0 12px;
+
+    font-size:15px;
+
+}
+
+.search-box button{
+
+    width:65px;
+
+    background:var(--primary);
+
+    color:#fff;
+
+    border:none;
+
+    border-radius:0 12px 12px 0;
+
+    font-size:20px;
+
+    transition:var(--transition);
+
+}
+
+.search-box button:hover{
+
+    background:var(--primary-dark);
+
+}
+
+/* Right Menu */
+
+.header-actions{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:30px;
+
+}
+
+.action-item{
+
+    text-align:center;
+
+    position:relative;
+
+}
+
+.action-item i{
+
+    font-size:24px;
+
+    color:var(--text);
+
+}
+
+.action-item span{
+
+    display:block;
+
+    margin-top:6px;
+
+    font-size:13px;
+
+}
+
+.badge{
+
+    position:absolute;
+
+    top:-6px;
+
+    right:-10px;
+
+    width:20px;
+
+    height:20px;
+
+    border-radius:50%;
+
+    background:#ff3b30;
+
+    color:#fff;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:11px;
+
+}
+
+.phone-box{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+}
+
+.phone-box i{
+
+    color:var(--primary);
+
+    font-size:28px;
+
+}
+
+.phone-box strong{
+
+    display:block;
+
+    font-size:15px;
+
+}
+
+.phone-box small{
+
+    color:#666;
+
+}
+
+.whatsapp{
+
+    color:#25D366!important;
+
+}
