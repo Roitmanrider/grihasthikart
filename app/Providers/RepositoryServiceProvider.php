@@ -16,6 +16,8 @@ use App\Domains\Catalog\Repositories\CategoryRepository;
 use App\Domains\Catalog\Repositories\ProductImageRepository;
 use App\Domains\Catalog\Repositories\ProductRepository;
 use App\Domains\Catalog\Repositories\ProductVariantRepository;
+use App\Domains\Inventory\Contracts\InventoryRepositoryInterface;
+use App\Domains\Inventory\Repositories\InventoryRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -58,6 +60,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductVariantRepositoryInterface::class,
             ProductVariantRepository::class
+        );
+
+        $this->app->bind(
+            InventoryRepositoryInterface::class,
+            InventoryRepository::class
         );
     }
 

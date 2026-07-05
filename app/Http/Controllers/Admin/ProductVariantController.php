@@ -65,6 +65,7 @@ class ProductVariantController extends Controller
         $productVariant->load([
             'attributeValues.attribute',
             'images' => fn ($query) => $query->withTrashed(),
+            'inventories.stockLocation',
         ]);
 
         return view('admin.product-variants.show', compact('product', 'productVariant'));
@@ -78,6 +79,7 @@ class ProductVariantController extends Controller
         $productVariant->load([
             'attributeValues.attribute',
             'images' => fn ($query) => $query->withTrashed(),
+            'inventories.stockLocation',
         ]);
         $attributes = $this->attributeService->variantDefiningAttributes();
 

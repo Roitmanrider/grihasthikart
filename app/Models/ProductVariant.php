@@ -68,6 +68,11 @@ class ProductVariant extends Model
             ->where('is_primary', true);
     }
 
+    public function inventories()
+    {
+        return $this->hasMany(Inventory::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

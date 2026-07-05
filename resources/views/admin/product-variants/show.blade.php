@@ -66,6 +66,22 @@
                 <div class="mt-2">Default: {{ $productVariant->is_default ? 'Yes' : 'No' }}</div>
             </div>
         </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white fw-semibold">Inventory Summary</div>
+            <div class="card-body">
+                @forelse ($productVariant->inventories as $inventory)
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="fw-semibold">{{ $inventory->stockLocation?->name }}</div>
+                        <div class="small text-muted">On hand: {{ number_format((float) $inventory->quantity_on_hand, 3) }}</div>
+                        <div class="small text-muted">Available: {{ number_format($inventory->available_quantity, 3) }}</div>
+                        <a href="{{ route('admin.inventories.show', $inventory) }}" class="small text-success">View inventory</a>
+                    </div>
+                @empty
+                    <div class="text-muted">No inventory has been created for this variant.</div>
+                @endforelse
+            </div>
+        </div>
     </div>
 </div>
 

@@ -29,6 +29,8 @@ class DatabaseSeeder extends Seeder
             AttributeValueSeeder::class,
             ProductSeeder::class,
             ProductVariantSeeder::class,
+            StockLocationSeeder::class,
+            InventorySeeder::class,
         ]);
     }
 }

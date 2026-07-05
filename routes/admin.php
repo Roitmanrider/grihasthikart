@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImageController;
 use App\Http\Controllers\Admin\ProductVariantController;
@@ -145,6 +146,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.variants.images.destroy');
         Route::patch('products/{product}/variants/{productVariant}/images/{productImage}/restore', [ProductImageController::class, 'restoreVariant'])
             ->name('products.variants.images.restore');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-inventory'])->group(function () {
+        Route::post('inventories/bulk-action', [InventoryController::class, 'bulkAction'])
+            ->name('inventories.bulk-action');
+
+        Route::patch('inventories/{inventory}/restore', [InventoryController::class, 'restore'])
+            ->name('inventories.restore');
+
+        Route::get('inventories/{inventory}/adjust', [InventoryController::class, 'adjust'])
+            ->name('inventories.adjust');
+
+        Route::post('inventories/{inventory}/adjust', [InventoryController::class, 'storeAdjustment'])
+            ->name('inventories.adjust.store');
+
+        Route::resource('inventories', InventoryController::class);
     });
 
 });

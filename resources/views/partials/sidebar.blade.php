@@ -33,6 +33,13 @@
             Products
         </a>
 
+        <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Operations</div>
+
+        <a class="nav-link {{ request()->routeIs('admin.inventories.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.inventories.index') }}">
+            Inventory
+        </a>
+
     </nav>
 
 </aside>

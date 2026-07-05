@@ -124,7 +124,12 @@ class ProductVariantRepository extends BaseRepository implements ProductVariantR
 
     public function idsInUse(array $ids): array
     {
-        return [];
+        return $this->model
+            ->newQuery()
+            ->whereIn('id', $ids)
+            ->whereHas('inventories')
+            ->pluck('id')
+            ->all();
     }
 
     public function idsBelongingToInactiveProducts(array $ids): array
