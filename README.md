@@ -81,6 +81,14 @@ docs/08_Deployment/
 
 Contains Hostinger deployment preparation, production environment checklist, File Manager upload workflow, rollback plan, and post-deployment tests.
 
+Release packaging helpers:
+
+```
+scripts/create-release-package.ps1
+```
+
+Use the script only after tests, Pint, and Vite build pass. It creates a local release ZIP under `releases/` and does not include real `.env` files.
+
 ---
 
 ## UI
