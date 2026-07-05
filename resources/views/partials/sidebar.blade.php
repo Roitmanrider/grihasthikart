@@ -40,6 +40,11 @@
             Inventory
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.orders.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.orders.index') }}">
+            Orders
+        </a>
+
     </nav>
 
 </aside>

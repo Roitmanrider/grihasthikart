@@ -20,6 +20,8 @@ use App\Domains\Catalog\Repositories\ProductRepository;
 use App\Domains\Catalog\Repositories\ProductVariantRepository;
 use App\Domains\Inventory\Contracts\InventoryRepositoryInterface;
 use App\Domains\Inventory\Repositories\InventoryRepository;
+use App\Domains\Order\Contracts\OrderRepositoryInterface;
+use App\Domains\Order\Repositories\OrderRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -72,6 +74,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             CartRepositoryInterface::class,
             CartRepository::class
+        );
+
+        $this->app->bind(
+            OrderRepositoryInterface::class,
+            OrderRepository::class
         );
     }
 

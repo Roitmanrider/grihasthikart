@@ -105,7 +105,7 @@
                                     <span>Total Savings</span>
                                     <span class="fw-semibold text-success">Rs. {{ number_format($savings, 2) }}</span>
                                 </div>
-                                <button class="btn btn-secondary w-100" type="button" disabled>Checkout Coming Soon</button>
+                                <a href="{{ route('checkout.show') }}" class="btn btn-success w-100">Checkout</a>
                                 <form method="POST" action="{{ route('cart.clear') }}" class="mt-2">
                                     @csrf
                                     <button class="btn btn-outline-danger w-100" type="submit">Clear Cart</button>

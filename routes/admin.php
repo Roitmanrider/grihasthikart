@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
@@ -168,6 +169,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('inventories.adjust.store');
 
         Route::resource('inventories', InventoryController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Orders
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-orders'])->group(function () {
+        Route::get('orders', [AdminOrderController::class, 'index'])
+            ->name('orders.index');
+        Route::get('orders/{order}', [AdminOrderController::class, 'show'])
+            ->name('orders.show');
+        Route::patch('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])
+            ->name('orders.update-status');
     });
 
 });
