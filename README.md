@@ -73,6 +73,16 @@ Contains the official business specification.
 
 ---
 
+## Deployment
+
+```
+docs/08_Deployment/
+```
+
+Contains Hostinger deployment preparation, production environment checklist, File Manager upload workflow, rollback plan, and post-deployment tests.
+
+---
+
 ## UI
 
 ```
