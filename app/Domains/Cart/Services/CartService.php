@@ -116,6 +116,8 @@ class CartService
             'line_count' => $cart->items->count(),
             'subtotal' => $this->calculateSubtotal($cart),
             'savings' => $this->calculateSavings($cart),
+            'coupon_discount' => (float) $cart->coupon_discount_amount,
+            'applied_coupon' => $cart->coupon,
         ];
     }
 

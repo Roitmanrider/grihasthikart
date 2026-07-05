@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
             BusinessSettingSeeder::class,
             DeliverySlotSeeder::class,
             CustomerSeeder::class,
+            CouponSeeder::class,
         ]);
     }
 }

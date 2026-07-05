@@ -32,6 +32,9 @@ class Order extends Model
         'delivery_landmark',
         'delivery_date',
         'delivery_slot',
+        'coupon_id',
+        'coupon_code_snapshot',
+        'coupon_discount_amount',
         'payment_method',
         'payment_status',
         'order_status',
@@ -51,6 +54,7 @@ class Order extends Model
 
     protected $casts = [
         'delivery_date' => 'date',
+        'coupon_discount_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'total_mrp' => 'decimal:2',
         'total_savings' => 'decimal:2',
@@ -76,6 +80,11 @@ class Order extends Model
     public function payment()
     {
         return $this->hasOne(Payment::class)->latestOfMany();
+    }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function cart()

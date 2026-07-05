@@ -4,11 +4,14 @@ namespace App\Domains\Order\Services;
 
 use App\Domains\Cart\Services\CartService;
 use App\Domains\Checkout\Services\CheckoutRuleService;
+use App\Domains\Coupon\Services\CouponService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
 use App\Domains\Payment\Services\PaymentService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
+use App\Models\Coupon;
+use App\Models\Customer;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -34,6 +37,7 @@ class OrderService
         private readonly CartService $cartService,
         private readonly InventoryService $inventoryService,
         private readonly CheckoutRuleService $checkoutRuleService,
+        private readonly CouponService $couponService,
         private readonly PaymentService $paymentService,
         private readonly BusinessSettingService $settingService
     ) {}
@@ -52,13 +56,17 @@ class OrderService
             $this->validateCartItemsStillPurchasable($cart);
             $this->validateInventoryAvailabilityForEveryCartItem($cart);
 
-            $totals = $this->calculateTotalsFromCartSnapshots($cart);
+            $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
+            $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
+            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount']);
             $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal']);
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals);
             $this->createOrderItems($order, $cart);
+            $this->createCouponUsageIfApplied($order, $couponData['coupon'], $couponData['discount']);
             $this->paymentService->createForOrder($order, $checkoutData['payment_method'] ?? 'cod');
             $this->deductInventoryForOrder($order);
             $this->createStatusHistory($order, null, 'placed', 'Order placed.');
+            $this->couponService->clearCouponAfterOrder($cart);
             $this->cartService->clearCart($sessionId);
 
             return $order->fresh(['items', 'statusHistories', 'payment']);
@@ -125,7 +133,7 @@ class OrderService
         }
     }
 
-    public function calculateTotalsFromCartSnapshots(Cart $cart): array
+    public function calculateTotalsFromCartSnapshots(Cart $cart, float $couponDiscount = 0): array
     {
         $subtotal = 0.0;
         $totalMrp = 0.0;
@@ -142,6 +150,7 @@ class OrderService
         }
 
         $deliveryCharge = (float) $this->settingService->get('checkout.delivery_charge', 0);
+        $couponDiscount = round(min(max(0, $couponDiscount), $subtotal), 2);
 
         return [
             'subtotal' => round($subtotal, 2),
@@ -149,8 +158,8 @@ class OrderService
             'total_savings' => round(max(0, $totalMrp - $subtotal), 2),
             'tax_total' => round($taxTotal, 2),
             'delivery_charge' => $deliveryCharge,
-            'discount_total' => 0.0,
-            'grand_total' => round($subtotal + $deliveryCharge, 2),
+            'discount_total' => $couponDiscount,
+            'grand_total' => round(max(0, $subtotal - $couponDiscount) + $deliveryCharge, 2),
         ];
     }
 
@@ -161,6 +170,9 @@ class OrderService
             'order_number' => $this->generateOrderNumber(),
             'cart_id' => $cart->id,
             'session_id' => $sessionId,
+            'coupon_id' => $cart->coupon_id,
+            'coupon_code_snapshot' => $cart->coupon_code,
+            'coupon_discount_amount' => $totals['discount_total'],
             'payment_method' => $checkoutData['payment_method'] ?? 'cod',
             'payment_status' => 'pending',
             'order_status' => 'placed',
@@ -168,6 +180,15 @@ class OrderService
         ]));
 
         return $order;
+    }
+
+    public function createCouponUsageIfApplied(Order $order, ?Coupon $coupon, float $discountAmount): void
+    {
+        if (! $coupon || $discountAmount <= 0) {
+            return;
+        }
+
+        $this->couponService->createUsageForOrder($order, $coupon, $discountAmount);
     }
 
     public function createOrderItems(Order $order, Cart $cart): void

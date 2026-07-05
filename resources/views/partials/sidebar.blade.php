@@ -50,6 +50,11 @@
             Payments
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.coupons.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.coupons.index') }}">
+            Coupons
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.customers.index') }}">
             Customers

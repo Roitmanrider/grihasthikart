@@ -75,6 +75,9 @@
                 <div class="d-flex justify-content-between"><span>MRP Total</span><span>Rs. {{ number_format((float) $order->total_mrp, 2) }}</span></div>
                 <div class="d-flex justify-content-between text-success"><span>Savings</span><span>Rs. {{ number_format((float) $order->total_savings, 2) }}</span></div>
                 <div class="d-flex justify-content-between"><span>Tax</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
+                @if ($order->discount_total > 0)
+                    <div class="d-flex justify-content-between text-success"><span>Coupon {{ $order->coupon_code_snapshot }}</span><span>- Rs. {{ number_format((float) $order->discount_total, 2) }}</span></div>
+                @endif
                 <hr>
                 <div class="d-flex justify-content-between h5"><span>Grand Total</span><strong>Rs. {{ number_format((float) $order->grand_total, 2) }}</strong></div>
                 <div class="mt-3"><span class="badge text-bg-light border">{{ str_replace('_', ' ', $order->order_status) }}</span></div>

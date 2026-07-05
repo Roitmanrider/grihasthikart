@@ -15,6 +15,12 @@
             </div>
 
             @if ($cart->items->isNotEmpty())
+                @if (session('success'))
+                    <div class="alert alert-success">{{ session('success') }}</div>
+                @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger">{{ $errors->first() }}</div>
+                @endif
                 <div class="row g-4">
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm">
@@ -105,6 +111,33 @@
                                     <span>Total Savings</span>
                                     <span class="fw-semibold text-success">Rs. {{ number_format($savings, 2) }}</span>
                                 </div>
+                                <div class="border-top pt-3 mb-3">
+                                    @if ($applied_coupon)
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div>
+                                                <div class="fw-semibold">{{ $applied_coupon->code }}</div>
+                                                <div class="small text-muted">Coupon discount: Rs. {{ number_format($coupon_discount, 2) }}</div>
+                                            </div>
+                                            <form method="POST" action="{{ route('cart.coupon.remove') }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-sm btn-outline-danger">Remove</button>
+                                            </form>
+                                        </div>
+                                    @else
+                                        <form method="POST" action="{{ route('cart.coupon.apply') }}" class="d-flex gap-2">
+                                            @csrf
+                                            <input type="text" name="code" class="form-control" placeholder="Coupon code">
+                                            <button class="btn btn-outline-success">Apply</button>
+                                        </form>
+                                    @endif
+                                </div>
+                                @if ($coupon_discount > 0)
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span>Coupon Discount</span>
+                                        <span class="fw-semibold text-success">- Rs. {{ number_format($coupon_discount, 2) }}</span>
+                                    </div>
+                                @endif
                                 <a href="{{ route('checkout.show') }}" class="btn btn-success w-100">Checkout</a>
                                 <form method="POST" action="{{ route('cart.clear') }}" class="mt-2">
                                     @csrf

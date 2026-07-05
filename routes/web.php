@@ -5,6 +5,7 @@ use App\Http\Controllers\Frontend\CartController;
 use App\Http\Controllers\Frontend\CatalogHomeController;
 use App\Http\Controllers\Frontend\CategoryCatalogController;
 use App\Http\Controllers\Frontend\CheckoutController;
+use App\Http\Controllers\Frontend\CouponController;
 use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
@@ -19,6 +20,8 @@ Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.s
 Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+Route::post('/cart/coupon/apply', [CouponController::class, 'apply'])->name('cart.coupon.apply');
+Route::delete('/cart/coupon/remove', [CouponController::class, 'remove'])->name('cart.coupon.remove');
 
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout', [CheckoutController::class, 'place'])->name('checkout.place');

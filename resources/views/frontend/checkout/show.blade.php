@@ -154,10 +154,16 @@
                                 <span>Savings</span>
                                 <strong>Rs. {{ number_format($savings, 2) }}</strong>
                             </div>
+                            @if ($coupon_discount > 0)
+                                <div class="d-flex justify-content-between text-success">
+                                    <span>Coupon {{ $applied_coupon?->code }}</span>
+                                    <strong>- Rs. {{ number_format($coupon_discount, 2) }}</strong>
+                                </div>
+                            @endif
                             <hr>
                             <div class="d-flex justify-content-between h5">
                                 <span>Grand Total</span>
-                                <strong>Rs. {{ number_format($subtotal + $checkoutSettings['delivery_charge'], 2) }}</strong>
+                                <strong>Rs. {{ number_format(max(0, $subtotal - $coupon_discount) + $checkoutSettings['delivery_charge'], 2) }}</strong>
                             </div>
                         </div>
                     </div>

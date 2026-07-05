@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminBusinessSettingController;
+use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminOrderController;
@@ -206,6 +207,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('payments.verify');
         Route::patch('payments/{payment}/fail', [AdminPaymentController::class, 'fail'])
             ->name('payments.fail');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Coupons
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-coupons'])->group(function () {
+        Route::post('coupons/bulk-action', [AdminCouponController::class, 'bulkAction'])
+            ->name('coupons.bulk-action');
+        Route::patch('coupons/{coupon}/restore', [AdminCouponController::class, 'restore'])
+            ->name('coupons.restore');
+        Route::resource('coupons', AdminCouponController::class);
     });
 
     /*
