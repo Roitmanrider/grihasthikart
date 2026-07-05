@@ -3,8 +3,10 @@
 namespace App\Domains\Order\Services;
 
 use App\Domains\Cart\Services\CartService;
+use App\Domains\Checkout\Services\CheckoutRuleService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
+use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
 use App\Models\Inventory;
 use App\Models\Order;
@@ -29,7 +31,9 @@ class OrderService
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepository,
         private readonly CartService $cartService,
-        private readonly InventoryService $inventoryService
+        private readonly InventoryService $inventoryService,
+        private readonly CheckoutRuleService $checkoutRuleService,
+        private readonly BusinessSettingService $settingService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -47,6 +51,7 @@ class OrderService
             $this->validateInventoryAvailabilityForEveryCartItem($cart);
 
             $totals = $this->calculateTotalsFromCartSnapshots($cart);
+            $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal']);
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals);
             $this->createOrderItems($order, $cart);
             $this->deductInventoryForOrder($order);
@@ -133,14 +138,16 @@ class OrderService
             $taxTotal += $lineSubtotal * $taxRate / (100 + $taxRate);
         }
 
+        $deliveryCharge = (float) $this->settingService->get('checkout.delivery_charge', 0);
+
         return [
             'subtotal' => round($subtotal, 2),
             'total_mrp' => round($totalMrp, 2),
             'total_savings' => round(max(0, $totalMrp - $subtotal), 2),
             'tax_total' => round($taxTotal, 2),
-            'delivery_charge' => 0.0,
+            'delivery_charge' => $deliveryCharge,
             'discount_total' => 0.0,
-            'grand_total' => round($subtotal, 2),
+            'grand_total' => round($subtotal + $deliveryCharge, 2),
         ];
     }
 

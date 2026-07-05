@@ -1,0 +1,6 @@
+<div class="col-md-6"><label class="form-label">Name</label><input name="name" value="{{ old('name', $slot->name ?? '') }}" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label">Display Label</label><input name="display_label" value="{{ old('display_label', $slot->display_label ?? '') }}" class="form-control"></div>
+<div class="col-md-4"><label class="form-label">Start Time</label><input type="time" name="start_time" value="{{ old('start_time', isset($slot) ? substr($slot->start_time,0,5) : '') }}" class="form-control" required></div>
+<div class="col-md-4"><label class="form-label">End Time</label><input type="time" name="end_time" value="{{ old('end_time', isset($slot) ? substr($slot->end_time,0,5) : '') }}" class="form-control" required></div>
+<div class="col-md-4"><label class="form-label">Display Order</label><input type="number" name="display_order" value="{{ old('display_order', $slot->display_order ?? 0) }}" class="form-control"></div>
+<div class="col-12"><div class="form-check"><input type="hidden" name="status" value="0"><input class="form-check-input" type="checkbox" name="status" value="1" id="status" @checked(old('status', $slot->status ?? true))><label class="form-check-label" for="status">Active</label></div></div>

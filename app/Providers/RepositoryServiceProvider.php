@@ -20,10 +20,14 @@ use App\Domains\Catalog\Repositories\ProductRepository;
 use App\Domains\Catalog\Repositories\ProductVariantRepository;
 use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
 use App\Domains\Customer\Repositories\CustomerRepository;
+use App\Domains\Delivery\Contracts\DeliverySlotRepositoryInterface;
+use App\Domains\Delivery\Repositories\DeliverySlotRepository;
 use App\Domains\Inventory\Contracts\InventoryRepositoryInterface;
 use App\Domains\Inventory\Repositories\InventoryRepository;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
 use App\Domains\Order\Repositories\OrderRepository;
+use App\Domains\Setting\Contracts\BusinessSettingRepositoryInterface;
+use App\Domains\Setting\Repositories\BusinessSettingRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -86,6 +90,16 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             CustomerRepositoryInterface::class,
             CustomerRepository::class
+        );
+
+        $this->app->bind(
+            BusinessSettingRepositoryInterface::class,
+            BusinessSettingRepository::class
+        );
+
+        $this->app->bind(
+            DeliverySlotRepositoryInterface::class,
+            DeliverySlotRepository::class
         );
     }
 

@@ -78,8 +78,8 @@
                                     <label class="form-label">Delivery Slot</label>
                                     <select name="delivery_slot" class="form-select">
                                         <option value="">No preference</option>
-                                        @foreach (['7-9 AM', '9-11 AM', '4-6 PM', '6-8 PM'] as $slot)
-                                            <option value="{{ $slot }}" @selected(old('delivery_slot') === $slot)>{{ $slot }}</option>
+                                        @foreach ($deliverySlots as $slot)
+                                            <option value="{{ $slot->label }}" @selected(old('delivery_slot') === $slot->label)>{{ $slot->label }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -118,6 +118,10 @@
                                 <span>Subtotal</span>
                                 <strong>Rs. {{ number_format($subtotal, 2) }}</strong>
                             </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Delivery Charge</span>
+                                <strong>Rs. {{ number_format($checkoutSettings['delivery_charge'], 2) }}</strong>
+                            </div>
                             <div class="d-flex justify-content-between text-success">
                                 <span>Savings</span>
                                 <strong>Rs. {{ number_format($savings, 2) }}</strong>
@@ -125,7 +129,7 @@
                             <hr>
                             <div class="d-flex justify-content-between h5">
                                 <span>Grand Total</span>
-                                <strong>Rs. {{ number_format($subtotal, 2) }}</strong>
+                                <strong>Rs. {{ number_format($subtotal + $checkoutSettings['delivery_charge'], 2) }}</strong>
                             </div>
                         </div>
                     </div>

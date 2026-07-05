@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminBusinessSettingController;
 use App\Http\Controllers\Admin\AdminCustomerController;
+use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
@@ -201,6 +203,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('customers/{customer}/addresses/{address}/approve', [AdminCustomerController::class, 'approveAddress'])
             ->name('customers.addresses.approve');
         Route::resource('customers', AdminCustomerController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Settings and Delivery Slots
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-settings'])->group(function () {
+        Route::get('settings/checkout', [AdminBusinessSettingController::class, 'edit'])
+            ->name('settings.checkout.edit');
+        Route::put('settings/checkout', [AdminBusinessSettingController::class, 'update'])
+            ->name('settings.checkout.update');
+    });
+
+    Route::middleware(['auth', 'can:manage-delivery-slots'])->group(function () {
+        Route::patch('delivery-slots/{deliverySlot}/restore', [AdminDeliverySlotController::class, 'restore'])
+            ->name('delivery-slots.restore');
+        Route::resource('delivery-slots', AdminDeliverySlotController::class)->except('show');
     });
 
 });

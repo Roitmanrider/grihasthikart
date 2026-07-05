@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessSetting;
 use App\Models\CartItem;
+use App\Models\DeliverySlot;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use Database\Seeders\BusinessSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -25,7 +28,15 @@ class CheckoutManagementTest extends TestCase
         parent::setUp();
 
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
+        $this->seed(BusinessSettingSeeder::class);
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
+        DeliverySlot::factory()->create([
+            'name' => '9-11 AM',
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'display_label' => '9-11 AM',
+            'status' => true,
+        ]);
     }
 
     public function test_checkout_page_loads_with_cart_and_redirects_when_empty(): void
@@ -43,7 +54,25 @@ class CheckoutManagementTest extends TestCase
         $this->get(route('checkout.show'))
             ->assertOk()
             ->assertSee('Cash on Delivery')
+            ->assertSee('9-11 AM')
             ->assertSee('Place COD Order');
+    }
+
+    public function test_inactive_delivery_slots_do_not_appear_on_checkout_page(): void
+    {
+        DeliverySlot::factory()->inactive()->create([
+            'name' => 'Midnight',
+            'start_time' => '00:00',
+            'end_time' => '01:00',
+            'display_label' => 'Midnight',
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('9-11 AM')
+            ->assertDontSee('Midnight');
     }
 
     public function test_place_cod_order_from_cart_creates_snapshots_deducts_inventory_and_clears_cart(): void
@@ -71,6 +100,7 @@ class CheckoutManagementTest extends TestCase
         $this->assertSame('136.00', $order->subtotal);
         $this->assertSame('150.00', $order->total_mrp);
         $this->assertSame('14.00', $order->total_savings);
+        $this->assertSame('9-11 AM', $order->delivery_slot);
         $this->assertSame('8.000', $inventory->fresh()->quantity_on_hand);
         $this->assertDatabaseHas('inventory_movements', [
             'product_variant_id' => $variant->id,
@@ -78,6 +108,48 @@ class CheckoutManagementTest extends TestCase
             'quantity' => 2,
         ]);
         $this->assertSame(0, CartItem::query()->count());
+    }
+
+    public function test_checkout_blocks_cod_when_disabled_and_enforces_minimum_order_amount(): void
+    {
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        BusinessSetting::query()->where('group', 'checkout')->where('key', 'cod_enabled')->update(['value' => '0']);
+        $this->post(route('checkout.place'), $this->checkoutPayload())->assertSessionHasErrors('checkout');
+
+        BusinessSetting::query()->where('group', 'checkout')->where('key', 'cod_enabled')->update(['value' => '1']);
+        BusinessSetting::query()->where('group', 'checkout')->where('key', 'minimum_order_amount')->update(['value' => '999']);
+        $this->post(route('checkout.place'), $this->checkoutPayload())->assertSessionHasErrors('checkout');
+    }
+
+    public function test_checkout_applies_delivery_charge_to_order_total(): void
+    {
+        BusinessSetting::query()->where('group', 'checkout')->where('key', 'delivery_charge')->update(['value' => '25']);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->post(route('checkout.place'), $this->checkoutPayload())->assertRedirect();
+
+        $order = Order::query()->firstOrFail();
+        $this->assertSame('25.00', $order->delivery_charge);
+        $this->assertSame('93.00', $order->grand_total);
+    }
+
+    public function test_checkout_blocks_today_after_cutoff_and_future_date_beyond_limit(): void
+    {
+        BusinessSetting::query()->where('group', 'checkout')->where('key', 'today_delivery_cutoff_time')->update(['value' => '00:00']);
+        BusinessSetting::query()->where('group', 'checkout')->where('key', 'max_delivery_days_ahead')->update(['value' => '1']);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'delivery_date' => now()->toDateString(),
+        ]))->assertSessionHasErrors('checkout');
+
+        $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'delivery_date' => now()->addDays(2)->toDateString(),
+        ]))->assertSessionHasErrors('checkout');
     }
 
     public function test_insufficient_stock_blocks_order_and_keeps_cart(): void

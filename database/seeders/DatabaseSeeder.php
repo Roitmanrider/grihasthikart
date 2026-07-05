@@ -31,6 +31,8 @@ class DatabaseSeeder extends Seeder
             ProductVariantSeeder::class,
             StockLocationSeeder::class,
             InventorySeeder::class,
+            BusinessSettingSeeder::class,
+            DeliverySlotSeeder::class,
             CustomerSeeder::class,
         ]);
     }

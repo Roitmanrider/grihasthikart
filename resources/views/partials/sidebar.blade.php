@@ -50,6 +50,18 @@
             Customers
         </a>
 
+        <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Settings</div>
+
+        <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.settings.checkout.edit') }}">
+            Checkout Settings
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.delivery-slots.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.delivery-slots.index') }}">
+            Delivery Slots
+        </a>
+
     </nav>
 
 </aside>

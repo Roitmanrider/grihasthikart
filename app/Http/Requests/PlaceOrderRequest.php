@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class PlaceOrderRequest extends FormRequest
 {
@@ -29,7 +28,7 @@ class PlaceOrderRequest extends FormRequest
             'delivery_pincode' => ['required', 'string', 'max:10'],
             'delivery_landmark' => ['nullable', 'string', 'max:255'],
             'delivery_date' => ['nullable', 'date', 'after_or_equal:today'],
-            'delivery_slot' => ['nullable', 'string', Rule::in(['7-9 AM', '9-11 AM', '4-6 PM', '6-8 PM'])],
+            'delivery_slot' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
