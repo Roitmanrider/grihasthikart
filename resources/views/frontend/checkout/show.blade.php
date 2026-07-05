@@ -23,16 +23,29 @@
                                 @csrf
                                 <div class="col-md-6">
                                     <label class="form-label">Name</label>
-                                    <input type="text" name="customer_name" value="{{ old('customer_name') }}" class="form-control" required>
+                                    <input type="text" name="customer_name" value="{{ old('customer_name', $customer?->name) }}" class="form-control" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Mobile</label>
-                                    <input type="text" name="customer_mobile" value="{{ old('customer_mobile') }}" class="form-control" required>
+                                    <input type="text" name="customer_mobile" value="{{ old('customer_mobile', $customer?->mobile) }}" class="form-control" required>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Email</label>
-                                    <input type="email" name="customer_email" value="{{ old('customer_email') }}" class="form-control">
+                                    <input type="email" name="customer_email" value="{{ old('customer_email', $customer?->email) }}" class="form-control">
                                 </div>
+                                @if ($approvedAddresses->isNotEmpty())
+                                    <div class="col-12">
+                                        <div class="alert alert-light border">
+                                            <div class="fw-semibold mb-2">Saved approved addresses</div>
+                                            @foreach ($approvedAddresses as $address)
+                                                <div class="small text-muted">
+                                                    {{ $address->label ?: 'Address' }}: {{ $address->address_line1 }}, {{ $address->city }} - {{ $address->pincode }}
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
                                 <div class="col-12">
                                     <label class="form-label">Address Line 1</label>
                                     <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1') }}" class="form-control" required>

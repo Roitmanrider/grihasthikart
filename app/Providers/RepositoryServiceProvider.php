@@ -18,6 +18,8 @@ use App\Domains\Catalog\Repositories\CategoryRepository;
 use App\Domains\Catalog\Repositories\ProductImageRepository;
 use App\Domains\Catalog\Repositories\ProductRepository;
 use App\Domains\Catalog\Repositories\ProductVariantRepository;
+use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
+use App\Domains\Customer\Repositories\CustomerRepository;
 use App\Domains\Inventory\Contracts\InventoryRepositoryInterface;
 use App\Domains\Inventory\Repositories\InventoryRepository;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
@@ -79,6 +81,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             OrderRepositoryInterface::class,
             OrderRepository::class
+        );
+
+        $this->app->bind(
+            CustomerRepositoryInterface::class,
+            CustomerRepository::class
         );
     }
 

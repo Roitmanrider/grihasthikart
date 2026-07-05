@@ -73,6 +73,16 @@
                     @endif
                 </a>
 
+                @php
+                    $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+                @endphp
+
+                @if ($currentCustomer)
+                    <a href="{{ route('customer.dashboard') }}" class="btn btn-success">{{ $currentCustomer->name }}</a>
+                @else
+                    <a href="{{ route('customer.login') }}" class="btn btn-outline-secondary">Login</a>
+                @endif
+
             </div>
 
         </div>

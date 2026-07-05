@@ -92,5 +92,13 @@ class AppServiceProvider extends ServiceProvider
 
             return in_array($user->email, config('grihasthikart.admin_emails', []), true);
         });
+
+        Gate::define('manage-customers', function (User $user): bool {
+            if (method_exists($user, 'hasPermissionTo')) {
+                return $user->hasPermissionTo('customers.manage');
+            }
+
+            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+        });
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
@@ -184,6 +185,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.show');
         Route::patch('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])
             ->name('orders.update-status');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Customers
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-customers'])->group(function () {
+        Route::patch('customers/{customer}/restore', [AdminCustomerController::class, 'restore'])
+            ->name('customers.restore');
+        Route::patch('customers/{customer}/status', [AdminCustomerController::class, 'status'])
+            ->name('customers.status');
+        Route::patch('customers/{customer}/addresses/{address}/approve', [AdminCustomerController::class, 'approveAddress'])
+            ->name('customers.addresses.approve');
+        Route::resource('customers', AdminCustomerController::class);
     });
 
 });

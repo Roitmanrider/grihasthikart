@@ -45,6 +45,11 @@
             Orders
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.customers.index') }}">
+            Customers
+        </a>
+
     </nav>
 
 </aside>

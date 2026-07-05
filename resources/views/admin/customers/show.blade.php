@@ -1,0 +1,11 @@
+@extends('layouts.admin')
+@section('title','Customer Details')
+@section('admin-content')
+<div class="d-flex justify-content-between mb-4"><div><h1 class="h3 mb-1">{{ $customer->name }}</h1><div class="text-muted">{{ $customer->mobile }}</div></div><a href="{{ route('admin.customers.edit', $customer) }}" class="btn btn-success">Edit</a></div>
+@if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+<div class="row g-4">
+<div class="col-lg-5"><div class="card border-0 shadow-sm"><div class="card-header bg-white fw-semibold">Profile</div><div class="card-body"><dl class="row mb-0"><dt class="col-5">Email</dt><dd class="col-7">{{ $customer->email ?: 'None' }}</dd><dt class="col-5">Status</dt><dd class="col-7">{{ $customer->status ? 'Active' : 'Inactive' }}</dd><dt class="col-5">Premium</dt><dd class="col-7">{{ $customer->is_premium ? 'Yes' : 'No' }}</dd><dt class="col-5">Last Login</dt><dd class="col-7">{{ $customer->last_login_at?->format('d M Y, h:i A') ?: 'Never' }}</dd></dl></div></div></div>
+<div class="col-lg-7"><div class="card border-0 shadow-sm"><div class="card-header bg-white fw-semibold">Addresses</div><div class="card-body">@forelse($customer->addresses as $address)<div class="border-bottom pb-2 mb-2"><div class="fw-semibold">{{ $address->label ?: 'Address' }} {{ $address->is_default ? '(Default)' : '' }}</div><div class="small text-muted">{{ $address->address_line1 }}, {{ $address->city }} - {{ $address->pincode }}</div><form method="POST" action="{{ route('admin.customers.addresses.approve', [$customer, $address]) }}" class="mt-2">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-success">{{ $address->is_approved ? 'Unapprove' : 'Approve' }}</button></form></div>@empty<div class="text-muted">No addresses.</div>@endforelse</div></div></div>
+</div>
+<div class="card border-0 shadow-sm mt-4"><div class="card-header bg-white fw-semibold">Orders</div><div class="card-body">@forelse($customer->orders as $order)<div><a href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a> - Rs. {{ number_format((float) $order->grand_total, 2) }}</div>@empty<div class="text-muted">No orders.</div>@endforelse</div></div>
+@endsection
