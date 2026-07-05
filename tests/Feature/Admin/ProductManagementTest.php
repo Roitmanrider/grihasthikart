@@ -245,9 +245,10 @@ class ProductManagementTest extends TestCase
         }
     }
 
-    public function test_product_variant_implementation_is_not_created_in_product_base_milestone(): void
+    public function test_product_remains_free_of_transactional_variant_fields_after_variant_milestone(): void
     {
-        $this->assertFalse(class_exists('App\\Models\\ProductVariant'));
-        $this->assertFalse(Schema::hasTable('product_variants'));
+        foreach (['sku', 'selling_price', 'mrp', 'purchase_price', 'stock_quantity', 'reserved_quantity', 'available_quantity'] as $column) {
+            $this->assertFalse(Schema::hasColumn('products', $column), $column.' should not exist on products.');
+        }
     }
 }

@@ -79,6 +79,7 @@ class AttributeRepository extends BaseRepository implements AttributeRepositoryI
         return $this->model
             ->active()
             ->variantDefining()
+            ->with(['values' => fn ($query) => $query->active()])
             ->orderBy('display_order')
             ->orderBy('name')
             ->get();

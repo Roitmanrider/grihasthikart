@@ -60,5 +60,13 @@ class AppServiceProvider extends ServiceProvider
 
             return in_array($user->email, config('grihasthikart.admin_emails', []), true);
         });
+
+        Gate::define('manage-product-variants', function (User $user): bool {
+            if (method_exists($user, 'hasPermissionTo')) {
+                return $user->hasPermissionTo('catalog.product-variants.manage');
+            }
+
+            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+        });
     }
 }

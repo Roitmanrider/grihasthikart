@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductVariantController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -92,6 +93,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.restore');
 
         Route::resource('products', ProductController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Product Variants
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-product-variants'])->group(function () {
+        Route::post('products/{product}/variants/bulk-action', [ProductVariantController::class, 'bulkAction'])
+            ->name('products.variants.bulk-action');
+
+        Route::patch('products/{product}/variants/{productVariant}/restore', [ProductVariantController::class, 'restore'])
+            ->name('products.variants.restore');
+
+        Route::resource('products.variants', ProductVariantController::class)
+            ->parameters(['variants' => 'productVariant']);
     });
 
 });

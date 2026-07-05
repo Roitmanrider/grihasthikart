@@ -32,6 +32,7 @@ class Product extends Model
         'is_new_arrival',
         'status',
         'display_order',
+        'default_variant_id',
         'meta_title',
         'meta_description',
         'meta_keywords',
@@ -68,6 +69,18 @@ class Product extends Model
             ->withPivot(['is_primary', 'display_order'])
             ->wherePivot('is_primary', true)
             ->withTimestamps();
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class)
+            ->orderBy('display_order')
+            ->orderBy('variant_name');
+    }
+
+    public function defaultVariant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'default_variant_id');
     }
 
     public function scopeActive($query)
@@ -109,7 +122,12 @@ class Product extends Model
                     ->orWhere('meta_title', 'like', '%'.$search.'%')
                     ->orWhere('meta_keywords', 'like', '%'.$search.'%')
                     ->orWhereHas('brand', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
-                    ->orWhereHas('categories', fn ($query) => $query->where('name', 'like', '%'.$search.'%'));
+                    ->orWhereHas('categories', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('variants', function ($query) use ($search) {
+                        $query->where('sku', 'like', '%'.$search.'%')
+                            ->orWhere('barcode', 'like', '%'.$search.'%')
+                            ->orWhere('variant_name', 'like', '%'.$search.'%');
+                    });
             });
         });
     }

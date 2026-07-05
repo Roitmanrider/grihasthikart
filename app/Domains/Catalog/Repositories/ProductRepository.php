@@ -17,7 +17,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
     {
         $query = $this->model
             ->newQuery()
-            ->with(['brand', 'categories'])
+            ->with(['brand', 'categories', 'defaultVariant'])
             ->search($filters['search'] ?? null);
 
         if (($filters['trashed'] ?? null) === 'only') {
@@ -59,6 +59,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return $this->model
             ->active()
             ->with(['brand', 'categories'])
+            ->with('defaultVariant')
             ->orderBy('display_order')
             ->orderBy('name')
             ->get();
@@ -70,6 +71,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
             ->active()
             ->featured()
             ->with(['brand', 'categories'])
+            ->with('defaultVariant')
             ->orderBy('display_order')
             ->orderBy('name')
             ->get();
@@ -121,6 +123,11 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
 
     public function idsInUse(array $ids): array
     {
-        return [];
+        return $this->model
+            ->newQuery()
+            ->whereIn('id', $ids)
+            ->whereHas('variants', fn ($query) => $query->withTrashed())
+            ->pluck('id')
+            ->all();
     }
 }

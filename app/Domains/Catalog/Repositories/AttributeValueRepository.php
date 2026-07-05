@@ -101,7 +101,12 @@ class AttributeValueRepository extends BaseRepository implements AttributeValueR
 
     public function idsInUse(array $ids): array
     {
-        return [];
+        return $this->model
+            ->newQuery()
+            ->whereIn('id', $ids)
+            ->whereHas('productVariants', fn ($query) => $query->withTrashed())
+            ->pluck('id')
+            ->all();
     }
 
     public function idsWithInactiveAttributes(array $ids): array

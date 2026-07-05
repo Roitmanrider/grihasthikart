@@ -7,11 +7,13 @@ use App\Domains\Catalog\Contracts\AttributeValueRepositoryInterface;
 use App\Domains\Catalog\Contracts\BrandRepositoryInterface;
 use App\Domains\Catalog\Contracts\CategoryRepositoryInterface;
 use App\Domains\Catalog\Contracts\ProductRepositoryInterface;
+use App\Domains\Catalog\Contracts\ProductVariantRepositoryInterface;
 use App\Domains\Catalog\Repositories\AttributeRepository;
 use App\Domains\Catalog\Repositories\AttributeValueRepository;
 use App\Domains\Catalog\Repositories\BrandRepository;
 use App\Domains\Catalog\Repositories\CategoryRepository;
 use App\Domains\Catalog\Repositories\ProductRepository;
+use App\Domains\Catalog\Repositories\ProductVariantRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -44,6 +46,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductRepositoryInterface::class,
             ProductRepository::class
+        );
+
+        $this->app->bind(
+            ProductVariantRepositoryInterface::class,
+            ProductVariantRepository::class
         );
     }
 

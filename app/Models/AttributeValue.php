@@ -28,6 +28,13 @@ class AttributeValue extends Model
         return $this->belongsTo(Attribute::class);
     }
 
+    public function productVariants()
+    {
+        return $this->belongsToMany(ProductVariant::class, 'product_variant_attribute_value')
+            ->withPivot('attribute_id')
+            ->withTimestamps();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

@@ -183,6 +183,7 @@
                                 @if (! $product->trashed())
                                     <div class="btn-group btn-group-sm">
                                         <a href="{{ route('admin.products.show', $product) }}" class="btn btn-outline-secondary">View</a>
+                                        <a href="{{ route('admin.products.variants.index', $product) }}" class="btn btn-outline-secondary">Variants</a>
                                         <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-outline-success">Edit</a>
                                     </div>
                                 @endif
