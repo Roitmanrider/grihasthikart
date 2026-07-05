@@ -106,7 +106,17 @@
                         </dl>
                     </div>
 
-                    <button class="btn btn-secondary btn-lg" type="button" disabled>Cart coming soon</button>
+                    <form method="POST" action="{{ route('cart.items.store') }}" class="row g-2 align-items-end">
+                        @csrf
+                        <input type="hidden" name="product_variant_id" id="cartVariantId" value="{{ $defaultVariant?->id }}">
+                        <div class="col-sm-4">
+                            <label class="form-label" for="cartQuantity">Quantity</label>
+                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="0.001" step="0.001">
+                        </div>
+                        <div class="col-sm-8">
+                            <button class="btn btn-success btn-lg" type="submit">Add to Cart</button>
+                        </div>
+                    </form>
 
                     <hr class="my-4">
 
@@ -157,6 +167,8 @@
                 if (image && option.dataset.image) {
                     image.setAttribute('src', option.dataset.image);
                 }
+
+                document.getElementById('cartVariantId').value = option.value;
             });
         });
     </script>

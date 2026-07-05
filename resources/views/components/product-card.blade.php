@@ -62,9 +62,22 @@
             @endif
         </div>
 
-        <a href="{{ route('products.show', $product->slug) }}" class="btn btn-outline-success btn-sm mt-2">
-            View product
-        </a>
+        <div class="d-grid gap-2 mt-2">
+            <a href="{{ route('products.show', $product->slug) }}" class="btn btn-outline-success btn-sm">
+                View product
+            </a>
+
+            @if ($variant && $variant->status)
+                <form method="POST" action="{{ route('cart.items.store') }}">
+                    @csrf
+                    <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                    <input type="hidden" name="quantity" value="1">
+                    <button class="btn btn-success btn-sm w-100" type="submit">Add to Cart</button>
+                </form>
+            @else
+                <button class="btn btn-secondary btn-sm" type="button" disabled>Unavailable</button>
+            @endif
+        </div>
 
     </div>
 

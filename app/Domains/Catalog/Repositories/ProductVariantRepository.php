@@ -127,7 +127,7 @@ class ProductVariantRepository extends BaseRepository implements ProductVariantR
         return $this->model
             ->newQuery()
             ->whereIn('id', $ids)
-            ->whereHas('inventories')
+            ->where(fn ($query) => $query->whereHas('inventories')->orWhereHas('cartItems'))
             ->pluck('id')
             ->all();
     }

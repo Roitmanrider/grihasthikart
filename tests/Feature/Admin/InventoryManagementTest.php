@@ -219,9 +219,9 @@ class InventoryManagementTest extends TestCase
 
         $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
 
-        $this->assertNotContains('cart', $uris);
         $this->assertNotContains('checkout', $uris);
         $this->assertNotContains('orders', $uris);
+        $this->assertNotContains('payment', $uris);
     }
 
     private function variantAndLocation(): array

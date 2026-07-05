@@ -58,6 +58,21 @@
 
                 </form>
 
+                @php
+                    $cartService = app(\App\Domains\Cart\Services\CartService::class);
+                    $cartSummary = $cartService->getCartSummary($cartService->sessionIdentifier(request()->session()));
+                @endphp
+
+                <a href="{{ route('cart.show') }}" class="btn btn-outline-success position-relative">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="ms-1">Cart</span>
+                    @if ($cartSummary['item_count'] > 0)
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
+                            {{ rtrim(rtrim(number_format($cartSummary['item_count'], 3), '0'), '.') }}
+                        </span>
+                    @endif
+                </a>
+
             </div>
 
         </div>

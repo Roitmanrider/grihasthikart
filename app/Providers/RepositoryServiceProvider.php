@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Domains\Cart\Contracts\CartRepositoryInterface;
+use App\Domains\Cart\Repositories\CartRepository;
 use App\Domains\Catalog\Contracts\AttributeRepositoryInterface;
 use App\Domains\Catalog\Contracts\AttributeValueRepositoryInterface;
 use App\Domains\Catalog\Contracts\BrandRepositoryInterface;
@@ -65,6 +67,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             InventoryRepositoryInterface::class,
             InventoryRepository::class
+        );
+
+        $this->app->bind(
+            CartRepositoryInterface::class,
+            CartRepository::class
         );
     }
 

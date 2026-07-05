@@ -93,7 +93,7 @@ class CustomerCatalogTest extends TestCase
         $response->assertSee('Basmati Rice');
         $response->assertSee('GK-RICE-1KG');
         $response->assertSee('GK-RICE-5KG');
-        $response->assertSee('Cart coming soon');
+        $response->assertSee('Add to Cart');
     }
 
     public function test_category_listing_and_detail_load(): void
@@ -159,7 +159,6 @@ class CustomerCatalogTest extends TestCase
     {
         $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
 
-        $this->assertNotContains('cart', $uris);
         $this->assertNotContains('checkout', $uris);
         $this->assertNotContains('orders', $uris);
         $this->assertNotContains('inventory', $uris);
