@@ -61,6 +61,13 @@ class ProductVariant extends Model
             ->orderBy('display_order');
     }
 
+    public function primaryImage()
+    {
+        return $this->hasOne(ProductImage::class)
+            ->where('status', true)
+            ->where('is_primary', true);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

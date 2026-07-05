@@ -1,131 +1,67 @@
-<header>
+<header class="bg-white border-bottom sticky-top">
 
-    <div class="container">
+    <nav class="navbar navbar-expand-lg">
 
-        <div class="header-wrapper">
+        <div class="container">
 
-            {{-- Logo --}}
+            <a class="navbar-brand fw-bold text-success" href="{{ route('home') }}">
 
-            <div class="logo">
+                GrihasthiKart
 
-                <a href="/">
+            </a>
 
-                    <img
-                        src="{{ asset('assets/images/logos/logo.png') }}"
-                        alt="GrihasthiKart">
+            <button class="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#customerCatalogNav"
+                    aria-controls="customerCatalogNav"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation">
 
-                </a>
+                <span class="navbar-toggler-icon"></span>
 
-            </div>
+            </button>
 
-            {{-- Search --}}
+            <div class="collapse navbar-collapse gap-3" id="customerCatalogNav">
 
-            <div class="search-box">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-                <input
-                    type="text"
-                    placeholder="Search for products, categories, subcategories...">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('products.index') }}">Products</a>
+                    </li>
 
-                <button>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('categories.index') }}">Categories</a>
+                    </li>
 
-                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('brands.index') }}">Brands</a>
+                    </li>
 
-                </button>
+                </ul>
 
-            </div>
+                <form class="d-flex flex-grow-1 flex-lg-grow-0"
+                      action="{{ route('products.index') }}"
+                      method="GET"
+                      role="search">
 
-            {{-- Right Side --}}
+                    <input class="form-control me-2"
+                           type="search"
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Search products, SKU, barcode"
+                           aria-label="Search products">
 
-            <div class="header-actions">
+                    <button class="btn btn-success" type="submit">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
 
-                {{-- Account --}}
-
-                <div class="action-item">
-
-                    <i class="fa-regular fa-user"></i>
-
-                    <span>
-
-                        Hi, Rohit
-
-                    </span>
-
-                </div>
-
-                {{-- Wishlist --}}
-
-                <div class="action-item">
-
-                    <span class="badge">8</span>
-
-                    <i class="fa-regular fa-heart"></i>
-
-                    <span>
-
-                        Wishlist
-
-                    </span>
-
-                </div>
-
-                {{-- Cart --}}
-
-                <div class="action-item">
-
-                    <span class="badge">3</span>
-
-                    <i class="fa-solid fa-cart-shopping"></i>
-
-                    <span>
-
-                        Cart
-
-                    </span>
-
-                </div>
-
-                {{-- WhatsApp --}}
-
-                <div class="action-item">
-
-                    <i class="fa-brands fa-whatsapp whatsapp"></i>
-
-                    <span>
-
-                        WhatsApp
-
-                    </span>
-
-                </div>
-
-                {{-- Phone --}}
-
-                <div class="phone-box">
-
-                    <i class="fa-solid fa-phone"></i>
-
-                    <div>
-
-                        <small>
-
-                            Call Us
-
-                        </small>
-
-                        <strong>
-
-                            1800-123-4567
-
-                        </strong>
-
-                    </div>
-
-                </div>
+                </form>
 
             </div>
 
         </div>
 
-    </div>
+    </nav>
 
 </header>

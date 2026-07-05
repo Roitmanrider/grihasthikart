@@ -91,6 +91,14 @@ class Product extends Model
             ->orderBy('display_order');
     }
 
+    public function primaryImage()
+    {
+        return $this->hasOne(ProductImage::class)
+            ->whereNull('product_variant_id')
+            ->where('status', true)
+            ->where('is_primary', true);
+    }
+
     public function allImages()
     {
         return $this->hasMany(ProductImage::class)

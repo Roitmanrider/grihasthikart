@@ -1,16 +1,16 @@
-<div class="bg-white border-bottom px-4 py-3">
+<div class="bg-success text-white px-4 py-2">
 
     <div class="d-flex align-items-center justify-content-between">
 
         <div>
 
-            <div class="fw-semibold">Admin Panel</div>
+            <div class="fw-semibold">Fresh grocery catalog</div>
 
-            <div class="text-muted small">Catalog operations</div>
+            <div class="small opacity-75">Browse products, brands, categories, and variants</div>
 
         </div>
 
-        <div class="text-muted small">GrihasthiKart</div>
+        <div class="small">GrihasthiKart</div>
 
     </div>
 

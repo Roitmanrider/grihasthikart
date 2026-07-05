@@ -1,5 +1,5 @@
-<footer>
+<footer class="border-top py-4 mt-5 text-center text-muted">
 
-    © {{ date('Y') }} GrihasthiKart
+    &copy; {{ date('Y') }} GrihasthiKart
 
 </footer>

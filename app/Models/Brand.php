@@ -31,6 +31,11 @@ class Brand extends Model
         'status' => 'boolean',
     ];
 
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);
