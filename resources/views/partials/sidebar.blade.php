@@ -18,6 +18,16 @@
             Brands
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.attributes.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.attributes.index') }}">
+            Attributes
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.attribute-values.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.attribute-values.index') }}">
+            Attribute Values
+        </a>
+
     </nav>
 
 </aside>

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AttributeController;
+use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +42,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('brands.restore');
 
         Route::resource('brands', BrandController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attributes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-attributes'])->group(function () {
+        Route::post('attributes/bulk-action', [AttributeController::class, 'bulkAction'])
+            ->name('attributes.bulk-action');
+
+        Route::patch('attributes/{attribute}/restore', [AttributeController::class, 'restore'])
+            ->name('attributes.restore');
+
+        Route::resource('attributes', AttributeController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attribute Values
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-attribute-values'])->group(function () {
+        Route::post('attribute-values/bulk-action', [AttributeValueController::class, 'bulkAction'])
+            ->name('attribute-values.bulk-action');
+
+        Route::patch('attribute-values/{attributeValue}/restore', [AttributeValueController::class, 'restore'])
+            ->name('attribute-values.restore');
+
+        Route::resource('attribute-values', AttributeValueController::class)
+            ->parameters(['attribute-values' => 'attributeValue']);
     });
 
 });
