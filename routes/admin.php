@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -75,6 +76,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::resource('attribute-values', AttributeValueController::class)
             ->parameters(['attribute-values' => 'attributeValue']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Products
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-products'])->group(function () {
+        Route::post('products/bulk-action', [ProductController::class, 'bulkAction'])
+            ->name('products.bulk-action');
+
+        Route::patch('products/{product}/restore', [ProductController::class, 'restore'])
+            ->name('products.restore');
+
+        Route::resource('products', ProductController::class);
     });
 
 });

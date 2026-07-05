@@ -69,6 +69,11 @@ class CategoryService
         return $this->repository->rootCategories();
     }
 
+    public function activeCategories()
+    {
+        return $this->repository->activeCategories();
+    }
+
     public function parentOptions(?Category $category = null)
     {
         return $this->repository->parentOptions($category?->id);

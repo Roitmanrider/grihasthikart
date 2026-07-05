@@ -28,6 +28,11 @@
             Attribute Values
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.products.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.products.index') }}">
+            Products
+        </a>
+
     </nav>
 
 </aside>
