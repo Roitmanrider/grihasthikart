@@ -40,7 +40,7 @@ class BusinessSettingService
         return [
             'minimum_order_amount' => (float) $this->get('checkout.minimum_order_amount', 0),
             'delivery_charge' => (float) $this->get('checkout.delivery_charge', 0),
-            'cod_enabled' => (bool) $this->get('checkout.cod_enabled', true),
+            'cod_enabled' => (bool) $this->get('payment.cod_enabled', $this->get('checkout.cod_enabled', true)),
             'today_delivery_enabled' => (bool) $this->get('checkout.today_delivery_enabled', true),
             'today_delivery_cutoff_time' => $this->get('checkout.today_delivery_cutoff_time', '14:00'),
             'custom_delivery_date_enabled' => (bool) $this->get('checkout.custom_delivery_date_enabled', true),
@@ -52,10 +52,50 @@ class BusinessSettingService
         ];
     }
 
+    public function paymentSettings(): array
+    {
+        return [
+            'cod_enabled' => (bool) $this->get('payment.cod_enabled', $this->get('checkout.cod_enabled', true)),
+            'qr_enabled' => (bool) $this->get('payment.qr_enabled', false),
+            'razorpay_enabled' => (bool) $this->get('payment.razorpay_enabled', false),
+            'qr_label' => $this->get('payment.qr_label', 'Pay by QR'),
+            'qr_upi_id' => $this->get('payment.qr_upi_id'),
+            'qr_display_name' => $this->get('payment.qr_display_name'),
+            'qr_image_path' => $this->get('payment.qr_image_path'),
+            'razorpay_key_id' => $this->get('payment.razorpay_key_id'),
+            'razorpay_key_secret' => $this->get('payment.razorpay_key_secret'),
+            'currency' => $this->get('payment.currency', 'INR'),
+        ];
+    }
+
+    public function publicPaymentSettings(): array
+    {
+        $settings = $this->paymentSettings();
+        unset($settings['razorpay_key_secret']);
+
+        return $settings;
+    }
+
+    public function razorpayConfigured(): bool
+    {
+        return (bool) ($this->get('payment.razorpay_key_id') && $this->get('payment.razorpay_key_secret'));
+    }
+
     public function updateCheckoutSettings(array $data): void
     {
         foreach ($data as $key => $value) {
             $this->set('checkout.'.$key, $value);
+        }
+    }
+
+    public function updatePaymentSettings(array $data): void
+    {
+        foreach ($data as $key => $value) {
+            if ($key === 'razorpay_key_secret' && ($value === null || $value === '')) {
+                continue;
+            }
+
+            $this->set('payment.'.$key, $value);
         }
     }
 

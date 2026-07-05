@@ -26,7 +26,7 @@ class OrderRepository extends BaseRepository implements OrderRepositoryInterface
             ->newQuery()
             ->where('order_number', $orderNumber)
             ->where('session_id', $sessionId)
-            ->with('items')
+            ->with(['items', 'payment'])
             ->firstOrFail();
     }
 
@@ -34,7 +34,7 @@ class OrderRepository extends BaseRepository implements OrderRepositoryInterface
     {
         return $this->model
             ->newQuery()
-            ->with(['items.productVariant', 'statusHistories.changer'])
+            ->with(['items.productVariant', 'statusHistories.changer', 'payment'])
             ->findOrFail($id);
     }
 

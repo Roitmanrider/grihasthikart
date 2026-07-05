@@ -8,6 +8,7 @@ use App\Http\Controllers\Frontend\CheckoutController;
 use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
+use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,7 @@ Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear')
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout', [CheckoutController::class, 'place'])->name('checkout.place');
 Route::get('/orders/success/{orderNumber}', [CheckoutController::class, 'success'])->name('checkout.success');
+Route::post('/orders/{orderNumber}/payment-proof', [PaymentController::class, 'uploadProof'])->name('orders.payment-proof.store');
 
 Route::get('/customer/login', [CustomerAuthController::class, 'login'])->name('customer.login');
 Route::post('/customer/login', [CustomerAuthController::class, 'requestOtp'])->name('customer.login.request');

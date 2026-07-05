@@ -169,11 +169,12 @@ class CartManagementTest extends TestCase
             ->assertSee('cartVariantId');
     }
 
-    public function test_no_payment_routes_and_no_stock_fields_on_catalog_tables(): void
+    public function test_no_disallowed_commerce_modules_or_catalog_stock_fields_are_created(): void
     {
         $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
 
-        $this->assertNotContains('payment', $uris);
+        $this->assertNotContains('cashback', $uris);
+        $this->assertNotContains('coupons', $uris);
 
         foreach (['stock_quantity', 'reserved_quantity', 'available_quantity', 'quantity_on_hand'] as $column) {
             $this->assertFalse(Schema::hasColumn('products', $column));

@@ -8,6 +8,7 @@ use App\Models\DeliverySlot;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -55,7 +56,7 @@ class CheckoutManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Cash on Delivery')
             ->assertSee('9-11 AM')
-            ->assertSee('Place COD Order');
+            ->assertSee('Place Order');
     }
 
     public function test_inactive_delivery_slots_do_not_appear_on_checkout_page(): void
@@ -91,6 +92,13 @@ class CheckoutManagementTest extends TestCase
 
         $response->assertRedirect(route('checkout.success', $order->order_number));
         $this->assertSame('cod', $order->payment_method);
+        $this->assertSame('pending', $order->payment_status);
+        $this->assertDatabaseHas('payments', [
+            'order_id' => $order->id,
+            'payment_method' => 'cod',
+            'payment_status' => 'pending',
+            'amount' => '136',
+        ]);
         $this->assertSame('placed', $order->order_status);
         $this->assertSame($variant->id, $item->product_variant_id);
         $this->assertSame($product->id, $item->product_id);
@@ -115,12 +123,32 @@ class CheckoutManagementTest extends TestCase
         [, $variant] = $this->cartItem();
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
 
-        BusinessSetting::query()->where('group', 'checkout')->where('key', 'cod_enabled')->update(['value' => '0']);
+        BusinessSetting::query()->where('group', 'payment')->where('key', 'cod_enabled')->update(['value' => '0']);
         $this->post(route('checkout.place'), $this->checkoutPayload())->assertSessionHasErrors('checkout');
 
-        BusinessSetting::query()->where('group', 'checkout')->where('key', 'cod_enabled')->update(['value' => '1']);
+        BusinessSetting::query()->where('group', 'payment')->where('key', 'cod_enabled')->update(['value' => '1']);
         BusinessSetting::query()->where('group', 'checkout')->where('key', 'minimum_order_amount')->update(['value' => '999']);
         $this->post(route('checkout.place'), $this->checkoutPayload())->assertSessionHasErrors('checkout');
+    }
+
+    public function test_qr_checkout_creates_pending_payment_record(): void
+    {
+        BusinessSetting::query()->where('group', 'payment')->where('key', 'qr_enabled')->update(['value' => '1']);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'qr',
+        ]))->assertRedirect();
+
+        $order = Order::query()->firstOrFail();
+        $payment = Payment::query()->firstOrFail();
+
+        $this->assertSame('qr', $order->payment_method);
+        $this->assertSame('pending', $order->payment_status);
+        $this->assertSame($order->id, $payment->order_id);
+        $this->assertSame('qr', $payment->payment_method);
+        $this->assertSame('pending', $payment->payment_status);
     }
 
     public function test_checkout_applies_delivery_charge_to_order_total(): void
@@ -228,7 +256,7 @@ class CheckoutManagementTest extends TestCase
     {
         $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
 
-        $this->assertNotContains('razorpay', $uris);
+        $this->assertContains('orders/{orderNumber}/payment-proof', $uris);
         $this->assertNotContains('cashback', $uris);
         $this->assertNotContains('coupons', $uris);
 
@@ -280,6 +308,7 @@ class CheckoutManagementTest extends TestCase
             'delivery_landmark' => 'Clock Tower',
             'delivery_date' => now()->addDay()->toDateString(),
             'delivery_slot' => '9-11 AM',
+            'payment_method' => 'cod',
             'notes' => 'Please call before delivery.',
         ];
     }

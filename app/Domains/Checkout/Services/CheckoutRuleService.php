@@ -18,10 +18,6 @@ class CheckoutRuleService
     {
         $checkout = $this->settings->checkoutSettings();
 
-        if (! $checkout['cod_enabled']) {
-            throw new InvalidArgumentException('Cash on Delivery is currently unavailable.');
-        }
-
         if ($subtotal < $checkout['minimum_order_amount']) {
             throw new InvalidArgumentException('Minimum order amount is Rs. '.number_format($checkout['minimum_order_amount'], 2).'.');
         }

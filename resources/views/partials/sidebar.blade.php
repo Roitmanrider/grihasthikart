@@ -45,6 +45,11 @@
             Orders
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.payments.index') }}">
+            Payments
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.customers.index') }}">
             Customers
@@ -52,9 +57,14 @@
 
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Settings</div>
 
-        <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+        <a class="nav-link {{ request()->routeIs('admin.settings.checkout.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.settings.checkout.edit') }}">
             Checkout Settings
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.settings.payments.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.settings.payments.edit') }}">
+            Payment Settings
         </a>
 
         <a class="nav-link {{ request()->routeIs('admin.delivery-slots.*') ? 'active fw-semibold text-success' : 'text-dark' }}"

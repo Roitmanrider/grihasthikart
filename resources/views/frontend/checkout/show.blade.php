@@ -1,7 +1,7 @@
 @extends('layouts.frontend')
 
 @section('title', 'Checkout - GrihasthiKart')
-@section('description', 'Place your Cash on Delivery order.')
+@section('description', 'Place your GrihasthiKart order.')
 
 @section('content')
     <section class="py-5">
@@ -9,7 +9,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="h3 mb-1">Checkout</h1>
-                    <p class="text-muted mb-0">Cash on Delivery only for this MVP.</p>
+                    <p class="text-muted mb-0">Choose a delivery slot and payment option.</p>
                 </div>
                 <a href="{{ route('cart.show') }}" class="btn btn-outline-secondary">Back to Cart</a>
             </div>
@@ -88,12 +88,40 @@
                                     <textarea name="notes" class="form-control" rows="3">{{ old('notes') }}</textarea>
                                 </div>
                                 <div class="col-12">
-                                    <div class="alert alert-light border mb-0">
-                                        Payment method: <strong>Cash on Delivery</strong>
+                                    <label class="form-label">Payment Method</label>
+                                    <div class="row g-2">
+                                        @foreach ($enabledPaymentMethods as $method)
+                                            <div class="col-md-4">
+                                                <label class="border rounded p-3 d-block h-100">
+                                                    <input class="form-check-input me-2" type="radio" name="payment_method" value="{{ $method }}" @checked(old('payment_method', $enabledPaymentMethods[0] ?? 'cod') === $method) required>
+                                                    <span class="fw-semibold">
+                                                        @if ($method === 'cod')
+                                                            Cash on Delivery
+                                                        @elseif ($method === 'qr')
+                                                            {{ $paymentSettings['qr_label'] ?? 'Pay by QR' }}
+                                                        @else
+                                                            Online Payment
+                                                        @endif
+                                                    </span>
+                                                    <span class="small text-muted d-block mt-1">
+                                                        @if ($method === 'cod')
+                                                            Pay when your order arrives.
+                                                        @elseif ($method === 'qr')
+                                                            Place order and upload payment proof.
+                                                        @else
+                                                            Razorpay-ready payment flow.
+                                                        @endif
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        @endforeach
                                     </div>
+                                    @if (empty($enabledPaymentMethods))
+                                        <div class="alert alert-warning mt-2 mb-0">No payment method is currently available.</div>
+                                    @endif
                                 </div>
                                 <div class="col-12">
-                                    <button class="btn btn-success btn-lg" type="submit">Place COD Order</button>
+                                    <button class="btn btn-success btn-lg" type="submit" @disabled(empty($enabledPaymentMethods))>Place Order</button>
                                 </div>
                             </form>
                         </div>

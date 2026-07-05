@@ -21,6 +21,16 @@ class BusinessSettingSeeder extends Seeder
             ['checkout', 'default_city', null, 'string', 'Default City', 9],
             ['checkout', 'store_contact_mobile', null, 'string', 'Store Contact Mobile', 10],
             ['checkout', 'store_whatsapp_number', null, 'string', 'Store WhatsApp Number', 11],
+            ['payment', 'cod_enabled', '1', 'boolean', 'COD Enabled', 1],
+            ['payment', 'qr_enabled', '0', 'boolean', 'QR Payment Enabled', 2],
+            ['payment', 'razorpay_enabled', '0', 'boolean', 'Razorpay Enabled', 3],
+            ['payment', 'qr_label', 'Pay by QR', 'string', 'QR Payment Label', 4],
+            ['payment', 'qr_upi_id', null, 'string', 'QR UPI ID', 5],
+            ['payment', 'qr_display_name', null, 'string', 'QR Display Name', 6],
+            ['payment', 'qr_image_path', null, 'string', 'QR Image Path', 7],
+            ['payment', 'razorpay_key_id', null, 'string', 'Razorpay Key ID', 8],
+            ['payment', 'razorpay_key_secret', null, 'string', 'Razorpay Key Secret', 9],
+            ['payment', 'currency', 'INR', 'string', 'Currency', 10],
         ];
 
         foreach ($settings as [$group, $key, $value, $type, $label, $order]) {

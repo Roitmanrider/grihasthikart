@@ -176,6 +176,7 @@ class CustomerAccountTest extends TestCase
             'delivery_city' => 'Patna',
             'delivery_state' => 'Bihar',
             'delivery_pincode' => '800001',
+            'payment_method' => 'cod',
         ];
     }
 

@@ -26,6 +26,8 @@ use App\Domains\Inventory\Contracts\InventoryRepositoryInterface;
 use App\Domains\Inventory\Repositories\InventoryRepository;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
 use App\Domains\Order\Repositories\OrderRepository;
+use App\Domains\Payment\Contracts\PaymentRepositoryInterface;
+use App\Domains\Payment\Repositories\PaymentRepository;
 use App\Domains\Setting\Contracts\BusinessSettingRepositoryInterface;
 use App\Domains\Setting\Repositories\BusinessSettingRepository;
 use Illuminate\Support\ServiceProvider;
@@ -85,6 +87,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             OrderRepositoryInterface::class,
             OrderRepository::class
+        );
+
+        $this->app->bind(
+            PaymentRepositoryInterface::class,
+            PaymentRepository::class
         );
 
         $this->app->bind(

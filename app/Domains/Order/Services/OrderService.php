@@ -6,6 +6,7 @@ use App\Domains\Cart\Services\CartService;
 use App\Domains\Checkout\Services\CheckoutRuleService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
+use App\Domains\Payment\Services\PaymentService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
 use App\Models\Inventory;
@@ -33,6 +34,7 @@ class OrderService
         private readonly CartService $cartService,
         private readonly InventoryService $inventoryService,
         private readonly CheckoutRuleService $checkoutRuleService,
+        private readonly PaymentService $paymentService,
         private readonly BusinessSettingService $settingService
     ) {}
 
@@ -54,11 +56,12 @@ class OrderService
             $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal']);
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals);
             $this->createOrderItems($order, $cart);
+            $this->paymentService->createForOrder($order, $checkoutData['payment_method'] ?? 'cod');
             $this->deductInventoryForOrder($order);
             $this->createStatusHistory($order, null, 'placed', 'Order placed.');
             $this->cartService->clearCart($sessionId);
 
-            return $order->fresh(['items', 'statusHistories']);
+            return $order->fresh(['items', 'statusHistories', 'payment']);
         });
     }
 
@@ -158,7 +161,7 @@ class OrderService
             'order_number' => $this->generateOrderNumber(),
             'cart_id' => $cart->id,
             'session_id' => $sessionId,
-            'payment_method' => 'cod',
+            'payment_method' => $checkoutData['payment_method'] ?? 'cod',
             'payment_status' => 'pending',
             'order_status' => 'placed',
             'placed_at' => now(),

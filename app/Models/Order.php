@@ -12,9 +12,9 @@ class Order extends Model
 
     public const STATUSES = ['placed', 'confirmed', 'preparing', 'ready_for_delivery', 'delivered', 'cancelled'];
 
-    public const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
+    public const PAYMENT_STATUSES = ['pending', 'awaiting_verification', 'paid', 'failed', 'cancelled', 'refunded'];
 
-    public const PAYMENT_METHODS = ['cod'];
+    public const PAYMENT_METHODS = ['cod', 'qr', 'razorpay'];
 
     protected $fillable = [
         'order_number',
@@ -71,6 +71,11 @@ class Order extends Model
     public function statusHistories()
     {
         return $this->hasMany(OrderStatusHistory::class)->latest();
+    }
+
+    public function payment()
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
     }
 
     public function cart()

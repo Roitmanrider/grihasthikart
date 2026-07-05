@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\AdminBusinessSettingController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminOrderController;
+use App\Http\Controllers\Admin\AdminPaymentController;
+use App\Http\Controllers\Admin\AdminPaymentSettingController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
@@ -191,6 +193,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Payments
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-payments'])->group(function () {
+        Route::get('payments', [AdminPaymentController::class, 'index'])
+            ->name('payments.index');
+        Route::get('payments/{payment}', [AdminPaymentController::class, 'show'])
+            ->name('payments.show');
+        Route::patch('payments/{payment}/verify', [AdminPaymentController::class, 'verify'])
+            ->name('payments.verify');
+        Route::patch('payments/{payment}/fail', [AdminPaymentController::class, 'fail'])
+            ->name('payments.fail');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | Customers
     |--------------------------------------------------------------------------
     */
@@ -216,6 +235,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.checkout.edit');
         Route::put('settings/checkout', [AdminBusinessSettingController::class, 'update'])
             ->name('settings.checkout.update');
+    });
+
+    Route::middleware(['auth', 'can:manage-payment-settings'])->group(function () {
+        Route::get('settings/payments', [AdminPaymentSettingController::class, 'edit'])
+            ->name('settings.payments.edit');
+        Route::patch('settings/payments', [AdminPaymentSettingController::class, 'update'])
+            ->name('settings.payments.update');
     });
 
     Route::middleware(['auth', 'can:manage-delivery-slots'])->group(function () {

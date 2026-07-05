@@ -93,6 +93,14 @@ class AppServiceProvider extends ServiceProvider
             return in_array($user->email, config('grihasthikart.admin_emails', []), true);
         });
 
+        Gate::define('manage-payments', function (User $user): bool {
+            if (method_exists($user, 'hasPermissionTo')) {
+                return $user->hasPermissionTo('payments.manage');
+            }
+
+            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+        });
+
         Gate::define('manage-customers', function (User $user): bool {
             if (method_exists($user, 'hasPermissionTo')) {
                 return $user->hasPermissionTo('customers.manage');
@@ -104,6 +112,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-settings', function (User $user): bool {
             if (method_exists($user, 'hasPermissionTo')) {
                 return $user->hasPermissionTo('settings.manage');
+            }
+
+            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+        });
+
+        Gate::define('manage-payment-settings', function (User $user): bool {
+            if (method_exists($user, 'hasPermissionTo')) {
+                return $user->hasPermissionTo('settings.payments.manage');
             }
 
             return in_array($user->email, config('grihasthikart.admin_emails', []), true);
