@@ -69,4 +69,6 @@
     </div>
 </div>
 
+@include('admin.product-images.partials.manager', ['product' => $product, 'productVariant' => $productVariant])
+
 @endsection

@@ -16,4 +16,6 @@
     @include('admin.products.form', ['buttonText' => 'Update Product'])
 </form>
 
+@include('admin.product-images.partials.manager', ['product' => $product])
+
 @endsection

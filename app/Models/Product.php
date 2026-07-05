@@ -83,6 +83,21 @@ class Product extends Model
         return $this->belongsTo(ProductVariant::class, 'default_variant_id');
     }
 
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class)
+            ->whereNull('product_variant_id')
+            ->orderByDesc('is_primary')
+            ->orderBy('display_order');
+    }
+
+    public function allImages()
+    {
+        return $this->hasMany(ProductImage::class)
+            ->orderByDesc('is_primary')
+            ->orderBy('display_order');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

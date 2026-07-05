@@ -72,14 +72,21 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['brand', 'categories']);
+        $product->load([
+            'brand',
+            'categories',
+            'images' => fn ($query) => $query->withTrashed(),
+        ]);
 
         return view('admin.products.show', compact('product'));
     }
 
     public function edit(Product $product)
     {
-        $product->load('categories');
+        $product->load([
+            'categories',
+            'images' => fn ($query) => $query->withTrashed(),
+        ]);
 
         $categories = $this->categoryService->activeCategories();
         $brands = $this->brandService->activeBrands();

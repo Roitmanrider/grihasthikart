@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductImageController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use Illuminate\Support\Facades\Route;
 
@@ -110,6 +111,40 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::resource('products.variants', ProductVariantController::class)
             ->parameters(['variants' => 'productVariant']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Product Images
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-product-images'])->group(function () {
+        Route::post('products/{product}/images', [ProductImageController::class, 'store'])
+            ->name('products.images.store');
+        Route::get('products/{product}/images/{productImage}/edit', [ProductImageController::class, 'edit'])
+            ->name('products.images.edit');
+        Route::put('products/{product}/images/{productImage}', [ProductImageController::class, 'update'])
+            ->name('products.images.update');
+        Route::patch('products/{product}/images/{productImage}/primary', [ProductImageController::class, 'setPrimary'])
+            ->name('products.images.primary');
+        Route::delete('products/{product}/images/{productImage}', [ProductImageController::class, 'destroy'])
+            ->name('products.images.destroy');
+        Route::patch('products/{product}/images/{productImage}/restore', [ProductImageController::class, 'restore'])
+            ->name('products.images.restore');
+
+        Route::post('products/{product}/variants/{productVariant}/images', [ProductImageController::class, 'storeVariant'])
+            ->name('products.variants.images.store');
+        Route::get('products/{product}/variants/{productVariant}/images/{productImage}/edit', [ProductImageController::class, 'editVariant'])
+            ->name('products.variants.images.edit');
+        Route::put('products/{product}/variants/{productVariant}/images/{productImage}', [ProductImageController::class, 'updateVariant'])
+            ->name('products.variants.images.update');
+        Route::patch('products/{product}/variants/{productVariant}/images/{productImage}/primary', [ProductImageController::class, 'setVariantPrimary'])
+            ->name('products.variants.images.primary');
+        Route::delete('products/{product}/variants/{productVariant}/images/{productImage}', [ProductImageController::class, 'destroyVariant'])
+            ->name('products.variants.images.destroy');
+        Route::patch('products/{product}/variants/{productVariant}/images/{productImage}/restore', [ProductImageController::class, 'restoreVariant'])
+            ->name('products.variants.images.restore');
     });
 
 });

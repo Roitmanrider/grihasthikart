@@ -62,7 +62,10 @@ class ProductVariantController extends Controller
         $this->ensureVariantBelongsToProduct($product, $productVariant);
 
         $product->load(['brand', 'categories']);
-        $productVariant->load(['attributeValues.attribute']);
+        $productVariant->load([
+            'attributeValues.attribute',
+            'images' => fn ($query) => $query->withTrashed(),
+        ]);
 
         return view('admin.product-variants.show', compact('product', 'productVariant'));
     }
@@ -72,7 +75,10 @@ class ProductVariantController extends Controller
         $this->ensureVariantBelongsToProduct($product, $productVariant);
 
         $product->load(['brand', 'categories']);
-        $productVariant->load(['attributeValues.attribute']);
+        $productVariant->load([
+            'attributeValues.attribute',
+            'images' => fn ($query) => $query->withTrashed(),
+        ]);
         $attributes = $this->attributeService->variantDefiningAttributes();
 
         return view('admin.product-variants.edit', compact('product', 'productVariant', 'attributes'));

@@ -54,6 +54,13 @@ class ProductVariant extends Model
             ->withTimestamps();
     }
 
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class)
+            ->orderByDesc('is_primary')
+            ->orderBy('display_order');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);
