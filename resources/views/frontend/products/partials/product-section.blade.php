@@ -14,7 +14,7 @@
                 @endforeach
             </div>
         @else
-            <div class="alert alert-light border">{{ $empty }}</div>
+            <x-empty-state :title="$empty" message="Please check back after the catalog team adds products to this section." :action="route('products.index')" action-label="Browse all products" />
         @endif
     </div>
 </section>

@@ -78,7 +78,13 @@
                 @endphp
 
                 @if ($currentCustomer)
-                    <a href="{{ route('customer.dashboard') }}" class="btn btn-success">{{ $currentCustomer->name }}</a>
+                    <div class="d-flex gap-2 align-items-center">
+                        <a href="{{ route('customer.dashboard') }}" class="btn btn-success">{{ $currentCustomer->name }}</a>
+                        <form method="POST" action="{{ route('customer.logout') }}">
+                            @csrf
+                            <button class="btn btn-outline-secondary" type="submit">Logout</button>
+                        </form>
+                    </div>
                 @else
                     <a href="{{ route('customer.login') }}" class="btn btn-outline-secondary">Login</a>
                 @endif

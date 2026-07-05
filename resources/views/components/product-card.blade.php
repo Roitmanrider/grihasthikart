@@ -3,19 +3,20 @@
     $image = $product->primaryImage?->path ?? $variant?->primaryImage?->path;
     $sellingPrice = $variant?->selling_price;
     $mrp = $variant?->mrp;
+    $discountPercent = ($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null;
 @endphp
 
-<article class="card h-100 border-0 shadow-sm">
+<article class="card h-100 border-0 shadow-sm overflow-hidden">
 
     <a href="{{ route('products.show', $product->slug) }}" class="text-decoration-none">
 
         @if ($image)
             <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}"
                  class="card-img-top object-fit-cover"
-                 style="height: 190px;"
+                 style="height: 190px; background: #f8f9fa;"
                  alt="{{ $product->primaryImage?->alt_text ?? $product->name }}">
         @else
-            <div class="ratio ratio-4x3 bg-light d-flex align-items-center justify-content-center text-success">
+            <div class="bg-light d-flex align-items-center justify-content-center text-success" style="height: 190px;">
                 <i class="fa-solid fa-basket-shopping fa-2x"></i>
             </div>
         @endif
@@ -55,6 +56,9 @@
                 @if ($mrp && $mrp > $sellingPrice)
                     <div class="small text-muted">
                         <span class="text-decoration-line-through">Rs. {{ number_format((float) $mrp, 2) }}</span>
+                        @if ($discountPercent)
+                            <span class="text-success ms-1">{{ $discountPercent }}% off</span>
+                        @endif
                     </div>
                 @endif
             @else

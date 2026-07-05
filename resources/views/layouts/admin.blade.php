@@ -12,6 +12,8 @@
 
         <main class="container-fluid py-4">
 
+            @include('partials.flash')
+
             @yield('admin-content')
 
         </main>

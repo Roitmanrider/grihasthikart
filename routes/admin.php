@@ -17,12 +17,26 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImageController;
 use App\Http\Controllers\Admin\ProductVariantController;
+use App\Models\CashbackRedemptionRequest;
+use App\Models\Inventory;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Product;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/', function () {
-        return view('admin.dashboard.index');
+        return view('admin.dashboard.index', [
+            'totalProducts' => Product::query()->count(),
+            'totalOrders' => Order::query()->count(),
+            'pendingOrders' => Order::query()->whereIn('order_status', ['placed', 'confirmed', 'preparing'])->count(),
+            'lowStockItems' => Inventory::query()
+                ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= low_stock_threshold')
+                ->count(),
+            'pendingPayments' => Payment::query()->whereIn('payment_status', ['pending', 'awaiting_verification'])->count(),
+            'pendingCashbackRedemptions' => CashbackRedemptionRequest::query()->where('status', 'pending')->count(),
+        ]);
     });
 
     /*
