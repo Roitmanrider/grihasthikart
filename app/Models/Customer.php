@@ -52,6 +52,21 @@ class Customer extends Model
         return $this->hasMany(Cart::class);
     }
 
+    public function cashbackLedgers()
+    {
+        return $this->hasMany(CashbackLedger::class)->latest();
+    }
+
+    public function cashbackRedemptionRequests()
+    {
+        return $this->hasMany(CashbackRedemptionRequest::class)->latest();
+    }
+
+    public function cashbackMonthlySummaries()
+    {
+        return $this->hasMany(CashbackMonthlySummary::class)->latest();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

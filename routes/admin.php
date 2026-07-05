@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminBusinessSettingController;
+use App\Http\Controllers\Admin\AdminCashbackController;
 use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
@@ -221,6 +222,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('coupons/{coupon}/restore', [AdminCouponController::class, 'restore'])
             ->name('coupons.restore');
         Route::resource('coupons', AdminCouponController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cashback
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-cashback'])->group(function () {
+        Route::get('cashback', [AdminCashbackController::class, 'index'])->name('cashback.index');
+        Route::post('cashback/process', [AdminCashbackController::class, 'process'])->name('cashback.process');
+        Route::get('cashback/rules', [AdminCashbackController::class, 'rules'])->name('cashback.rules.index');
+        Route::get('cashback/rules/create', [AdminCashbackController::class, 'createRule'])->name('cashback.rules.create');
+        Route::post('cashback/rules', [AdminCashbackController::class, 'storeRule'])->name('cashback.rules.store');
+        Route::get('cashback/rules/{rule}/edit', [AdminCashbackController::class, 'editRule'])->name('cashback.rules.edit');
+        Route::patch('cashback/rules/{rule}', [AdminCashbackController::class, 'updateRule'])->name('cashback.rules.update');
+        Route::get('cashback/customers/{customer}', [AdminCashbackController::class, 'customer'])->name('cashback.customers.show');
+        Route::get('cashback/redemptions', [AdminCashbackController::class, 'redemptions'])->name('cashback.redemptions.index');
+        Route::get('cashback/redemptions/{redemption}', [AdminCashbackController::class, 'redemptionShow'])->name('cashback.redemptions.show');
+        Route::patch('cashback/redemptions/{redemption}/approve', [AdminCashbackController::class, 'approve'])->name('cashback.redemptions.approve');
+        Route::patch('cashback/redemptions/{redemption}/reject', [AdminCashbackController::class, 'reject'])->name('cashback.redemptions.reject');
+        Route::post('cashback/redemptions/{redemption}/generate-coupon', [AdminCashbackController::class, 'generateCoupon'])->name('cashback.redemptions.generate-coupon');
     });
 
     /*

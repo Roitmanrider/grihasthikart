@@ -49,6 +49,7 @@ class Order extends Model
         'admin_notes',
         'placed_at',
         'confirmed_at',
+        'delivered_at',
         'cancelled_at',
     ];
 
@@ -64,6 +65,7 @@ class Order extends Model
         'grand_total' => 'decimal:2',
         'placed_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'delivered_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
 
@@ -85,6 +87,11 @@ class Order extends Model
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function cashbackLedgers()
+    {
+        return $this->hasMany(CashbackLedger::class);
     }
 
     public function cart()

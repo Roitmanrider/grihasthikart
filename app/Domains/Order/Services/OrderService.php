@@ -97,6 +97,10 @@ class OrderService
                 $lockedOrder->confirmed_at = now();
             }
 
+            if ($newStatus === 'delivered') {
+                $lockedOrder->delivered_at = now();
+            }
+
             $lockedOrder->order_status = $newStatus;
             $lockedOrder->admin_notes = $note;
             $lockedOrder->save();

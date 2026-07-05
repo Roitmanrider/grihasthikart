@@ -8,6 +8,7 @@ use App\Http\Controllers\Frontend\CheckoutController;
 use App\Http\Controllers\Frontend\CouponController;
 use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
+use App\Http\Controllers\Frontend\CustomerCashbackController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
 use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
@@ -37,6 +38,8 @@ Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name
 Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
 Route::get('/account/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders.index');
 Route::get('/account/orders/{orderNumber}', [CustomerDashboardController::class, 'orderShow'])->name('customer.orders.show');
+Route::get('/account/cashback', [CustomerCashbackController::class, 'index'])->name('customer.cashback.index');
+Route::post('/account/cashback/redeem', [CustomerCashbackController::class, 'redeem'])->name('customer.cashback.redeem');
 Route::get('/account/addresses', [CustomerAddressController::class, 'index'])->name('customer.addresses.index');
 Route::post('/account/addresses', [CustomerAddressController::class, 'store'])->name('customer.addresses.store');
 Route::get('/account/addresses/{address}/edit', [CustomerAddressController::class, 'edit'])->name('customer.addresses.edit');

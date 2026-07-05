@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Domains\Cart\Contracts\CartRepositoryInterface;
 use App\Domains\Cart\Repositories\CartRepository;
+use App\Domains\Cashback\Contracts\CashbackRepositoryInterface;
+use App\Domains\Cashback\Repositories\CashbackRepository;
 use App\Domains\Catalog\Contracts\AttributeRepositoryInterface;
 use App\Domains\Catalog\Contracts\AttributeValueRepositoryInterface;
 use App\Domains\Catalog\Contracts\BrandRepositoryInterface;
@@ -84,6 +86,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             CartRepositoryInterface::class,
             CartRepository::class
+        );
+
+        $this->app->bind(
+            CashbackRepositoryInterface::class,
+            CashbackRepository::class
         );
 
         $this->app->bind(

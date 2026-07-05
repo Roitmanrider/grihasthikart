@@ -55,6 +55,11 @@
             Coupons
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.cashback.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.cashback.index') }}">
+            Cashback
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.customers.index') }}">
             Customers

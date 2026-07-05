@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             DeliverySlotSeeder::class,
             CustomerSeeder::class,
             CouponSeeder::class,
+            CashbackRuleSeeder::class,
         ]);
     }
 }
