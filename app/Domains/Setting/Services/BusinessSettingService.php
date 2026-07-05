@@ -81,6 +81,17 @@ class BusinessSettingService
         return (bool) ($this->get('payment.razorpay_key_id') && $this->get('payment.razorpay_key_secret'));
     }
 
+    public function taxSettings(): array
+    {
+        return [
+            'prices_include_gst' => (bool) $this->get('tax.prices_include_gst', true),
+            'default_gst_rate' => (float) $this->get('tax.default_gst_rate', 0),
+            'company_gstin' => $this->get('tax.company_gstin'),
+            'company_legal_name' => $this->get('tax.company_legal_name'),
+            'company_address' => $this->get('tax.company_address'),
+        ];
+    }
+
     public function updateCheckoutSettings(array $data): void
     {
         foreach ($data as $key => $value) {

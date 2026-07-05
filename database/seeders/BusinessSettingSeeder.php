@@ -31,6 +31,11 @@ class BusinessSettingSeeder extends Seeder
             ['payment', 'razorpay_key_id', null, 'string', 'Razorpay Key ID', 8],
             ['payment', 'razorpay_key_secret', null, 'string', 'Razorpay Key Secret', 9],
             ['payment', 'currency', 'INR', 'string', 'Currency', 10],
+            ['tax', 'prices_include_gst', '1', 'boolean', 'Prices Include GST', 1],
+            ['tax', 'default_gst_rate', '0', 'decimal', 'Default GST Rate', 2],
+            ['tax', 'company_gstin', null, 'string', 'Company GSTIN', 3],
+            ['tax', 'company_legal_name', null, 'string', 'Company Legal Name', 4],
+            ['tax', 'company_address', null, 'string', 'Company Address', 5],
         ];
 
         foreach ($settings as [$group, $key, $value, $type, $label, $order]) {

@@ -60,6 +60,23 @@
             Cashback
         </a>
 
+        <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Reports</div>
+
+        <a class="nav-link {{ request()->routeIs('admin.reports.gst-summary') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.reports.gst-summary') }}">
+            GST Summary
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.reports.gst-by-rate') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.reports.gst-by-rate') }}">
+            GST by Rate
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.reports.gst-monthly') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.reports.gst-monthly') }}">
+            Monthly GST
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.customers.index') }}">
             Customers

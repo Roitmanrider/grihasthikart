@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
+use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
@@ -191,6 +192,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.show');
         Route::patch('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])
             ->name('orders.update-status');
+        Route::get('orders/{order}/tax', [AdminTaxReportController::class, 'orderTax'])
+            ->middleware('can:manage-reports')
+            ->name('orders.tax');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reports
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-reports'])->group(function () {
+        Route::get('reports/gst-summary', [AdminTaxReportController::class, 'gstSummary'])
+            ->name('reports.gst-summary');
+        Route::get('reports/gst-by-rate', [AdminTaxReportController::class, 'gstByRate'])
+            ->name('reports.gst-by-rate');
+        Route::get('reports/gst-monthly', [AdminTaxReportController::class, 'gstMonthly'])
+            ->name('reports.gst-monthly');
     });
 
     /*
