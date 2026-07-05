@@ -18,8 +18,7 @@ class AttributeValueController extends Controller
     public function __construct(
         private readonly AttributeValueService $attributeValueService,
         private readonly AttributeService $attributeService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {

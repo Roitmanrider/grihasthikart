@@ -13,9 +13,7 @@ use Illuminate\Support\Facades\Gate;
 
 class BrandController extends Controller
 {
-    public function __construct(private readonly BrandService $brandService)
-    {
-    }
+    public function __construct(private readonly BrandService $brandService) {}
 
     public function index(Request $request)
     {

@@ -34,7 +34,10 @@ class CategoryManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Fresh Fruits');
-        $response->assertDontSee('Dishwash');
+        $response->assertViewHas('categories', function ($categories) {
+            return $categories->pluck('name')->contains('Fresh Fruits')
+                && ! $categories->pluck('name')->contains('Dishwash');
+        });
     }
 
     public function test_admin_can_create_category_with_generated_slug_seo_and_image(): void

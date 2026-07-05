@@ -14,8 +14,7 @@ class AttributeService
     public function __construct(
         private readonly AttributeRepositoryInterface $repository,
         private readonly SlugService $slugService
-    ) {
-    }
+    ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
     {

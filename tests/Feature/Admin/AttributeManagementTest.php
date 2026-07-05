@@ -227,7 +227,7 @@ class AttributeManagementTest extends TestCase
             ->with([$attribute->id])
             ->andReturn([$attribute->id]);
 
-        $service = new AttributeService($repository, new SlugService());
+        $service = new AttributeService($repository, new SlugService);
 
         $this->expectException(InvalidArgumentException::class);
 

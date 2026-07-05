@@ -17,8 +17,7 @@ class AttributeValueService
         private readonly AttributeValueRepositoryInterface $repository,
         private readonly AttributeRepositoryInterface $attributeRepository,
         private readonly SlugService $slugService
-    ) {
-    }
+    ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
     {

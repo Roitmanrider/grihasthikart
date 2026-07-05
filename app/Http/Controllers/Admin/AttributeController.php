@@ -14,9 +14,7 @@ use InvalidArgumentException;
 
 class AttributeController extends Controller
 {
-    public function __construct(private readonly AttributeService $attributeService)
-    {
-    }
+    public function __construct(private readonly AttributeService $attributeService) {}
 
     public function index(Request $request)
     {

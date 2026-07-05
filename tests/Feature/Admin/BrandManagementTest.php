@@ -185,9 +185,7 @@ class BrandManagementTest extends TestCase
     {
         config(['grihasthikart.admin_emails' => []]);
 
-        $user = User::factory()->create(['email' => 'admin@example.com']);
-
-        $this->actingAs($user)->get('/admin/brands')->assertForbidden();
+        $this->actingAs($this->admin)->get('/admin/brands')->assertForbidden();
     }
 
     public function test_configured_admin_email_receives_brand_access(): void
@@ -221,7 +219,7 @@ class BrandManagementTest extends TestCase
             ->with($brand, Mockery::on(fn (array $data): bool => array_key_exists('logo', $data)))
             ->andThrow(new RuntimeException('Database update failed.'));
 
-        $service = new BrandService($repository, new SlugService(), new MediaService());
+        $service = new BrandService($repository, new SlugService, new MediaService);
 
         try {
             $service->update($brand, [

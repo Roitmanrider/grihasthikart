@@ -67,7 +67,7 @@ class SlugService
     private function exists(string $modelClass, string $slug, ?int $ignoreId, string $column, array $scope = []): bool
     {
         /** @var Model $model */
-        $model = new $modelClass();
+        $model = new $modelClass;
 
         $query = $model->newQuery()
             ->where($column, $slug);

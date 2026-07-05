@@ -17,7 +17,7 @@ return new class extends Migration
                 ->constrained('categories')
                 ->nullOnDelete();
 
-            $table->string('name',150);
+            $table->string('name', 150);
 
             $table->string('slug')->unique();
 

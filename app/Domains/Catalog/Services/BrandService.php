@@ -18,8 +18,7 @@ class BrandService
         private readonly BrandRepositoryInterface $repository,
         private readonly SlugService $slugService,
         private readonly MediaService $mediaService
-    ) {
-    }
+    ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
     {
