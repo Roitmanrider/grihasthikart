@@ -36,6 +36,17 @@ class BusinessSettingSeeder extends Seeder
             ['tax', 'company_gstin', null, 'string', 'Company GSTIN', 3],
             ['tax', 'company_legal_name', null, 'string', 'Company Legal Name', 4],
             ['tax', 'company_address', null, 'string', 'Company Address', 5],
+            ['business', 'name', 'GrihasthiKart', 'string', 'Business Name', 1],
+            ['business', 'support_email', 'support@grihasthikart.in', 'string', 'Support Email', 2],
+            ['business', 'support_phone', null, 'string', 'Support Phone', 3],
+            ['business', 'whatsapp_number', null, 'string', 'WhatsApp Number', 4],
+            ['business', 'address', null, 'string', 'Address', 5],
+            ['business', 'city', null, 'string', 'City', 6],
+            ['business', 'state', null, 'string', 'State', 7],
+            ['business', 'pincode', null, 'string', 'Pincode', 8],
+            ['business', 'instagram_url', null, 'string', 'Instagram URL', 9],
+            ['business', 'business_hours', 'Daily, 9 AM - 8 PM', 'string', 'Business Hours', 10],
+            ['business', 'google_maps_url', null, 'string', 'Google Maps URL', 11],
         ];
 
         foreach ($settings as [$group, $key, $value, $type, $label, $order]) {

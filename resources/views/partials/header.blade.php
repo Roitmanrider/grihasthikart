@@ -2,8 +2,11 @@
     $cartService = app(\App\Domains\Cart\Services\CartService::class);
     $cartSummary = $cartService->getCartSummary($cartService->sessionIdentifier(request()->session()));
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+    $settingService = app(\App\Domains\Setting\Services\BusinessSettingService::class);
     $wishlistCount = app(\App\Domains\Wishlist\Services\WishlistService::class)->countForCustomer($currentCustomer);
     $cartCount = rtrim(rtrim(number_format($cartSummary['item_count'], 3), '0'), '.');
+    $whatsappUrl = $settingService->whatsappUrl();
+    $phoneUrl = $settingService->phoneUrl();
 @endphp
 
 <header class="gk-header sticky-top">
@@ -54,13 +57,17 @@
                     @endif
                 </a>
 
-                <a href="https://wa.me/" class="gk-icon-link gk-whatsapp" aria-label="WhatsApp">
-                    <i class="fa-brands fa-whatsapp"></i>
-                </a>
+                @if ($whatsappUrl)
+                    <a href="{{ $whatsappUrl }}" class="gk-icon-link gk-whatsapp" aria-label="WhatsApp" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </a>
+                @endif
 
-                <a href="tel:" class="gk-icon-link gk-call" aria-label="Call">
-                    <i class="fa-solid fa-phone"></i>
-                </a>
+                @if ($phoneUrl)
+                    <a href="{{ $phoneUrl }}" class="gk-icon-link gk-call" aria-label="Call">
+                        <i class="fa-solid fa-phone"></i>
+                    </a>
+                @endif
             </div>
         </div>
 

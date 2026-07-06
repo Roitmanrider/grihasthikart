@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminAuthController;
+use App\Http\Controllers\Admin\AdminBusinessContactSettingController;
 use App\Http\Controllers\Admin\AdminBusinessSettingController;
 use App\Http\Controllers\Admin\AdminCashbackController;
+use App\Http\Controllers\Admin\AdminContactMessageController;
 use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
@@ -316,6 +318,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.checkout.edit');
         Route::put('settings/checkout', [AdminBusinessSettingController::class, 'update'])
             ->name('settings.checkout.update');
+        Route::get('settings/business', [AdminBusinessContactSettingController::class, 'edit'])
+            ->name('settings.business.edit');
+        Route::patch('settings/business', [AdminBusinessContactSettingController::class, 'update'])
+            ->name('settings.business.update');
+        Route::get('contact-messages', [AdminContactMessageController::class, 'index'])
+            ->name('contact-messages.index');
     });
 
     Route::middleware(['auth', 'can:manage-payment-settings'])->group(function () {

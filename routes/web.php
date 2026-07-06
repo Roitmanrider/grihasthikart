@@ -5,6 +5,7 @@ use App\Http\Controllers\Frontend\CartController;
 use App\Http\Controllers\Frontend\CatalogHomeController;
 use App\Http\Controllers\Frontend\CategoryCatalogController;
 use App\Http\Controllers\Frontend\CheckoutController;
+use App\Http\Controllers\Frontend\ContentPageController;
 use App\Http\Controllers\Frontend\CouponController;
 use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
@@ -18,6 +19,31 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
 
 Route::get('/', CatalogHomeController::class)->name('home');
+
+Route::get('/about-us', [ContentPageController::class, 'page'])
+    ->defaults('page', 'about-us')
+    ->name('pages.about');
+Route::get('/contact-us', [ContentPageController::class, 'contact'])->name('pages.contact');
+Route::post('/contact-us', [ContentPageController::class, 'storeContact'])->name('contact-messages.store');
+Route::get('/privacy-policy', [ContentPageController::class, 'page'])
+    ->defaults('page', 'privacy-policy')
+    ->name('pages.privacy');
+Route::get('/terms-and-conditions', [ContentPageController::class, 'page'])
+    ->defaults('page', 'terms-and-conditions')
+    ->name('pages.terms');
+Route::get('/shipping-and-cancellation', [ContentPageController::class, 'page'])
+    ->defaults('page', 'shipping-and-cancellation')
+    ->name('pages.shipping');
+Route::get('/return-and-refund', [ContentPageController::class, 'page'])
+    ->defaults('page', 'return-and-refund')
+    ->name('pages.returns');
+Route::get('/disclaimer', [ContentPageController::class, 'page'])
+    ->defaults('page', 'disclaimer')
+    ->name('pages.disclaimer');
+Route::get('/faqs', [ContentPageController::class, 'faqs'])->name('pages.faqs');
+Route::get('/customer-support', [ContentPageController::class, 'page'])
+    ->defaults('page', 'customer-support')
+    ->name('pages.support');
 
 Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');

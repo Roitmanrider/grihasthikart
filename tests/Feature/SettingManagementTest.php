@@ -67,6 +67,38 @@ class SettingManagementTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'customer@example.com']);
 
+        $this->get(route('admin.settings.business.edit'))->assertRedirect(route('admin.login'));
+
         $this->actingAs($user)->get(route('admin.settings.checkout.edit'))->assertForbidden();
+        $this->actingAs($user)->get(route('admin.settings.business.edit'))->assertForbidden();
+    }
+
+    public function test_admin_can_view_and_update_business_contact_settings(): void
+    {
+        $this->actingAs($this->admin)
+            ->get(route('admin.settings.business.edit'))
+            ->assertOk()
+            ->assertSee('Business Contact Settings');
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.settings.business.update'), [
+                'name' => 'GrihasthiKart',
+                'support_email' => 'care@grihasthikart.in',
+                'support_phone' => '+91 9876543210',
+                'whatsapp_number' => '+91 9123456789',
+                'address' => 'Main Road',
+                'city' => 'Patna',
+                'state' => 'Bihar',
+                'pincode' => '800001',
+                'instagram_url' => 'https://instagram.com/grihasthikart',
+                'business_hours' => 'Daily, 9 AM - 8 PM',
+                'google_maps_url' => 'https://maps.google.com/?q=GrihasthiKart',
+            ])->assertRedirect(route('admin.settings.business.edit'));
+
+        $service = app(BusinessSettingService::class);
+
+        $this->assertSame('care@grihasthikart.in', $service->get('business.support_email'));
+        $this->assertSame('https://wa.me/919123456789', $service->whatsappUrl());
+        $this->assertSame('tel:+919876543210', $service->phoneUrl());
     }
 }

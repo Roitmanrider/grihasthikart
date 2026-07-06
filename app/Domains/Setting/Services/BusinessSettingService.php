@@ -92,6 +92,23 @@ class BusinessSettingService
         ];
     }
 
+    public function businessSettings(): array
+    {
+        return [
+            'name' => $this->get('business.name', 'GrihasthiKart'),
+            'support_email' => $this->get('business.support_email'),
+            'support_phone' => $this->get('business.support_phone'),
+            'whatsapp_number' => $this->get('business.whatsapp_number'),
+            'address' => $this->get('business.address'),
+            'city' => $this->get('business.city'),
+            'state' => $this->get('business.state'),
+            'pincode' => $this->get('business.pincode'),
+            'instagram_url' => $this->get('business.instagram_url'),
+            'business_hours' => $this->get('business.business_hours'),
+            'google_maps_url' => $this->get('business.google_maps_url'),
+        ];
+    }
+
     public function updateCheckoutSettings(array $data): void
     {
         foreach ($data as $key => $value) {
@@ -108,6 +125,32 @@ class BusinessSettingService
 
             $this->set('payment.'.$key, $value);
         }
+    }
+
+    public function updateBusinessSettings(array $data): void
+    {
+        foreach ($data as $key => $value) {
+            $this->set('business.'.$key, $value);
+        }
+    }
+
+    public function whatsappUrl(): ?string
+    {
+        $number = $this->digitsOnly((string) $this->get('business.whatsapp_number', ''));
+
+        return $number !== '' ? 'https://wa.me/'.$number : null;
+    }
+
+    public function phoneUrl(): ?string
+    {
+        $number = $this->digitsOnly((string) $this->get('business.support_phone', ''));
+
+        return $number !== '' ? 'tel:+'.$number : null;
+    }
+
+    private function digitsOnly(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?: '';
     }
 
     private function cast(?string $value, string $type): mixed

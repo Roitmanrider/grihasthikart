@@ -89,9 +89,19 @@
             Checkout Settings
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.settings.business.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.settings.business.edit') }}">
+            Business Contact
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.settings.payments.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.settings.payments.edit') }}">
             Payment Settings
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.contact-messages.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.contact-messages.index') }}">
+            Contact Messages
         </a>
 
         <a class="nav-link {{ request()->routeIs('admin.delivery-slots.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
