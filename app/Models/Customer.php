@@ -52,6 +52,11 @@ class Customer extends Model
         return $this->hasMany(Cart::class);
     }
 
+    public function wishlistItems()
+    {
+        return $this->hasMany(WishlistItem::class);
+    }
+
     public function cashbackLedgers()
     {
         return $this->hasMany(CashbackLedger::class)->latest();

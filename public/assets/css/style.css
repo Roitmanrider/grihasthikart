@@ -540,6 +540,19 @@
     color: #fff;
 }
 
+.gk-product-actions .gk-wishlist-button {
+    align-items: center;
+    display: inline-flex;
+    height: 31px;
+    justify-content: center;
+    min-width: 34px;
+    padding-inline: 0;
+}
+
+.gk-product-actions .gk-wishlist-button:hover {
+    background: #ef2318;
+}
+
 .gk-offers-strip {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

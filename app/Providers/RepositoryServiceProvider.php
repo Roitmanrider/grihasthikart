@@ -34,6 +34,8 @@ use App\Domains\Payment\Contracts\PaymentRepositoryInterface;
 use App\Domains\Payment\Repositories\PaymentRepository;
 use App\Domains\Setting\Contracts\BusinessSettingRepositoryInterface;
 use App\Domains\Setting\Repositories\BusinessSettingRepository;
+use App\Domains\Wishlist\Contracts\WishlistRepositoryInterface;
+use App\Domains\Wishlist\Repositories\WishlistRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -121,6 +123,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             DeliverySlotRepositoryInterface::class,
             DeliverySlotRepository::class
+        );
+
+        $this->app->bind(
+            WishlistRepositoryInterface::class,
+            WishlistRepository::class
         );
     }
 

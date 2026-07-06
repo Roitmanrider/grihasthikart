@@ -118,6 +118,16 @@
                         </div>
                     </form>
 
+                    @if ($defaultVariant)
+                        <form method="POST" action="{{ route('wishlist.items.store') }}" class="mt-3">
+                            @csrf
+                            <input type="hidden" name="product_variant_id" id="wishlistVariantId" value="{{ $defaultVariant->id }}">
+                            <button class="btn btn-outline-danger" type="submit">
+                                <i class="fa-regular fa-heart me-1"></i> Save to Wishlist
+                            </button>
+                        </form>
+                    @endif
+
                     <hr class="my-4">
 
                     <dl class="row">
@@ -169,6 +179,11 @@
                 }
 
                 document.getElementById('cartVariantId').value = option.value;
+                const wishlistVariantId = document.getElementById('wishlistVariantId');
+
+                if (wishlistVariantId) {
+                    wishlistVariantId.value = option.value;
+                }
             });
         });
     </script>

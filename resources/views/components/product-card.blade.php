@@ -67,12 +67,22 @@
 
         <div class="gk-product-actions">
             @if ($variant && $variant->status)
-                <form method="POST" action="{{ route('cart.items.store') }}">
-                    @csrf
-                    <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
-                    <input type="hidden" name="quantity" value="1">
-                    <button class="btn btn-sm w-100" type="submit">Add to Cart</button>
-                </form>
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ route('cart.items.store') }}" class="flex-grow-1">
+                        @csrf
+                        <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <button class="btn btn-sm w-100" type="submit">Add to Cart</button>
+                    </form>
+
+                    <form method="POST" action="{{ route('wishlist.items.store') }}">
+                        @csrf
+                        <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                        <button class="btn btn-sm gk-wishlist-button" type="submit" aria-label="Add {{ $product->name }} to wishlist">
+                            <i class="fa-regular fa-heart"></i>
+                        </button>
+                    </form>
+                </div>
             @else
                 <button class="btn btn-sm w-100" type="button" disabled>Unavailable</button>
             @endif

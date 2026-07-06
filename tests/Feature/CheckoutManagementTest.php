@@ -52,7 +52,7 @@ class CheckoutManagementTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this->get(route('checkout.show'))
+        $this->get(route('checkout.show', ['delivery_date' => now(config('app.timezone'))->addDay()->toDateString()]))
             ->assertOk()
             ->assertSee('Cash on Delivery')
             ->assertSee('9-11 AM')
@@ -70,7 +70,7 @@ class CheckoutManagementTest extends TestCase
         [, $variant] = $this->cartItem();
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
 
-        $this->get(route('checkout.show'))
+        $this->get(route('checkout.show', ['delivery_date' => now(config('app.timezone'))->addDay()->toDateString()]))
             ->assertOk()
             ->assertSee('9-11 AM')
             ->assertDontSee('Midnight');

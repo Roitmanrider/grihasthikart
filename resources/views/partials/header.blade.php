@@ -2,6 +2,7 @@
     $cartService = app(\App\Domains\Cart\Services\CartService::class);
     $cartSummary = $cartService->getCartSummary($cartService->sessionIdentifier(request()->session()));
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+    $wishlistCount = app(\App\Domains\Wishlist\Services\WishlistService::class)->countForCustomer($currentCustomer);
     $cartCount = rtrim(rtrim(number_format($cartSummary['item_count'], 3), '0'), '.');
 @endphp
 
@@ -38,6 +39,13 @@
                         <span>Login</span>
                     </a>
                 @endif
+
+                <a href="{{ route('wishlist.index') }}" class="gk-icon-link d-none d-lg-flex" aria-label="Wishlist">
+                    <i class="fa-regular fa-heart"></i>
+                    @if ($wishlistCount > 0)
+                        <span class="gk-cart-badge">{{ $wishlistCount }}</span>
+                    @endif
+                </a>
 
                 <a href="{{ route('cart.show') }}" class="gk-icon-link" aria-label="Cart">
                     <i class="fa-solid fa-cart-shopping"></i>

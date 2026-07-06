@@ -12,6 +12,7 @@ use App\Http\Controllers\Frontend\CustomerCashbackController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
 use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
+use App\Http\Controllers\Frontend\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
@@ -25,6 +26,10 @@ Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->nam
 Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
 Route::post('/cart/coupon/apply', [CouponController::class, 'apply'])->name('cart.coupon.apply');
 Route::delete('/cart/coupon/remove', [CouponController::class, 'remove'])->name('cart.coupon.remove');
+
+Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+Route::post('/wishlist/items', [WishlistController::class, 'store'])->name('wishlist.items.store');
+Route::delete('/wishlist/items/{wishlistItem}', [WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
 
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout', [CheckoutController::class, 'place'])->name('checkout.place');

@@ -7,7 +7,7 @@
         <i class="fa-solid fa-table-cells-large"></i>
         <span>Categories</span>
     </a>
-    <a href="#" aria-disabled="true">
+    <a href="{{ route('wishlist.index') }}" class="{{ request()->routeIs('wishlist.*') ? 'active' : '' }}">
         <i class="fa-regular fa-heart"></i>
         <span>Wishlist</span>
     </a>
