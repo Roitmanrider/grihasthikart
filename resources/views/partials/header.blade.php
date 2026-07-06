@@ -1,98 +1,73 @@
-<header class="bg-white border-bottom sticky-top">
+@php
+    $cartService = app(\App\Domains\Cart\Services\CartService::class);
+    $cartSummary = $cartService->getCartSummary($cartService->sessionIdentifier(request()->session()));
+    $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+    $cartCount = rtrim(rtrim(number_format($cartSummary['item_count'], 3), '0'), '.');
+@endphp
 
-    <nav class="navbar navbar-expand-lg">
-
-        <div class="container">
-
-            <a class="navbar-brand fw-bold text-success" href="{{ route('home') }}">
-
-                GrihasthiKart
-
+<header class="gk-header sticky-top">
+    <div class="container">
+        <div class="gk-header-main">
+            <a class="gk-logo" href="{{ route('home') }}" aria-label="GrihasthiKart home">
+                <img src="{{ asset('assets/images/logos/logo.png') }}" alt="GrihasthiKart">
             </a>
 
-            <button class="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#customerCatalogNav"
-                    aria-controls="customerCatalogNav"
-                    aria-expanded="false"
-                    aria-label="Toggle navigation">
+            <form class="gk-search gk-search-desktop"
+                  action="{{ route('products.index') }}"
+                  method="GET"
+                  role="search">
+                <input type="search"
+                       name="search"
+                       value="{{ request('search') }}"
+                       placeholder="Search for products, categories, brands..."
+                       aria-label="Search products, categories, brands">
+                <button type="submit" aria-label="Search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </form>
 
-                <span class="navbar-toggler-icon"></span>
+            <div class="gk-header-actions">
+                @if ($currentCustomer)
+                    <a href="{{ route('customer.dashboard') }}" class="gk-account d-none d-lg-flex">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Hi, {{ \Illuminate\Support\Str::limit($currentCustomer->name, 10) }}</span>
+                    </a>
+                @else
+                    <a href="{{ route('customer.login') }}" class="gk-account d-none d-lg-flex">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Login</span>
+                    </a>
+                @endif
 
-            </button>
-
-            <div class="collapse navbar-collapse gap-3" id="customerCatalogNav">
-
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('products.index') }}">Products</a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('categories.index') }}">Categories</a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('brands.index') }}">Brands</a>
-                    </li>
-
-                </ul>
-
-                <form class="d-flex flex-grow-1 flex-lg-grow-0"
-                      action="{{ route('products.index') }}"
-                      method="GET"
-                      role="search">
-
-                    <input class="form-control me-2"
-                           type="search"
-                           name="search"
-                           value="{{ request('search') }}"
-                           placeholder="Search products, SKU, barcode"
-                           aria-label="Search products">
-
-                    <button class="btn btn-success" type="submit">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                    </button>
-
-                </form>
-
-                @php
-                    $cartService = app(\App\Domains\Cart\Services\CartService::class);
-                    $cartSummary = $cartService->getCartSummary($cartService->sessionIdentifier(request()->session()));
-                @endphp
-
-                <a href="{{ route('cart.show') }}" class="btn btn-outline-success position-relative">
+                <a href="{{ route('cart.show') }}" class="gk-icon-link" aria-label="Cart">
                     <i class="fa-solid fa-cart-shopping"></i>
-                    <span class="ms-1">Cart</span>
                     @if ($cartSummary['item_count'] > 0)
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
-                            {{ rtrim(rtrim(number_format($cartSummary['item_count'], 3), '0'), '.') }}
-                        </span>
+                        <span class="gk-cart-badge">{{ $cartCount }}</span>
                     @endif
                 </a>
 
-                @php
-                    $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
-                @endphp
+                <a href="https://wa.me/" class="gk-icon-link gk-whatsapp" aria-label="WhatsApp">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </a>
 
-                @if ($currentCustomer)
-                    <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('customer.dashboard') }}" class="btn btn-success">{{ $currentCustomer->name }}</a>
-                        <form method="POST" action="{{ route('customer.logout') }}">
-                            @csrf
-                            <button class="btn btn-outline-secondary" type="submit">Logout</button>
-                        </form>
-                    </div>
-                @else
-                    <a href="{{ route('customer.login') }}" class="btn btn-outline-secondary">Login</a>
-                @endif
-
+                <a href="tel:" class="gk-icon-link gk-call" aria-label="Call">
+                    <i class="fa-solid fa-phone"></i>
+                </a>
             </div>
-
         </div>
 
-    </nav>
-
+        <form class="gk-search gk-search-mobile"
+              action="{{ route('products.index') }}"
+              method="GET"
+              role="search">
+            <input type="search"
+                   name="search"
+                   value="{{ request('search') }}"
+                   placeholder="Search for products, categories, brands..."
+                   aria-label="Search products, categories, brands">
+            <button type="submit" aria-label="Search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </form>
+    </div>
 </header>

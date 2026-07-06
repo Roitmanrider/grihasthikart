@@ -1,20 +1,25 @@
-<section class="py-5">
+<section class="gk-section">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="h4 mb-0">{{ $title }}</h2>
-            <a href="{{ route('products.index') }}" class="btn btn-link text-success">View products</a>
-        </div>
-
-        @if ($products->isNotEmpty())
-            <div class="row g-4">
-                @foreach ($products as $product)
-                    <div class="col-6 col-md-4 col-lg-3">
-                        @include('components.product-card', ['product' => $product])
-                    </div>
-                @endforeach
+        <div class="gk-section-panel {{ ($tone ?? '') === 'offer' ? 'gk-offer-panel' : '' }}">
+            <div class="gk-section-heading">
+                <h2>
+                    @if (! empty($icon))
+                        <i class="{{ $icon }}"></i>
+                    @endif
+                    {{ $title }}
+                </h2>
+                <a href="{{ route('products.index') }}">View All</a>
             </div>
-        @else
-            <x-empty-state :title="$empty" message="Please check back after the catalog team adds products to this section." :action="route('products.index')" action-label="Browse all products" />
-        @endif
+
+            @if ($products->isNotEmpty())
+                <div class="gk-product-rail">
+                    @foreach ($products as $product)
+                        @include('components.product-card', ['product' => $product])
+                    @endforeach
+                </div>
+            @else
+                <x-empty-state :title="$empty" message="Please check back after the catalog team adds products to this section." :action="route('products.index')" action-label="Browse all products" />
+            @endif
+        </div>
     </div>
 </section>

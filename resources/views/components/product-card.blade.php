@@ -6,80 +6,75 @@
     $discountPercent = ($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null;
 @endphp
 
-<article class="card h-100 border-0 shadow-sm overflow-hidden">
+<article class="gk-product-card">
+
+    @if ($discountPercent)
+        <div class="gk-discount-badge">{{ $discountPercent }}%<br>OFF</div>
+    @endif
 
     <a href="{{ route('products.show', $product->slug) }}" class="text-decoration-none">
 
         @if ($image)
             <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}"
-                 class="card-img-top object-fit-cover"
-                 style="height: 190px; background: #f8f9fa;"
+                 class="gk-product-image"
                  alt="{{ $product->primaryImage?->alt_text ?? $product->name }}">
         @else
-            <div class="bg-light d-flex align-items-center justify-content-center text-success" style="height: 190px;">
-                <i class="fa-solid fa-basket-shopping fa-2x"></i>
+            <div class="gk-product-fallback">
+                <i class="fa-solid fa-basket-shopping"></i>
             </div>
         @endif
 
     </a>
 
-    <div class="card-body d-flex flex-column gap-2">
+    <div class="gk-product-body">
 
-        <div class="d-flex flex-wrap gap-1">
+        <div class="gk-product-badges">
             @if ($product->is_featured)
-                <span class="badge text-bg-success">Featured</span>
+                <span>Deal</span>
             @endif
 
             @if ($product->is_trending)
-                <span class="badge text-bg-warning">Trending</span>
+                <span>Trending</span>
             @endif
 
             @if ($product->is_new_arrival)
-                <span class="badge text-bg-info">New</span>
+                <span>New</span>
             @endif
         </div>
 
-        <div class="text-muted small">{{ $product->brand?->name ?? 'GrihasthiKart' }}</div>
+        <div class="gk-product-brand">{{ $product->brand?->name ?? 'GrihasthiKart' }}</div>
 
-        <h3 class="h6 mb-0">
+        <h3>
             <a href="{{ route('products.show', $product->slug) }}" class="text-dark text-decoration-none">
                 {{ $product->name }}
             </a>
         </h3>
 
-        <div class="small text-muted">{{ $variant?->variant_name }}</div>
+        <div class="gk-product-variant">{{ $variant?->variant_name }}</div>
 
-        <div class="mt-auto">
+        <div class="gk-product-price">
             @if ($sellingPrice)
-                <div class="fw-bold text-success">Rs. {{ number_format((float) $sellingPrice, 2) }}</div>
-
                 @if ($mrp && $mrp > $sellingPrice)
-                    <div class="small text-muted">
-                        <span class="text-decoration-line-through">Rs. {{ number_format((float) $mrp, 2) }}</span>
-                        @if ($discountPercent)
-                            <span class="text-success ms-1">{{ $discountPercent }}% off</span>
-                        @endif
-                    </div>
+                    <span class="gk-mrp">Rs. {{ number_format((float) $mrp, 0) }}</span>
                 @endif
+
+                <span class="gk-selling-price">Rs. {{ number_format((float) $sellingPrice, 0) }}</span>
+                <span class="visually-hidden">Rs. {{ number_format((float) $sellingPrice, 2) }}</span>
             @else
-                <div class="text-muted small">Price coming soon</div>
+                <span class="text-muted small">Price coming soon</span>
             @endif
         </div>
 
-        <div class="d-grid gap-2 mt-2">
-            <a href="{{ route('products.show', $product->slug) }}" class="btn btn-outline-success btn-sm">
-                View product
-            </a>
-
+        <div class="gk-product-actions">
             @if ($variant && $variant->status)
                 <form method="POST" action="{{ route('cart.items.store') }}">
                     @csrf
                     <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
                     <input type="hidden" name="quantity" value="1">
-                    <button class="btn btn-success btn-sm w-100" type="submit">Add to Cart</button>
+                    <button class="btn btn-sm w-100" type="submit">Add to Cart</button>
                 </form>
             @else
-                <button class="btn btn-secondary btn-sm" type="button" disabled>Unavailable</button>
+                <button class="btn btn-sm w-100" type="button" disabled>Unavailable</button>
             @endif
         </div>
 

@@ -39,9 +39,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
 </head>
 
-<body>
-
-@include('partials.topbar')
+<body class="gk-storefront">
 
 @include('partials.header')
 
@@ -56,6 +54,8 @@
 </main>
 
 @include('partials.footer')
+
+@include('partials.mobile-menu')
 
 @include('partials.scripts')
 
