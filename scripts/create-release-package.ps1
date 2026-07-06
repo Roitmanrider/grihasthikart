@@ -102,7 +102,26 @@ if (Test-Path $zipPath) {
     Remove-Item -Path $zipPath -Force
 }
 
-Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath $zipPath -Force
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+$packageRootPath = (Resolve-Path $packageRoot).Path.TrimEnd('\', '/')
+$zip = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+
+try {
+    Get-ChildItem -Path $packageRootPath -Recurse -File | ForEach-Object {
+        $relativePath = $_.FullName.Substring($packageRootPath.Length + 1).Replace('\', '/')
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+            $zip,
+            $_.FullName,
+            $relativePath,
+            [System.IO.Compression.CompressionLevel]::Optimal
+        ) | Out-Null
+    }
+}
+finally {
+    $zip.Dispose()
+}
 
 Write-Host "Release package created: $zipPath"
 Write-Host "Package staging folder: $packageRoot"
