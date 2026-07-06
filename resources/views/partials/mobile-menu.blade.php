@@ -1,3 +1,8 @@
+@php
+    $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+    $wishlistCount = app(\App\Domains\Wishlist\Services\WishlistService::class)->countForCustomer($currentCustomer);
+@endphp
+
 <nav class="gk-mobile-nav" aria-label="Mobile navigation">
     <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">
         <i class="fa-solid fa-house"></i>
@@ -7,8 +12,11 @@
         <i class="fa-solid fa-table-cells-large"></i>
         <span>Categories</span>
     </a>
-    <a href="{{ route('wishlist.index') }}" class="{{ request()->routeIs('wishlist.*') ? 'active' : '' }}">
+    <a href="{{ route('wishlist.index') }}" class="{{ request()->routeIs('wishlist.*') || $wishlistCount > 0 ? 'active' : '' }}">
         <i class="fa-regular fa-heart"></i>
+        @if ($wishlistCount > 0)
+            <span class="gk-mobile-badge">{{ $wishlistCount }}</span>
+        @endif
         <span>Wishlist</span>
     </a>
     <a href="{{ route('customer.orders.index') }}" class="{{ request()->routeIs('customer.orders.*') ? 'active' : '' }}">

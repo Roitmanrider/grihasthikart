@@ -178,19 +178,108 @@ class WishlistManagementTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('wishlist.index'))
             ->assertOk()
-            ->assertSee('Add to Cart');
+            ->assertSee('Move to Cart');
 
         $this->withSession(['customer_id' => $customer->id])
-            ->post(route('cart.items.store'), [
-                'product_variant_id' => $variant->id,
-                'quantity' => 1,
-            ])
-            ->assertRedirect(route('cart.show'));
+            ->post(route('wishlist.items.move-to-cart', WishlistItem::query()->firstOrFail()))
+            ->assertRedirect();
 
         $this->assertDatabaseHas('cart_items', [
             'product_variant_id' => $variant->id,
         ]);
         $this->assertSame(1, CartItem::query()->count());
+        $this->assertSoftDeleted('wishlist_items', [
+            'customer_id' => $customer->id,
+            'product_variant_id' => $variant->id,
+        ]);
+    }
+
+    public function test_wishlist_active_state_and_count_render_for_saved_variants(): void
+    {
+        $customer = Customer::factory()->create();
+        [$product, $variant] = $this->activeVariant(['name' => 'Toned Milk']);
+
+        WishlistItem::factory()->create([
+            'customer_id' => $customer->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('products.index'))
+            ->assertOk()
+            ->assertSee('gk-wishlist-button is-active', false)
+            ->assertSee('gk-wishlist-link d-none d-lg-flex is-active', false)
+            ->assertSee('gk-mobile-badge', false);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('products.show', $product->slug))
+            ->assertOk()
+            ->assertSee('Saved in Wishlist');
+    }
+
+    public function test_deleting_cart_item_after_move_does_not_break_future_wishlist_and_cart_usage(): void
+    {
+        $customer = Customer::factory()->create();
+        [, $variant] = $this->activeVariant();
+        Inventory::factory()->create([
+            'product_variant_id' => $variant->id,
+            'quantity_on_hand' => 10,
+            'reserved_quantity' => 0,
+            'damaged_quantity' => 0,
+            'status' => true,
+        ]);
+        $item = WishlistItem::factory()->create([
+            'customer_id' => $customer->id,
+            'product_id' => $variant->product_id,
+            'product_variant_id' => $variant->id,
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('wishlist.items.move-to-cart', $item))
+            ->assertRedirect();
+
+        $cartItem = CartItem::query()->firstOrFail();
+        $session = [
+            'customer_id' => $customer->id,
+            'cart_session_id' => $cartItem->cart->session_id,
+        ];
+
+        $this->withSession($session)
+            ->delete(route('cart.items.destroy', $cartItem))
+            ->assertRedirect(route('cart.show'));
+
+        $this->withSession($session)
+            ->post(route('wishlist.items.store'), ['product_variant_id' => $variant->id])
+            ->assertRedirect();
+
+        $this->assertNotSoftDeleted('wishlist_items', [
+            'customer_id' => $customer->id,
+            'product_variant_id' => $variant->id,
+        ]);
+
+        $this->withSession($session)
+            ->post(route('wishlist.items.move-to-cart', WishlistItem::query()->firstOrFail()))
+            ->assertRedirect();
+
+        $this->assertSame(1, CartItem::query()->where('product_variant_id', $variant->id)->count());
+    }
+
+    public function test_trying_to_move_removed_wishlist_item_does_not_500(): void
+    {
+        $customer = Customer::factory()->create();
+        [, $variant] = $this->activeVariant();
+        $item = WishlistItem::factory()->create([
+            'customer_id' => $customer->id,
+            'product_id' => $variant->product_id,
+            'product_variant_id' => $variant->id,
+        ]);
+        $item->delete();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('wishlist.items.move-to-cart', $item->id))
+            ->assertRedirect()
+            ->assertSessionHasErrors('wishlist');
     }
 
     private function activeVariant(array $productOverrides = [], array $variantOverrides = []): array

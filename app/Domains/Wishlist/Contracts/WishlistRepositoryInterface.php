@@ -21,4 +21,6 @@ interface WishlistRepositoryInterface extends RepositoryInterface
     public function removeForCustomer(Customer $customer, WishlistItem $wishlistItem): bool;
 
     public function countForCustomer(Customer $customer): int;
+
+    public function activeVariantIdsForCustomer(Customer $customer): array;
 }

@@ -40,7 +40,7 @@
                     </a>
                 @endif
 
-                <a href="{{ route('wishlist.index') }}" class="gk-icon-link d-none d-lg-flex" aria-label="Wishlist">
+                <a href="{{ route('wishlist.index') }}" class="gk-icon-link gk-wishlist-link d-none d-lg-flex {{ $wishlistCount > 0 ? 'is-active' : '' }}" aria-label="Wishlist">
                     <i class="fa-regular fa-heart"></i>
                     @if ($wishlistCount > 0)
                         <span class="gk-cart-badge">{{ $wishlistCount }}</span>

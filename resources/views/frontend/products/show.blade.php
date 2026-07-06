@@ -7,6 +7,9 @@
     $defaultVariant = $product->defaultVariant;
     $galleryImages = $product->images->merge($product->variants->flatMap->images)->unique('id')->values();
     $primaryImage = $product->primaryImage?->path ?? $defaultVariant?->primaryImage?->path;
+    $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+    $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
+    $isDefaultWishlisted = $defaultVariant && in_array((int) $defaultVariant->id, $wishlistedVariantIds, true);
 @endphp
 
 @section('content')
@@ -122,8 +125,8 @@
                         <form method="POST" action="{{ route('wishlist.items.store') }}" class="mt-3">
                             @csrf
                             <input type="hidden" name="product_variant_id" id="wishlistVariantId" value="{{ $defaultVariant->id }}">
-                            <button class="btn btn-outline-danger" type="submit">
-                                <i class="fa-regular fa-heart me-1"></i> Save to Wishlist
+                            <button class="btn btn-outline-danger gk-detail-wishlist-button {{ $isDefaultWishlisted ? 'is-active' : '' }}" type="submit">
+                                <i class="{{ $isDefaultWishlisted ? 'fa-solid' : 'fa-regular' }} fa-heart me-1"></i> {{ $isDefaultWishlisted ? 'Saved in Wishlist' : 'Save to Wishlist' }}
                             </button>
                         </form>
                     @endif

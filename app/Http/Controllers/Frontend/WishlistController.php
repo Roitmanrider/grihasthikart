@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Frontend;
 
+use App\Domains\Cart\Services\CartService;
 use App\Domains\Customer\Services\CustomerAuthService;
 use App\Domains\Wishlist\Services\WishlistService;
 use App\Http\Controllers\Controller;
@@ -14,7 +15,8 @@ class WishlistController extends Controller
 {
     public function __construct(
         private readonly CustomerAuthService $authService,
-        private readonly WishlistService $wishlistService
+        private readonly WishlistService $wishlistService,
+        private readonly CartService $cartService
     ) {}
 
     public function index(Request $request)
@@ -64,5 +66,26 @@ class WishlistController extends Controller
         }
 
         return back()->with('success', 'Item removed from wishlist.');
+    }
+
+    public function moveToCart(Request $request, WishlistItem $wishlistItem)
+    {
+        $customer = $this->authService->currentCustomer($request->session());
+
+        if (! $customer) {
+            return redirect()->route('customer.login');
+        }
+
+        try {
+            $this->wishlistService->moveToCart(
+                $customer,
+                $wishlistItem,
+                $this->cartService->sessionIdentifier($request->session())
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['wishlist' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'Item moved to cart.');
     }
 }

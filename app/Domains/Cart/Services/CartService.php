@@ -54,11 +54,18 @@ class CartService
             $this->validateVariantIsPurchasable($variant);
 
             $existingItem = $this->repository->findItemInCart($cart, $variant->id);
-            $targetQuantity = $quantity + (float) ($existingItem?->quantity ?? 0);
+            $existingQuantity = $existingItem && ! $existingItem->trashed()
+                ? (float) $existingItem->quantity
+                : 0;
+            $targetQuantity = $quantity + $existingQuantity;
 
             $this->validateSufficientStock($variant->id, $targetQuantity);
 
             if ($existingItem) {
+                if ($existingItem->trashed()) {
+                    $existingItem->restore();
+                }
+
                 return $this->repository->updateItem($existingItem, ['quantity' => $targetQuantity]);
             }
 

@@ -29,6 +29,9 @@ Route::delete('/cart/coupon/remove', [CouponController::class, 'remove'])->name(
 
 Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
 Route::post('/wishlist/items', [WishlistController::class, 'store'])->name('wishlist.items.store');
+Route::post('/wishlist/items/{wishlistItem}/move-to-cart', [WishlistController::class, 'moveToCart'])
+    ->name('wishlist.items.move-to-cart')
+    ->missing(fn () => back()->withErrors(['wishlist' => 'Wishlist item is no longer available.']));
 Route::delete('/wishlist/items/{wishlistItem}', [WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
 
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');

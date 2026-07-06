@@ -76,6 +76,22 @@ class CartManagementTest extends TestCase
         $this->assertSame('2.000', $item->fresh()->quantity);
     }
 
+    public function test_coupon_validation_error_is_rendered_once_near_coupon_input(): void
+    {
+        [, $variant] = $this->purchasableVariant();
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ]);
+
+        $response = $this->followingRedirects()
+            ->from(route('cart.show'))
+            ->post(route('cart.coupon.apply'), ['code' => ''])
+            ->assertOk();
+
+        $this->assertSame(1, substr_count($response->getContent(), 'The code field is required.'));
+    }
+
     public function test_inactive_variant_and_inactive_product_cannot_be_added(): void
     {
         [, $inactiveVariant] = $this->purchasableVariant(variantOverrides: ['status' => false]);

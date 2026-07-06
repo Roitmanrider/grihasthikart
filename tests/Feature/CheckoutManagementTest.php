@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\BusinessSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +36,7 @@ class CheckoutManagementTest extends TestCase
             'name' => '9-11 AM',
             'start_time' => '09:00',
             'end_time' => '11:00',
-            'display_label' => '9-11 AM',
+            'display_label' => '9 AM - 11 AM',
             'status' => true,
         ]);
     }
@@ -55,7 +56,7 @@ class CheckoutManagementTest extends TestCase
         $this->get(route('checkout.show', ['delivery_date' => now(config('app.timezone'))->addDay()->toDateString()]))
             ->assertOk()
             ->assertSee('Cash on Delivery')
-            ->assertSee('9-11 AM')
+            ->assertSee('9 AM - 11 AM')
             ->assertSee('Place Order');
     }
 
@@ -72,7 +73,7 @@ class CheckoutManagementTest extends TestCase
 
         $this->get(route('checkout.show', ['delivery_date' => now(config('app.timezone'))->addDay()->toDateString()]))
             ->assertOk()
-            ->assertSee('9-11 AM')
+            ->assertSee('9 AM - 11 AM')
             ->assertDontSee('Midnight');
     }
 
@@ -84,14 +85,21 @@ class CheckoutManagementTest extends TestCase
             'name' => '7-9 AM',
             'start_time' => '07:00',
             'end_time' => '09:00',
-            'display_label' => '7-9 AM',
+            'display_label' => '7 AM - 9 AM',
             'status' => true,
         ]);
         DeliverySlot::factory()->create([
             'name' => '4-6 PM',
             'start_time' => '16:00',
             'end_time' => '18:00',
-            'display_label' => '4-6 PM',
+            'display_label' => '4 PM - 6 PM',
+            'status' => true,
+        ]);
+        DeliverySlot::factory()->create([
+            'name' => '6-8 PM',
+            'start_time' => '18:00',
+            'end_time' => '20:00',
+            'display_label' => '6 PM - 8 PM',
             'status' => true,
         ]);
         [, $variant] = $this->cartItem();
@@ -99,13 +107,79 @@ class CheckoutManagementTest extends TestCase
 
         $this->get(route('checkout.show', ['delivery_date' => now(config('app.timezone'))->toDateString()]))
             ->assertOk()
-            ->assertDontSee('7-9 AM')
-            ->assertSee('4-6 PM');
+            ->assertDontSee('7 AM - 9 AM')
+            ->assertSee('4 PM - 6 PM')
+            ->assertSee('6 PM - 8 PM');
 
         $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
             'delivery_date' => now(config('app.timezone'))->toDateString(),
-            'delivery_slot' => '7-9 AM',
+            'delivery_slot' => '7 AM - 9 AM',
         ]))->assertSessionHasErrors('checkout');
+
+        $this->travelBack();
+    }
+
+    public function test_same_day_checkout_at_10_am_shows_only_approved_future_evening_slots(): void
+    {
+        $this->travelTo(Carbon::parse('2026-07-06 10:00:00', config('app.timezone')));
+        DeliverySlot::query()->delete();
+        $this->seedStandardDeliverySlots();
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee(now(config('app.timezone'))->toDateString())
+            ->assertDontSee('7 AM - 9 AM')
+            ->assertDontSee('9 AM - 11 AM')
+            ->assertSee('4 PM - 6 PM')
+            ->assertSee('6 PM - 8 PM');
+
+        $this->travelBack();
+    }
+
+    public function test_checkout_after_same_day_cutoff_defaults_to_tomorrow_and_rejects_today(): void
+    {
+        $this->travelTo(Carbon::parse('2026-07-06 21:00:00', config('app.timezone')));
+        DeliverySlot::query()->delete();
+        $this->seedStandardDeliverySlots();
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $today = now(config('app.timezone'))->toDateString();
+        $tomorrow = now(config('app.timezone'))->addDay()->toDateString();
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('value="'.$tomorrow.'"', false)
+            ->assertSee('min="'.$tomorrow.'"', false)
+            ->assertSee('7 AM - 9 AM')
+            ->assertSee('9 AM - 11 AM')
+            ->assertSee('4 PM - 6 PM')
+            ->assertSee('6 PM - 8 PM');
+
+        $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'delivery_date' => $today,
+            'delivery_slot' => '4 PM - 6 PM',
+        ]))->assertSessionHasErrors('checkout');
+
+        $this->travelBack();
+    }
+
+    public function test_checkout_before_same_day_window_defaults_to_tomorrow(): void
+    {
+        $this->travelTo(Carbon::parse('2026-07-06 04:00:00', config('app.timezone')));
+        DeliverySlot::query()->delete();
+        $this->seedStandardDeliverySlots();
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $tomorrow = now(config('app.timezone'))->addDay()->toDateString();
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('value="'.$tomorrow.'"', false)
+            ->assertSee('min="'.$tomorrow.'"', false);
 
         $this->travelBack();
     }
@@ -118,7 +192,7 @@ class CheckoutManagementTest extends TestCase
             'name' => '7-9 AM',
             'start_time' => '07:00',
             'end_time' => '09:00',
-            'display_label' => '7-9 AM',
+            'display_label' => '7 AM - 9 AM',
             'status' => true,
         ]);
         [, $variant] = $this->cartItem();
@@ -128,11 +202,11 @@ class CheckoutManagementTest extends TestCase
 
         $this->get(route('checkout.show', ['delivery_date' => $futureDate]))
             ->assertOk()
-            ->assertSee('7-9 AM');
+            ->assertSee('7 AM - 9 AM');
 
         $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
             'delivery_date' => $futureDate,
-            'delivery_slot' => '7-9 AM',
+            'delivery_slot' => '7 AM - 9 AM',
         ]))->assertRedirect();
 
         $this->travelBack();
@@ -170,7 +244,7 @@ class CheckoutManagementTest extends TestCase
         $this->assertSame('136.00', $order->subtotal);
         $this->assertSame('150.00', $order->total_mrp);
         $this->assertSame('14.00', $order->total_savings);
-        $this->assertSame('9-11 AM', $order->delivery_slot);
+        $this->assertSame('9 AM - 11 AM', $order->delivery_slot);
         $this->assertSame('8.000', $inventory->fresh()->quantity_on_hand);
         $this->assertDatabaseHas('inventory_movements', [
             'product_variant_id' => $variant->id,
@@ -191,6 +265,20 @@ class CheckoutManagementTest extends TestCase
         BusinessSetting::query()->where('group', 'payment')->where('key', 'cod_enabled')->update(['value' => '1']);
         BusinessSetting::query()->where('group', 'checkout')->where('key', 'minimum_order_amount')->update(['value' => '999']);
         $this->post(route('checkout.place'), $this->checkoutPayload())->assertSessionHasErrors('checkout');
+    }
+
+    public function test_checkout_validation_errors_render_once_near_fields(): void
+    {
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $response = $this->followingRedirects()
+            ->from(route('checkout.show'))
+            ->post(route('checkout.place'), [])
+            ->assertOk();
+
+        $this->assertSame(1, substr_count($response->getContent(), 'The customer name field is required.'));
+        $this->assertSame(1, substr_count($response->getContent(), 'The customer mobile field is required.'));
     }
 
     public function test_qr_checkout_creates_pending_payment_record(): void
@@ -356,6 +444,25 @@ class CheckoutManagementTest extends TestCase
         return [$product, $variant, $inventory];
     }
 
+    private function seedStandardDeliverySlots(): void
+    {
+        foreach ([
+            ['7-9 AM', '07:00', '09:00', '7 AM - 9 AM', 1],
+            ['9-11 AM', '09:00', '11:00', '9 AM - 11 AM', 2],
+            ['4-6 PM', '16:00', '18:00', '4 PM - 6 PM', 3],
+            ['6-8 PM', '18:00', '20:00', '6 PM - 8 PM', 4],
+        ] as [$name, $start, $end, $label, $order]) {
+            DeliverySlot::query()->create([
+                'name' => $name,
+                'start_time' => $start,
+                'end_time' => $end,
+                'display_label' => $label,
+                'status' => true,
+                'display_order' => $order,
+            ]);
+        }
+    }
+
     private function checkoutPayload(): array
     {
         return [
@@ -369,7 +476,7 @@ class CheckoutManagementTest extends TestCase
             'delivery_pincode' => '800001',
             'delivery_landmark' => 'Clock Tower',
             'delivery_date' => now()->addDay()->toDateString(),
-            'delivery_slot' => '9-11 AM',
+            'delivery_slot' => '9 AM - 11 AM',
             'payment_method' => 'cod',
             'notes' => 'Please call before delivery.',
         ];

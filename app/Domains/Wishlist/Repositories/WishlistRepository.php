@@ -77,4 +77,14 @@ class WishlistRepository extends BaseRepository implements WishlistRepositoryInt
             ->where('customer_id', $customer->id)
             ->count();
     }
+
+    public function activeVariantIdsForCustomer(Customer $customer): array
+    {
+        return $this->model
+            ->newQuery()
+            ->where('customer_id', $customer->id)
+            ->pluck('product_variant_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
 }

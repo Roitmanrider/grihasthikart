@@ -2,6 +2,7 @@
 
 namespace App\Domains\Wishlist\Services;
 
+use App\Domains\Cart\Services\CartService;
 use App\Domains\Wishlist\Contracts\WishlistRepositoryInterface;
 use App\Models\Customer;
 use App\Models\ProductVariant;
@@ -12,8 +13,12 @@ use InvalidArgumentException;
 
 class WishlistService
 {
+    /** @var array<int, array<int>> */
+    private array $variantIdCache = [];
+
     public function __construct(
-        private readonly WishlistRepositoryInterface $repository
+        private readonly WishlistRepositoryInterface $repository,
+        private readonly CartService $cartService
     ) {}
 
     public function itemsForCustomer(Customer $customer, int $perPage = 12): LengthAwarePaginator
@@ -41,16 +46,37 @@ class WishlistService
                     $existingItem->update(['product_id' => $variant->product_id]);
                 }
 
+                $this->clearCustomerCache($customer);
+
                 return $existingItem;
             }
 
-            return $this->repository->createForCustomer($customer, $variant);
+            $item = $this->repository->createForCustomer($customer, $variant);
+            $this->clearCustomerCache($customer);
+
+            return $item;
         });
     }
 
     public function remove(Customer $customer, WishlistItem $wishlistItem): bool
     {
-        return DB::transaction(fn () => $this->repository->removeForCustomer($customer, $wishlistItem));
+        return DB::transaction(function () use ($customer, $wishlistItem) {
+            $removed = $this->repository->removeForCustomer($customer, $wishlistItem);
+            $this->clearCustomerCache($customer);
+
+            return $removed;
+        });
+    }
+
+    public function moveToCart(Customer $customer, WishlistItem $wishlistItem, string $sessionId): void
+    {
+        DB::transaction(function () use ($customer, $wishlistItem, $sessionId) {
+            $wishlistItem = $this->repository->findForCustomer($customer, $wishlistItem->id);
+
+            $this->cartService->addItem($sessionId, (int) $wishlistItem->product_variant_id, 1);
+            $this->repository->removeForCustomer($customer, $wishlistItem);
+            $this->clearCustomerCache($customer);
+        });
     }
 
     public function countForCustomer(?Customer $customer): int
@@ -60,9 +86,17 @@ class WishlistService
 
     public function isWishlisted(Customer $customer, int $productVariantId): bool
     {
-        $item = $this->repository->findExistingForCustomer($customer, $productVariantId);
+        return in_array($productVariantId, $this->activeVariantIdsForCustomer($customer), true);
+    }
 
-        return $item !== null && ! $item->trashed();
+    public function activeVariantIdsForCustomer(?Customer $customer): array
+    {
+        if (! $customer) {
+            return [];
+        }
+
+        return $this->variantIdCache[$customer->id]
+            ??= $this->repository->activeVariantIdsForCustomer($customer);
     }
 
     private function validateVariantCanBeWishlisted(ProductVariant $variant): void
@@ -74,5 +108,10 @@ class WishlistService
         if (! $variant->product || ! $variant->product->status || $variant->product->trashed()) {
             throw new InvalidArgumentException('This product is not available.');
         }
+    }
+
+    private function clearCustomerCache(Customer $customer): void
+    {
+        unset($this->variantIdCache[$customer->id]);
     }
 }

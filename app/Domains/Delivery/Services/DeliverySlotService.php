@@ -9,6 +9,12 @@ use InvalidArgumentException;
 
 class DeliverySlotService
 {
+    private const SAME_DAY_START_TIME = '05:00:00';
+
+    private const SAME_DAY_CUTOFF_TIME = '14:00:00';
+
+    private const SAME_DAY_FIRST_SLOT_START_TIME = '16:00:00';
+
     public function __construct(
         private readonly DeliverySlotRepositoryInterface $repository
     ) {}
@@ -37,11 +43,47 @@ class DeliverySlotService
             return $slots;
         }
 
+        if (! $this->isSameDayDeliveryWindowOpen()) {
+            return collect();
+        }
+
         $currentTime = now(config('app.timezone'))->format('H:i:s');
 
         return $slots
-            ->filter(fn (DeliverySlot $slot): bool => $this->normalizeTime($slot->end_time) > $currentTime)
+            ->filter(fn (DeliverySlot $slot): bool => $this->normalizeTime($slot->start_time) >= self::SAME_DAY_FIRST_SLOT_START_TIME
+                && $this->normalizeTime($slot->end_time) > $currentTime)
             ->values();
+    }
+
+    public function defaultDeliveryDate(?string $requestedDate = null): string
+    {
+        $today = now(config('app.timezone'))->startOfDay();
+        $candidate = $requestedDate
+            ? Carbon::parse($requestedDate, config('app.timezone'))->startOfDay()
+            : $today->copy();
+
+        if ($candidate->isSameDay($today) && ! $this->isSameDayDeliveryWindowOpen()) {
+            return $today->addDay()->toDateString();
+        }
+
+        return $candidate->toDateString();
+    }
+
+    public function earliestSelectableDeliveryDate(): string
+    {
+        $today = now(config('app.timezone'))->startOfDay();
+
+        return $this->isSameDayDeliveryWindowOpen()
+            ? $today->toDateString()
+            : $today->addDay()->toDateString();
+    }
+
+    public function isSameDayDeliveryWindowOpen(): bool
+    {
+        $currentTime = now(config('app.timezone'))->format('H:i:s');
+
+        return $currentTime >= self::SAME_DAY_START_TIME
+            && $currentTime < self::SAME_DAY_CUTOFF_TIME;
     }
 
     public function isSlotAvailableForDate(string $deliverySlot, ?string $deliveryDate = null): bool

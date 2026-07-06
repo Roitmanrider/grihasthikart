@@ -18,8 +18,8 @@
                 @if (session('success'))
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
-                @if ($errors->any())
-                    <div class="alert alert-danger">{{ $errors->first() }}</div>
+                @if ($errors->has('cart'))
+                    <div class="alert alert-danger">{{ $errors->first('cart') }}</div>
                 @endif
                 <div class="row g-4">
                     <div class="col-lg-8">
@@ -71,11 +71,16 @@
                                                     @endif
                                                 </td>
                                                 <td>
-                                                    <form method="POST" action="{{ route('cart.items.update', $item) }}" class="d-flex gap-2">
+                                                    <form method="POST" action="{{ route('cart.items.update', $item) }}">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <input type="number" name="quantity" value="{{ (int) $item->quantity }}" min="1" step="1" class="form-control form-control-sm">
-                                                        <button class="btn btn-sm btn-outline-success">Update</button>
+                                                        <div class="d-flex gap-2">
+                                                            <input type="number" name="quantity" value="{{ (int) $item->quantity }}" min="1" step="1" class="form-control form-control-sm @error('quantity') is-invalid @enderror">
+                                                            <button class="btn btn-sm btn-outline-success">Update</button>
+                                                        </div>
+                                                        @error('quantity')
+                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                        @enderror
                                                     </form>
                                                 </td>
                                                 <td>
@@ -125,10 +130,18 @@
                                             </form>
                                         </div>
                                     @else
-                                        <form method="POST" action="{{ route('cart.coupon.apply') }}" class="d-flex gap-2">
+                                        <form method="POST" action="{{ route('cart.coupon.apply') }}">
                                             @csrf
-                                            <input type="text" name="code" class="form-control" placeholder="Coupon code">
-                                            <button class="btn btn-outline-success">Apply</button>
+                                            <div class="d-flex gap-2">
+                                                <input type="text" name="code" value="{{ old('code') }}" class="form-control @error('code') is-invalid @enderror @error('coupon') is-invalid @enderror" placeholder="Coupon code">
+                                                <button class="btn btn-outline-success">Apply</button>
+                                            </div>
+                                            @error('code')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
+                                            @error('coupon')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
                                         </form>
                                     @endif
                                 </div>

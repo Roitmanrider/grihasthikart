@@ -48,6 +48,7 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
     public function findItemInCart(Cart $cart, int $productVariantId): ?CartItem
     {
         return CartItem::query()
+            ->withTrashed()
             ->where('cart_id', $cart->id)
             ->where('product_variant_id', $productVariantId)
             ->first();

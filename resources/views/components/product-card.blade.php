@@ -4,6 +4,9 @@
     $sellingPrice = $variant?->selling_price;
     $mrp = $variant?->mrp;
     $discountPercent = ($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null;
+    $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
+    $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
+    $isWishlisted = $variant && in_array((int) $variant->id, $wishlistedVariantIds, true);
 @endphp
 
 <article class="gk-product-card">
@@ -78,8 +81,8 @@
                     <form method="POST" action="{{ route('wishlist.items.store') }}">
                         @csrf
                         <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
-                        <button class="btn btn-sm gk-wishlist-button" type="submit" aria-label="Add {{ $product->name }} to wishlist">
-                            <i class="fa-regular fa-heart"></i>
+                        <button class="btn btn-sm gk-wishlist-button {{ $isWishlisted ? 'is-active' : '' }}" type="submit" aria-label="{{ $isWishlisted ? 'Saved in wishlist' : 'Add '.$product->name.' to wishlist' }}">
+                            <i class="{{ $isWishlisted ? 'fa-solid' : 'fa-regular' }} fa-heart"></i>
                         </button>
                     </form>
                 </div>

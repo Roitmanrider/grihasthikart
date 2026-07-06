@@ -268,7 +268,7 @@ class CouponManagementTest extends TestCase
             'delivery_pincode' => '800001',
             'delivery_landmark' => 'Clock Tower',
             'delivery_date' => now()->addDay()->toDateString(),
-            'delivery_slot' => '9-11 AM',
+            'delivery_slot' => '9 AM - 11 AM',
             'payment_method' => 'cod',
         ];
     }

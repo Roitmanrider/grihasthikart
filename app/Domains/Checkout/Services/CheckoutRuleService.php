@@ -33,8 +33,8 @@ class CheckoutRuleService
         }
 
         $settings = $this->settings->checkoutSettings();
-        $date = Carbon::parse($deliveryDate)->startOfDay();
-        $today = now()->startOfDay();
+        $date = Carbon::parse($deliveryDate, config('app.timezone'))->startOfDay();
+        $today = now(config('app.timezone'))->startOfDay();
 
         if (! $settings['custom_delivery_date_enabled']) {
             throw new InvalidArgumentException('Custom delivery date selection is currently disabled.');
@@ -49,7 +49,11 @@ class CheckoutRuleService
                 throw new InvalidArgumentException('Today delivery is currently disabled.');
             }
 
-            if (now()->format('H:i') >= $settings['today_delivery_cutoff_time']) {
+            if (! $this->deliverySlotService->isSameDayDeliveryWindowOpen()) {
+                throw new InvalidArgumentException('Today delivery is available only between 5 AM and 2 PM.');
+            }
+
+            if (now(config('app.timezone'))->format('H:i') >= $settings['today_delivery_cutoff_time']) {
                 throw new InvalidArgumentException('Today delivery cutoff time has passed.');
             }
         }

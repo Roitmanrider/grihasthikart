@@ -23,13 +23,14 @@ class CheckoutService
     {
         $data = $this->cartService->getCartSummary($sessionId);
         $customer = $session ? $this->customerAuthService->currentCustomer($session) : null;
-        $selectedDeliveryDate = $deliveryDate ?: now(config('app.timezone'))->toDateString();
+        $selectedDeliveryDate = $this->deliverySlotService->defaultDeliveryDate($deliveryDate);
 
         $data['customer'] = $customer;
         $data['approvedAddresses'] = $customer
             ? $customer->approvedAddresses()->orderByDesc('is_default')->get()
             : collect();
         $data['selectedDeliveryDate'] = $selectedDeliveryDate;
+        $data['minimumDeliveryDate'] = $this->deliverySlotService->earliestSelectableDeliveryDate();
         $data['deliverySlots'] = $this->deliverySlotService->activeSlotsForDate($selectedDeliveryDate);
         $data['checkoutSettings'] = $this->settingService->checkoutSettings();
         $data['paymentSettings'] = $this->settingService->publicPaymentSettings();

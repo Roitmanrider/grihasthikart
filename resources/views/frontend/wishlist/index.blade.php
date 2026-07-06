@@ -72,11 +72,9 @@
 
                                             <div class="mt-auto d-flex gap-2">
                                                 @if ($variant && $variant->status)
-                                                    <form method="POST" action="{{ route('cart.items.store') }}" class="flex-grow-1">
+                                                    <form method="POST" action="{{ route('wishlist.items.move-to-cart', $item) }}" class="flex-grow-1">
                                                         @csrf
-                                                        <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
-                                                        <input type="hidden" name="quantity" value="1">
-                                                        <button class="btn btn-success btn-sm w-100" type="submit">Add to Cart</button>
+                                                        <button class="btn btn-success btn-sm w-100" type="submit">Move to Cart</button>
                                                     </form>
                                                 @endif
 

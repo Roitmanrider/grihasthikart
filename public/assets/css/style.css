@@ -553,6 +553,30 @@
     background: #ef2318;
 }
 
+.gk-wishlist-link.is-active,
+.gk-product-actions .gk-wishlist-button.is-active,
+.gk-detail-wishlist-button.is-active {
+    background: #ef2318;
+    color: #fff;
+}
+
+.gk-mobile-badge {
+    align-items: center;
+    background: #ef2318;
+    border-radius: 999px;
+    color: #fff;
+    display: inline-flex;
+    font-size: 10px;
+    font-weight: 800;
+    height: 16px;
+    justify-content: center;
+    min-width: 16px;
+    padding: 0 4px;
+    position: absolute;
+    right: 16px;
+    top: 5px;
+}
+
 .gk-offers-strip {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

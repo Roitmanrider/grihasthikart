@@ -23,15 +23,24 @@
                                 @csrf
                                 <div class="col-md-6">
                                     <label class="form-label">Name</label>
-                                    <input type="text" name="customer_name" value="{{ old('customer_name', $customer?->name) }}" class="form-control" required>
+                                    <input type="text" name="customer_name" value="{{ old('customer_name', $customer?->name) }}" class="form-control @error('customer_name') is-invalid @enderror" required>
+                                    @error('customer_name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Mobile</label>
-                                    <input type="text" name="customer_mobile" value="{{ old('customer_mobile', $customer?->mobile) }}" class="form-control" required>
+                                    <input type="text" name="customer_mobile" value="{{ old('customer_mobile', $customer?->mobile) }}" class="form-control @error('customer_mobile') is-invalid @enderror" required>
+                                    @error('customer_mobile')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Email</label>
-                                    <input type="email" name="customer_email" value="{{ old('customer_email', $customer?->email) }}" class="form-control">
+                                    <input type="email" name="customer_email" value="{{ old('customer_email', $customer?->email) }}" class="form-control @error('customer_email') is-invalid @enderror">
+                                    @error('customer_email')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 @if ($approvedAddresses->isNotEmpty())
                                     <div class="col-12">
@@ -48,47 +57,80 @@
 
                                 <div class="col-12">
                                     <label class="form-label">Address Line 1</label>
-                                    <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1') }}" class="form-control" required>
+                                    <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1') }}" class="form-control @error('delivery_address_line1') is-invalid @enderror" required>
+                                    @error('delivery_address_line1')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Address Line 2</label>
-                                    <input type="text" name="delivery_address_line2" value="{{ old('delivery_address_line2') }}" class="form-control">
+                                    <input type="text" name="delivery_address_line2" value="{{ old('delivery_address_line2') }}" class="form-control @error('delivery_address_line2') is-invalid @enderror">
+                                    @error('delivery_address_line2')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">City</label>
-                                    <input type="text" name="delivery_city" value="{{ old('delivery_city') }}" class="form-control" required>
+                                    <input type="text" name="delivery_city" value="{{ old('delivery_city') }}" class="form-control @error('delivery_city') is-invalid @enderror" required>
+                                    @error('delivery_city')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">State</label>
-                                    <input type="text" name="delivery_state" value="{{ old('delivery_state') }}" class="form-control" required>
+                                    <input type="text" name="delivery_state" value="{{ old('delivery_state') }}" class="form-control @error('delivery_state') is-invalid @enderror" required>
+                                    @error('delivery_state')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Pincode</label>
-                                    <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode') }}" class="form-control" required>
+                                    <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode') }}" class="form-control @error('delivery_pincode') is-invalid @enderror" required>
+                                    @error('delivery_pincode')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Landmark</label>
-                                    <input type="text" name="delivery_landmark" value="{{ old('delivery_landmark') }}" class="form-control">
+                                    <input type="text" name="delivery_landmark" value="{{ old('delivery_landmark') }}" class="form-control @error('delivery_landmark') is-invalid @enderror">
+                                    @error('delivery_landmark')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Delivery Date</label>
-                                    <input type="date" id="deliveryDate" name="delivery_date" value="{{ old('delivery_date', $selectedDeliveryDate) }}" min="{{ now(config('app.timezone'))->toDateString() }}" class="form-control">
+                                    <input type="date" id="deliveryDate" name="delivery_date" value="{{ old('delivery_date', $selectedDeliveryDate) }}" min="{{ $minimumDeliveryDate }}" class="form-control @error('delivery_date') is-invalid @enderror">
+                                    @error('delivery_date')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Delivery Slot</label>
-                                    <select name="delivery_slot" id="deliverySlot" class="form-select">
+                                    <select name="delivery_slot" id="deliverySlot" class="form-select @error('delivery_slot') is-invalid @enderror @error('checkout') is-invalid @enderror">
                                         <option value="">No preference</option>
                                         @foreach ($deliverySlots as $slot)
                                             <option value="{{ $slot->label }}" @selected(old('delivery_slot') === $slot->label)>{{ $slot->label }}</option>
                                         @endforeach
                                     </select>
+                                    @error('delivery_slot')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    @error('checkout')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Order Notes</label>
-                                    <textarea name="notes" class="form-control" rows="3">{{ old('notes') }}</textarea>
+                                    <textarea name="notes" class="form-control @error('notes') is-invalid @enderror" rows="3">{{ old('notes') }}</textarea>
+                                    @error('notes')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Payment Method</label>
+                                    @error('payment_method')
+                                        <div class="text-danger small mb-2">{{ $message }}</div>
+                                    @enderror
                                     <div class="row g-2">
                                         @foreach ($enabledPaymentMethods as $method)
                                             <div class="col-md-4">
