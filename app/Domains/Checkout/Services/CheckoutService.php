@@ -19,16 +19,18 @@ class CheckoutService
         private readonly PaymentService $paymentService
     ) {}
 
-    public function checkoutData(string $sessionId, ?Store $session = null): array
+    public function checkoutData(string $sessionId, ?Store $session = null, ?string $deliveryDate = null): array
     {
         $data = $this->cartService->getCartSummary($sessionId);
         $customer = $session ? $this->customerAuthService->currentCustomer($session) : null;
+        $selectedDeliveryDate = $deliveryDate ?: now(config('app.timezone'))->toDateString();
 
         $data['customer'] = $customer;
         $data['approvedAddresses'] = $customer
             ? $customer->approvedAddresses()->orderByDesc('is_default')->get()
             : collect();
-        $data['deliverySlots'] = $this->deliverySlotService->activeSlots();
+        $data['selectedDeliveryDate'] = $selectedDeliveryDate;
+        $data['deliverySlots'] = $this->deliverySlotService->activeSlotsForDate($selectedDeliveryDate);
         $data['checkoutSettings'] = $this->settingService->checkoutSettings();
         $data['paymentSettings'] = $this->settingService->publicPaymentSettings();
         $data['enabledPaymentMethods'] = $this->paymentService->enabledMethods();

@@ -76,6 +76,68 @@ class CheckoutManagementTest extends TestCase
             ->assertDontSee('Midnight');
     }
 
+    public function test_checkout_filters_and_rejects_expired_same_day_delivery_slots(): void
+    {
+        $this->travelTo(now(config('app.timezone'))->setTime(13, 0));
+        DeliverySlot::query()->delete();
+        DeliverySlot::factory()->create([
+            'name' => '7-9 AM',
+            'start_time' => '07:00',
+            'end_time' => '09:00',
+            'display_label' => '7-9 AM',
+            'status' => true,
+        ]);
+        DeliverySlot::factory()->create([
+            'name' => '4-6 PM',
+            'start_time' => '16:00',
+            'end_time' => '18:00',
+            'display_label' => '4-6 PM',
+            'status' => true,
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->get(route('checkout.show', ['delivery_date' => now(config('app.timezone'))->toDateString()]))
+            ->assertOk()
+            ->assertDontSee('7-9 AM')
+            ->assertSee('4-6 PM');
+
+        $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'delivery_date' => now(config('app.timezone'))->toDateString(),
+            'delivery_slot' => '7-9 AM',
+        ]))->assertSessionHasErrors('checkout');
+
+        $this->travelBack();
+    }
+
+    public function test_future_delivery_date_allows_active_slots(): void
+    {
+        $this->travelTo(now(config('app.timezone'))->setTime(13, 0));
+        DeliverySlot::query()->delete();
+        DeliverySlot::factory()->create([
+            'name' => '7-9 AM',
+            'start_time' => '07:00',
+            'end_time' => '09:00',
+            'display_label' => '7-9 AM',
+            'status' => true,
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $futureDate = now(config('app.timezone'))->addDay()->toDateString();
+
+        $this->get(route('checkout.show', ['delivery_date' => $futureDate]))
+            ->assertOk()
+            ->assertSee('7-9 AM');
+
+        $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'delivery_date' => $futureDate,
+            'delivery_slot' => '7-9 AM',
+        ]))->assertRedirect();
+
+        $this->travelBack();
+    }
+
     public function test_place_cod_order_from_cart_creates_snapshots_deducts_inventory_and_clears_cart(): void
     {
         [$product, $variant, $inventory] = $this->cartItem();

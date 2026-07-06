@@ -19,7 +19,7 @@ class AddToCartRequest extends FormRequest
     {
         return [
             'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
-            'quantity' => ['required', 'numeric', 'min:0.001'],
+            'quantity' => ['required', 'integer', 'min:1'],
         ];
     }
 }

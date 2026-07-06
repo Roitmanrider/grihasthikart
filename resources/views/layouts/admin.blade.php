@@ -12,6 +12,13 @@
 
         <main class="container-fluid py-4">
 
+            <div class="d-flex justify-content-end mb-3">
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Logout</button>
+                </form>
+            </div>
+
             @include('partials.flash')
 
             @yield('admin-content')

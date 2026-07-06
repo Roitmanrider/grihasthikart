@@ -72,11 +72,11 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Delivery Date</label>
-                                    <input type="date" name="delivery_date" value="{{ old('delivery_date') }}" class="form-control">
+                                    <input type="date" id="deliveryDate" name="delivery_date" value="{{ old('delivery_date', $selectedDeliveryDate) }}" min="{{ now(config('app.timezone'))->toDateString() }}" class="form-control">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Delivery Slot</label>
-                                    <select name="delivery_slot" class="form-select">
+                                    <select name="delivery_slot" id="deliverySlot" class="form-select">
                                         <option value="">No preference</option>
                                         @foreach ($deliverySlots as $slot)
                                             <option value="{{ $slot->label }}" @selected(old('delivery_slot') === $slot->label)>{{ $slot->label }}</option>

@@ -4,6 +4,7 @@ namespace App\Domains\Delivery\Services;
 
 use App\Domains\Delivery\Contracts\DeliverySlotRepositoryInterface;
 use App\Models\DeliverySlot;
+use Carbon\Carbon;
 use InvalidArgumentException;
 
 class DeliverySlotService
@@ -20,6 +21,33 @@ class DeliverySlotService
     public function activeSlots()
     {
         return $this->repository->activeSlots();
+    }
+
+    public function activeSlotsForDate(?string $deliveryDate = null)
+    {
+        $slots = $this->activeSlots();
+
+        if (! $deliveryDate) {
+            return $slots;
+        }
+
+        $date = Carbon::parse($deliveryDate, config('app.timezone'))->startOfDay();
+
+        if (! $date->isSameDay(now(config('app.timezone')))) {
+            return $slots;
+        }
+
+        $currentTime = now(config('app.timezone'))->format('H:i:s');
+
+        return $slots
+            ->filter(fn (DeliverySlot $slot): bool => $this->normalizeTime($slot->end_time) > $currentTime)
+            ->values();
+    }
+
+    public function isSlotAvailableForDate(string $deliverySlot, ?string $deliveryDate = null): bool
+    {
+        return $this->activeSlotsForDate($deliveryDate)
+            ->contains(fn (DeliverySlot $slot): bool => $slot->label === $deliverySlot);
     }
 
     public function create(array $data): DeliverySlot
@@ -71,5 +99,10 @@ class DeliverySlotService
         $data['display_order'] = $data['display_order'] ?? 0;
 
         return $data;
+    }
+
+    private function normalizeTime(string $time): string
+    {
+        return strlen($time) === 5 ? $time.':00' : $time;
     }
 }

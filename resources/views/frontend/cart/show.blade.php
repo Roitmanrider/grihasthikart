@@ -74,7 +74,7 @@
                                                     <form method="POST" action="{{ route('cart.items.update', $item) }}" class="d-flex gap-2">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <input type="number" name="quantity" value="{{ rtrim(rtrim(number_format((float) $item->quantity, 3), '0'), '.') }}" min="0.001" step="0.001" class="form-control form-control-sm">
+                                                        <input type="number" name="quantity" value="{{ (int) $item->quantity }}" min="1" step="1" class="form-control form-control-sm">
                                                         <button class="btn btn-sm btn-outline-success">Update</button>
                                                     </form>
                                                 </td>

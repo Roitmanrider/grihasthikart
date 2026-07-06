@@ -23,7 +23,7 @@ class CheckoutRuleService
         }
 
         $this->validateDeliveryDate($data['delivery_date'] ?? null);
-        $this->validateDeliverySlot($data['delivery_slot'] ?? null);
+        $this->validateDeliverySlot($data['delivery_slot'] ?? null, $data['delivery_date'] ?? null);
     }
 
     public function validateDeliveryDate(?string $deliveryDate): void
@@ -59,16 +59,13 @@ class CheckoutRuleService
         }
     }
 
-    public function validateDeliverySlot(?string $deliverySlot): void
+    public function validateDeliverySlot(?string $deliverySlot, ?string $deliveryDate = null): void
     {
         if (! $deliverySlot) {
             return;
         }
 
-        $exists = $this->deliverySlotService->activeSlots()
-            ->contains(fn ($slot) => $slot->label === $deliverySlot);
-
-        if (! $exists) {
+        if (! $this->deliverySlotService->isSlotAvailableForDate($deliverySlot, $deliveryDate)) {
             throw new InvalidArgumentException('Selected delivery slot is not available.');
         }
     }

@@ -24,7 +24,11 @@ class CheckoutController extends Controller
     public function show()
     {
         $sessionId = $this->cartService->sessionIdentifier(request()->session());
-        $summary = $this->checkoutService->checkoutData($sessionId, request()->session());
+        $summary = $this->checkoutService->checkoutData(
+            $sessionId,
+            request()->session(),
+            request('delivery_date')
+        );
 
         if ($summary['cart']->items->isEmpty()) {
             return redirect()

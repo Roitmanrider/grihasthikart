@@ -14,6 +14,8 @@ use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
+
 Route::get('/', CatalogHomeController::class)->name('home');
 
 Route::get('/cart', [CartController::class, 'show'])->name('cart.show');

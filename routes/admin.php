@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminBusinessSettingController;
 use App\Http\Controllers\Admin\AdminCashbackController;
 use App\Http\Controllers\Admin\AdminCouponController;
@@ -26,6 +27,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
+    Route::get('login', [AdminAuthController::class, 'showLogin'])
+        ->name('login');
+    Route::post('login', [AdminAuthController::class, 'login'])
+        ->name('login.submit');
+
+    Route::post('logout', [AdminAuthController::class, 'logout'])
+        ->middleware('auth')
+        ->name('logout');
+
     Route::get('/', function () {
         return view('admin.dashboard.index', [
             'totalProducts' => Product::query()->count(),
@@ -37,7 +47,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'pendingPayments' => Payment::query()->whereIn('payment_status', ['pending', 'awaiting_verification'])->count(),
             'pendingCashbackRedemptions' => CashbackRedemptionRequest::query()->where('status', 'pending')->count(),
         ]);
-    });
+    })->middleware(['auth', 'can:manage-admin'])->name('dashboard');
 
     /*
     |--------------------------------------------------------------------------

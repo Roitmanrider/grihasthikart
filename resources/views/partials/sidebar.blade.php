@@ -4,7 +4,7 @@
 
     <nav class="nav flex-column gap-1">
 
-        <a class="nav-link text-dark" href="{{ url('/admin') }}">Dashboard</a>
+        <a class="nav-link text-dark" href="{{ route('admin.dashboard') }}">Dashboard</a>
 
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Catalog</div>
 

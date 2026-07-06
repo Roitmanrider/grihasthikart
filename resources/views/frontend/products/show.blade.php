@@ -111,7 +111,7 @@
                         <input type="hidden" name="product_variant_id" id="cartVariantId" value="{{ $defaultVariant?->id }}">
                         <div class="col-sm-4">
                             <label class="form-label" for="cartQuantity">Quantity</label>
-                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="0.001" step="0.001">
+                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="1" step="1">
                         </div>
                         <div class="col-sm-8">
                             <button class="btn btn-success btn-lg" type="submit">Add to Cart</button>

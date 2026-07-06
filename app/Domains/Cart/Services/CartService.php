@@ -43,9 +43,7 @@ class CartService
 
     public function addItem(string $sessionId, int $productVariantId, float $quantity): CartItem
     {
-        if ($quantity <= 0) {
-            throw new InvalidArgumentException('Cart quantity must be greater than zero.');
-        }
+        $quantity = $this->normalizeCustomerQuantity($quantity);
 
         return DB::transaction(function () use ($sessionId, $productVariantId, $quantity) {
             $cart = $this->getOrCreateCartForSession($sessionId);
@@ -74,9 +72,7 @@ class CartService
 
     public function updateItemQuantity(string $sessionId, CartItem $cartItem, float $quantity): CartItem
     {
-        if ($quantity <= 0) {
-            throw new InvalidArgumentException('Cart quantity must be greater than zero.');
-        }
+        $quantity = $this->normalizeCustomerQuantity($quantity);
 
         return DB::transaction(function () use ($sessionId, $cartItem, $quantity) {
             $cart = $this->getOrCreateCartForSession($sessionId);
@@ -181,5 +177,14 @@ class CartService
         if ($cartItem->cart_id !== $cart->id) {
             throw new InvalidArgumentException('This cart item does not belong to the current session.');
         }
+    }
+
+    private function normalizeCustomerQuantity(float $quantity): int
+    {
+        if ($quantity < 1 || floor($quantity) !== $quantity) {
+            throw new InvalidArgumentException('Cart quantity must be a whole number of at least one.');
+        }
+
+        return (int) $quantity;
     }
 }

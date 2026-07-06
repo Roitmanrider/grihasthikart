@@ -21,6 +21,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::define('manage-admin', function (User $user): bool {
+            if (method_exists($user, 'hasPermissionTo')) {
+                return $user->hasPermissionTo('admin.manage');
+            }
+
+            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+        });
+
         Gate::define('manage-categories', function (User $user): bool {
             if (method_exists($user, 'hasPermissionTo')) {
                 return $user->hasPermissionTo('catalog.categories.manage');

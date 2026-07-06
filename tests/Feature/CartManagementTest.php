@@ -49,6 +49,33 @@ class CartManagementTest extends TestCase
         $this->assertSame('10.000', $inventory->fresh()->quantity_on_hand);
     }
 
+    public function test_customer_cart_quantity_must_be_whole_number(): void
+    {
+        [, $variant] = $this->purchasableVariant();
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => '1.049',
+        ])->assertSessionHasErrors('quantity');
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ])->assertRedirect(route('cart.show'));
+
+        $item = CartItem::query()->firstOrFail();
+
+        $this->patch(route('cart.items.update', $item), [
+            'quantity' => '2.5',
+        ])->assertSessionHasErrors('quantity');
+
+        $this->patch(route('cart.items.update', $item), [
+            'quantity' => 2,
+        ])->assertRedirect(route('cart.show'));
+
+        $this->assertSame('2.000', $item->fresh()->quantity);
+    }
+
     public function test_inactive_variant_and_inactive_product_cannot_be_added(): void
     {
         [, $inactiveVariant] = $this->purchasableVariant(variantOverrides: ['status' => false]);
