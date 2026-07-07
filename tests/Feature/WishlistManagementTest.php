@@ -209,7 +209,7 @@ class WishlistManagementTest extends TestCase
             ->get(route('products.index'))
             ->assertOk()
             ->assertSee('gk-wishlist-button is-active', false)
-            ->assertSee('gk-wishlist-link d-none d-lg-flex is-active', false)
+            ->assertSee('gk-wishlist-link is-active', false)
             ->assertSee('gk-mobile-badge', false);
 
         $this->withSession(['customer_id' => $customer->id])

@@ -9,6 +9,7 @@ use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -22,9 +23,17 @@ class DailyOfferManagementTest extends TestCase
     {
         parent::setUp();
 
+        config(['app.timezone' => 'Asia/Kolkata']);
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
 
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_admin_daily_offers_index_requires_admin_auth(): void
@@ -149,6 +158,7 @@ class DailyOfferManagementTest extends TestCase
 
     public function test_current_active_daily_offers_appear_on_homepage(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));
         $variant = $this->variant(['mrp' => 40, 'selling_price' => 35]);
 
         DailyOffer::factory()->create([
@@ -167,6 +177,154 @@ class DailyOfferManagementTest extends TestCase
             ->assertSee('Rs. 30')
             ->assertSee('25% OFF')
             ->assertDontSee(route('wishlist.items.store'), false);
+    }
+
+    public function test_daily_offer_visibility_uses_current_app_timezone_window(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));
+        $variant = $this->variant(['sku' => 'GK-LIVE-TIME']);
+
+        DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'title' => 'Live Time Offer',
+            'offer_price' => 30,
+            'starts_at' => Carbon::parse('2026-07-07 17:11:00', config('app.timezone')),
+            'ends_at' => Carbon::parse('2026-07-07 17:15:00', config('app.timezone')),
+            'is_active' => true,
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Live Time Offer');
+    }
+
+    public function test_daily_offer_does_not_appear_before_start_time(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:10:00', config('app.timezone')));
+        $variant = $this->variant(['sku' => 'GK-SCHEDULED-TIME']);
+
+        DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'title' => 'Scheduled Time Offer',
+            'offer_price' => 30,
+            'starts_at' => Carbon::parse('2026-07-07 17:11:00', config('app.timezone')),
+            'ends_at' => Carbon::parse('2026-07-07 17:15:00', config('app.timezone')),
+            'is_active' => true,
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertDontSee('Scheduled Time Offer');
+    }
+
+    public function test_daily_offer_does_not_appear_after_end_time(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:16:00', config('app.timezone')));
+        $variant = $this->variant(['sku' => 'GK-EXPIRED-TIME']);
+
+        DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'title' => 'Expired Time Offer',
+            'offer_price' => 30,
+            'starts_at' => Carbon::parse('2026-07-07 17:11:00', config('app.timezone')),
+            'ends_at' => Carbon::parse('2026-07-07 17:15:00', config('app.timezone')),
+            'is_active' => true,
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertDontSee('Expired Time Offer');
+    }
+
+    public function test_daily_offer_with_null_start_and_open_end_can_appear(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));
+        $variant = $this->variant(['sku' => 'GK-OPEN-TIME']);
+
+        DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'title' => 'Open Time Offer',
+            'offer_price' => 30,
+            'starts_at' => null,
+            'ends_at' => null,
+            'is_active' => true,
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Open Time Offer');
+    }
+
+    public function test_customer_daily_offers_page_lists_current_offers_only(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));
+        $liveVariant = $this->variant(['sku' => 'GK-DAILY-PAGE']);
+        $expiredVariant = $this->variant(['sku' => 'GK-DAILY-PAGE-OLD']);
+
+        DailyOffer::factory()->create([
+            'product_variant_id' => $liveVariant->id,
+            'title' => 'Daily Page Offer',
+            'offer_price' => 30,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addMinute(),
+            'is_active' => true,
+        ]);
+        DailyOffer::factory()->expired()->create([
+            'product_variant_id' => $expiredVariant->id,
+            'title' => 'Old Daily Page Offer',
+        ]);
+
+        $this->get(route('daily-offers.index'))
+            ->assertOk()
+            ->assertSee('Daily Page Offer')
+            ->assertDontSee('Old Daily Page Offer')
+            ->assertDontSee(route('wishlist.items.store'), false);
+    }
+
+    public function test_admin_daily_offers_index_shows_app_clock_and_lifecycle_badges(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));
+        $liveVariant = $this->variant(['sku' => 'GK-LIVE-BADGE']);
+        $scheduledVariant = $this->variant(['sku' => 'GK-SCHEDULED-BADGE']);
+        $expiredVariant = $this->variant(['sku' => 'GK-EXPIRED-BADGE']);
+        $inactiveVariant = $this->variant(['sku' => 'GK-INACTIVE-BADGE']);
+
+        DailyOffer::factory()->create([
+            'product_variant_id' => $liveVariant->id,
+            'title' => 'Live Badge Offer',
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addMinute(),
+            'is_active' => true,
+        ]);
+        DailyOffer::factory()->create([
+            'product_variant_id' => $scheduledVariant->id,
+            'title' => 'Scheduled Badge Offer',
+            'starts_at' => now()->addMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+        DailyOffer::factory()->create([
+            'product_variant_id' => $expiredVariant->id,
+            'title' => 'Expired Badge Offer',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->subMinute(),
+            'is_active' => true,
+        ]);
+        DailyOffer::factory()->create([
+            'product_variant_id' => $inactiveVariant->id,
+            'title' => 'Inactive Badge Offer',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.daily-offers.index'))
+            ->assertOk()
+            ->assertSee('Current app time:')
+            ->assertSee('07 Jul 2026, 05:12 PM')
+            ->assertSee('Live Now')
+            ->assertSee('Scheduled')
+            ->assertSee('Expired')
+            ->assertSee('Inactive');
     }
 
     public function test_expired_and_inactive_daily_offers_do_not_appear_on_homepage(): void

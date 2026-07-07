@@ -55,10 +55,12 @@ class DailyOffer extends Model
 
     public function scopeCurrent($query)
     {
+        $now = now(config('app.timezone'));
+
         return $query
             ->active()
-            ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
-            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()));
+            ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $now));
     }
 
     public function getDisplayTitleAttribute(): string
@@ -80,5 +82,34 @@ class DailyOffer extends Model
         }
 
         return round((($mrp - $offerPrice) / $mrp) * 100).'% OFF';
+    }
+
+    public function lifecycleState(): string
+    {
+        $now = now(config('app.timezone'));
+
+        if (! $this->is_active || $this->trashed()) {
+            return 'Inactive';
+        }
+
+        if ($this->starts_at && $this->starts_at->greaterThan($now)) {
+            return 'Scheduled';
+        }
+
+        if ($this->ends_at && $this->ends_at->lessThan($now)) {
+            return 'Expired';
+        }
+
+        return 'Live Now';
+    }
+
+    public function lifecycleBadgeClass(): string
+    {
+        return match ($this->lifecycleState()) {
+            'Live Now' => 'text-bg-success',
+            'Scheduled' => 'text-bg-warning',
+            'Expired' => 'text-bg-danger',
+            default => 'text-bg-secondary',
+        };
     }
 }

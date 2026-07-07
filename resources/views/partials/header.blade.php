@@ -32,19 +32,19 @@
 
             <div class="gk-header-actions">
                 @if ($currentCustomer)
-                    <a href="{{ route('customer.dashboard') }}" class="gk-account d-none d-lg-flex">
+                    <a href="{{ route('customer.dashboard') }}" class="gk-account">
                         <i class="fa-regular fa-user"></i>
                         <span>Hi, {{ \Illuminate\Support\Str::limit($currentCustomer->name, 10) }}</span>
                     </a>
                 @else
-                    <a href="{{ route('customer.login') }}" class="gk-account d-none d-lg-flex">
+                    <a href="{{ route('customer.login') }}" class="gk-account">
                         <i class="fa-regular fa-user"></i>
                         <span>Login</span>
                     </a>
                 @endif
 
-                <a href="{{ route('wishlist.index') }}" class="gk-icon-link gk-wishlist-link d-none d-lg-flex {{ $wishlistCount > 0 ? 'is-active' : '' }}" aria-label="Wishlist">
-                    <i class="fa-regular fa-heart"></i>
+                <a href="{{ route('wishlist.index') }}" class="gk-icon-link gk-wishlist-link {{ $wishlistCount > 0 ? 'is-active' : '' }}" aria-label="Wishlist">
+                    <i class="{{ $wishlistCount > 0 ? 'fa-solid' : 'fa-regular' }} fa-heart"></i>
                     @if ($wishlistCount > 0)
                         <span class="gk-cart-badge">{{ $wishlistCount }}</span>
                     @endif

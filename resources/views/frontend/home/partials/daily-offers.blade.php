@@ -4,7 +4,7 @@
             <div class="gk-daily-heading">
                 <h2><i class="fa-solid fa-stopwatch"></i> Daily Offers</h2>
                 <span class="gk-deal-timer">Deal Expires In <strong>29m 49s</strong></span>
-                <a href="{{ route('products.index') }}">View All</a>
+                <a href="{{ route('daily-offers.index') }}">View All</a>
             </div>
 
             @if ($dailyOffers->isNotEmpty())

@@ -11,6 +11,7 @@ use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
 use App\Http\Controllers\Frontend\CustomerCashbackController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
+use App\Http\Controllers\Frontend\DailyOfferCatalogController;
 use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
 use App\Http\Controllers\Frontend\WishlistController;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
 
 Route::get('/', CatalogHomeController::class)->name('home');
+Route::get('/daily-offers', [DailyOfferCatalogController::class, 'index'])->name('daily-offers.index');
 
 Route::get('/about-us', [ContentPageController::class, 'page'])
     ->defaults('page', 'about-us')

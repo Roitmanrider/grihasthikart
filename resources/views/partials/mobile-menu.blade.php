@@ -13,7 +13,7 @@
         <span>Categories</span>
     </a>
     <a href="{{ route('wishlist.index') }}" class="{{ request()->routeIs('wishlist.*') || $wishlistCount > 0 ? 'active' : '' }}">
-        <i class="fa-regular fa-heart"></i>
+        <i class="{{ $wishlistCount > 0 ? 'fa-solid' : 'fa-regular' }} fa-heart"></i>
         @if ($wishlistCount > 0)
             <span class="gk-mobile-badge">{{ $wishlistCount }}</span>
         @endif

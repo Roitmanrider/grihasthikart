@@ -7,6 +7,9 @@
         <div>
             <h1 class="h3 mb-1">Daily Offers</h1>
             <div class="text-muted">Control the homepage Daily Offers section.</div>
+            <div class="small text-muted mt-1">
+                Current app time: <span class="fw-semibold">{{ now(config('app.timezone'))->format('d M Y, h:i A T') }}</span>
+            </div>
         </div>
         <a href="{{ route('admin.daily-offers.create') }}" class="btn btn-success">Add Daily Offer</a>
     </div>
@@ -61,6 +64,7 @@
                         <th>Offer Price</th>
                         <th>Badge</th>
                         <th>Schedule</th>
+                        <th>Lifecycle</th>
                         <th>Status</th>
                         <th>Order</th>
                         <th class="text-end">Actions</th>
@@ -92,6 +96,11 @@
                                 <div class="small">End: {{ $offer->ends_at?->format('d M Y, h:i A') ?: 'Open' }}</div>
                             </td>
                             <td>
+                                <span class="badge {{ $offer->lifecycleBadgeClass() }}">
+                                    {{ $offer->lifecycleState() }}
+                                </span>
+                            </td>
+                            <td>
                                 <span class="badge {{ $offer->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">
                                     {{ $offer->is_active ? 'Active' : 'Inactive' }}
                                 </span>
@@ -116,7 +125,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">No daily offers found.</td>
+                            <td colspan="8" class="text-center text-muted py-5">No daily offers found.</td>
                         </tr>
                     @endforelse
                 </tbody>
