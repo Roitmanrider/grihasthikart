@@ -23,7 +23,7 @@
                 <input type="search"
                        name="search"
                        value="{{ request('search') }}"
-                       placeholder="Search for products, categories, brands..."
+                       placeholder="Search for products, categories, subcategories..."
                        aria-label="Search products, categories, brands">
                 <button type="submit" aria-label="Search">
                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -78,7 +78,7 @@
             <input type="search"
                    name="search"
                    value="{{ request('search') }}"
-                   placeholder="Search for products, categories, brands..."
+                   placeholder="Search for products, categories, subcategories..."
                    aria-label="Search products, categories, brands">
             <button type="submit" aria-label="Search">
                 <i class="fa-solid fa-magnifying-glass"></i>

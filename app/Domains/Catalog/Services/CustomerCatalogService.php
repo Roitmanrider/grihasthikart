@@ -11,12 +11,18 @@ class CustomerCatalogService
 {
     public function homepageData(): array
     {
+        $categories = $this->activeCategories()
+            ->withCount(['children' => fn ($query) => $query->active()])
+            ->whereNull('parent_id')
+            ->take(18)
+            ->get();
+
         return [
-            'categories' => $this->activeCategories()->whereNull('parent_id')->take(12)->get(),
-            'featuredProducts' => $this->customerProductsQuery()->where('is_featured', true)->take(8)->get(),
-            'newArrivals' => $this->customerProductsQuery()->where('is_new_arrival', true)->take(8)->get(),
-            'popularProducts' => $this->customerProductsQuery()->where('is_popular', true)->take(8)->get(),
-            'trendingProducts' => $this->customerProductsQuery()->where('is_trending', true)->take(8)->get(),
+            'categories' => $categories,
+            'categorySections' => $this->homepageCategorySections(),
+            'dailyOffers' => $this->customerProductsQuery()->where('is_featured', true)->take(8)->get(),
+            'trustItems' => $this->homepageTrustItems(),
+            'partners' => $this->homepagePartners(),
         ];
     }
 
@@ -139,6 +145,41 @@ class CustomerCatalogService
             ->active()
             ->whereHas('defaultVariant', fn ($query) => $query->active())
             ->with(['brand', 'categories', 'defaultVariant', 'primaryImage']);
+    }
+
+    private function homepageCategorySections()
+    {
+        return Category::query()
+            ->active()
+            ->whereNull('parent_id')
+            ->whereHas('children', fn ($query) => $query->active())
+            ->with(['children' => fn ($query) => $query->active()->orderBy('display_order')->orderBy('name')])
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->take(9)
+            ->get()
+            ->values();
+    }
+
+    private function homepageTrustItems(): array
+    {
+        return [
+            ['icon' => 'fa-solid fa-truck-fast', 'title' => 'Free Delivery', 'subtitle' => 'On orders above Rs.499'],
+            ['icon' => 'fa-regular fa-calendar-check', 'title' => 'Scheduled Delivery', 'subtitle' => 'Choose date & time'],
+            ['icon' => 'fa-solid fa-seedling', 'title' => 'Original Products', 'subtitle' => 'Best quality assured'],
+            ['icon' => 'fa-solid fa-rotate-left', 'title' => 'Easy Returns', 'subtitle' => 'Hassle free returns'],
+            ['icon' => 'fa-solid fa-credit-card', 'title' => 'Payment Options', 'subtitle' => '100% safe & secure'],
+        ];
+    }
+
+    private function homepagePartners(): array
+    {
+        return [
+            ['name' => 'FreshFarm', 'description' => 'Organics', 'discount' => 'UPTO 15% OFF', 'class' => 'fresh'],
+            ['name' => 'MilkyDay', 'description' => 'Dairy Products', 'discount' => 'UPTO 10% OFF', 'class' => 'dairy'],
+            ['name' => 'DailyBasket', 'description' => 'Meat & Seafood', 'discount' => 'UPTO 12% OFF', 'class' => 'basket'],
+            ['name' => 'PetWorld', 'description' => 'Pet Supplies', 'discount' => 'UPTO 8% OFF', 'class' => 'care'],
+        ];
     }
 
     private function applySort(Builder $query, string $sort): void

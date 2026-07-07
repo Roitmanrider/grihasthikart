@@ -22,24 +22,25 @@
             </div>
 
             <div class="gk-footer-newsletter">
-                <h2>Stay Updated!</h2>
-                <p>Subscribe to get best offers and updates</p>
-                <form action="{{ route('products.index') }}" method="GET">
-                    <input type="email" class="form-control" placeholder="Enter your email" aria-label="Email address">
-                    <button class="btn btn-success w-100 mt-3" type="submit">Subscribe</button>
+                <h2>Let’s get in touch</h2>
+                <p>If you have any questions, just ask!</p>
+                <form action="{{ route('contact-messages.store') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="name" value="Footer Visitor">
+                    <input type="email" name="email" class="form-control mb-3" placeholder="Enter your email" aria-label="Email address">
+                    <input type="text" name="message" class="form-control" placeholder="Type your message" aria-label="Message">
+                    <button class="btn btn-success w-100 mt-3" type="submit">Submit <i class="fa-regular fa-paper-plane ms-2"></i></button>
                 </form>
             </div>
 
             <div>
                 <h2>Quick Links</h2>
                 <ul class="gk-footer-links">
-                    <li><a href="{{ route('products.index') }}"><i class="fa-solid fa-store"></i> Products</a></li>
-                    <li><a href="{{ route('categories.index') }}"><i class="fa-solid fa-table-cells-large"></i> Categories</a></li>
-                    <li><a href="{{ route('brands.index') }}"><i class="fa-solid fa-tags"></i> Brands</a></li>
                     <li><a href="{{ route('pages.about') }}"><i class="fa-regular fa-circle-question"></i> About Us</a></li>
-                    <li><a href="{{ route('pages.contact') }}"><i class="fa-regular fa-envelope"></i> Contact Us</a></li>
-                    <li><a href="{{ route('customer.login') }}"><i class="fa-regular fa-user"></i> Customer Login</a></li>
-                    <li><a href="{{ route('cart.show') }}"><i class="fa-solid fa-cart-shopping"></i> Cart</a></li>
+                    <li><a href="{{ route('pages.about') }}#happy-customers"><i class="fa-solid fa-users"></i> Happy Customers</a></li>
+                    <li><a href="{{ route('pages.support') }}"><i class="fa-solid fa-headset"></i> Customer Support</a></li>
+                    <li><a href="{{ $business['support_email'] ? 'mailto:'.$business['support_email'] : route('pages.contact') }}"><i class="fa-regular fa-envelope"></i> Email Us</a></li>
+                    <li><a href="{{ route('pages.faqs') }}"><i class="fa-regular fa-circle-question"></i> FAQs</a></li>
                 </ul>
             </div>
 

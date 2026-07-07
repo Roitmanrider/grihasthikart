@@ -23,8 +23,8 @@ class CustomerCatalogTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('GrihasthiKart');
-        $response->assertSee('Featured Products');
-        $response->assertSee('New Arrivals');
+        $response->assertSee('Fresh Groceries');
+        $response->assertSee('Daily Offers');
     }
 
     public function test_product_listing_shows_default_variant_price(): void
