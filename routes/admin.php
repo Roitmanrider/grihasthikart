@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\DailyOfferController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImageController;
@@ -181,6 +182,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.variants.images.destroy');
         Route::patch('products/{product}/variants/{productVariant}/images/{productImage}/restore', [ProductImageController::class, 'restoreVariant'])
             ->name('products.variants.images.restore');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Daily Offers
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-daily-offers'])->group(function () {
+        Route::patch('daily-offers/{dailyOffer}/restore', [DailyOfferController::class, 'restore'])
+            ->name('daily-offers.restore');
+
+        Route::resource('daily-offers', DailyOfferController::class)->except('show');
     });
 
     /*

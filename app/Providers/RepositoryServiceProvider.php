@@ -10,6 +10,7 @@ use App\Domains\Catalog\Contracts\AttributeRepositoryInterface;
 use App\Domains\Catalog\Contracts\AttributeValueRepositoryInterface;
 use App\Domains\Catalog\Contracts\BrandRepositoryInterface;
 use App\Domains\Catalog\Contracts\CategoryRepositoryInterface;
+use App\Domains\Catalog\Contracts\DailyOfferRepositoryInterface;
 use App\Domains\Catalog\Contracts\ProductImageRepositoryInterface;
 use App\Domains\Catalog\Contracts\ProductRepositoryInterface;
 use App\Domains\Catalog\Contracts\ProductVariantRepositoryInterface;
@@ -17,6 +18,7 @@ use App\Domains\Catalog\Repositories\AttributeRepository;
 use App\Domains\Catalog\Repositories\AttributeValueRepository;
 use App\Domains\Catalog\Repositories\BrandRepository;
 use App\Domains\Catalog\Repositories\CategoryRepository;
+use App\Domains\Catalog\Repositories\DailyOfferRepository;
 use App\Domains\Catalog\Repositories\ProductImageRepository;
 use App\Domains\Catalog\Repositories\ProductRepository;
 use App\Domains\Catalog\Repositories\ProductVariantRepository;
@@ -78,6 +80,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductVariantRepositoryInterface::class,
             ProductVariantRepository::class
+        );
+
+        $this->app->bind(
+            DailyOfferRepositoryInterface::class,
+            DailyOfferRepository::class
         );
 
         $this->app->bind(

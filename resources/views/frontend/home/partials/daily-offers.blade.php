@@ -4,13 +4,13 @@
             <div class="gk-daily-heading">
                 <h2><i class="fa-solid fa-stopwatch"></i> Daily Offers</h2>
                 <span class="gk-deal-timer">Deal Expires In <strong>29m 49s</strong></span>
-                <a href="{{ route('products.index', ['is_featured' => 1]) }}">View All</a>
+                <a href="{{ route('products.index') }}">View All</a>
             </div>
 
-            @if ($products->isNotEmpty())
+            @if ($dailyOffers->isNotEmpty())
                 <div class="gk-offer-track">
-                    @foreach ($products as $product)
-                        @include('components.offer-card', ['product' => $product])
+                    @foreach ($dailyOffers as $dailyOffer)
+                        @include('components.offer-card', ['dailyOffer' => $dailyOffer])
                     @endforeach
                 </div>
             @else

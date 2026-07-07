@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CustomerCatalogService
 {
+    public function __construct(
+        private readonly DailyOfferService $dailyOfferService
+    ) {}
+
     public function homepageData(): array
     {
         $categories = $this->activeCategories()
@@ -20,7 +24,7 @@ class CustomerCatalogService
         return [
             'categories' => $categories,
             'categorySections' => $this->homepageCategorySections(),
-            'dailyOffers' => $this->customerProductsQuery()->where('is_featured', true)->take(8)->get(),
+            'dailyOffers' => $this->dailyOfferService->currentOffers(8),
             'trustItems' => $this->homepageTrustItems(),
             'partners' => $this->homepagePartners(),
         ];

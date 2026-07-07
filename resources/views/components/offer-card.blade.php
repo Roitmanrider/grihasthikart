@@ -1,27 +1,28 @@
 @php
-    $variant = $product->defaultVariant;
-    $image = $product->primaryImage?->path ?? $variant?->primaryImage?->path;
-    $sellingPrice = $variant?->selling_price;
+    $variant = $dailyOffer->productVariant;
+    $product = $variant?->product;
+    $image = $variant?->primaryImage?->path ?? $product?->primaryImage?->path;
+    $sellingPrice = $dailyOffer->offer_price;
     $mrp = $variant?->mrp;
-    $discountPercent = ($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null;
+    $badge = $dailyOffer->discountBadge();
 @endphp
 
 <article class="gk-offer-card">
-    @if ($discountPercent)
-        <span class="gk-offer-discount">{{ $discountPercent }}%<br>OFF</span>
+    @if ($badge)
+        <span class="gk-offer-discount">{{ str_replace(' ', "\n", $badge) }}</span>
     @endif
 
     <div class="gk-offer-image">
         @if ($image)
-            <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}" alt="{{ $product->name }}">
+            <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}" alt="{{ $product?->name }}">
         @else
             <i class="fa-solid fa-basket-shopping"></i>
         @endif
     </div>
 
     <div class="gk-offer-content">
-        <span class="gk-offer-tag">Deal</span>
-        <h3>{{ $product->name }}</h3>
+        <span class="gk-offer-tag">{{ $dailyOffer->badge_text ?: 'Deal' }}</span>
+        <h3>{{ $dailyOffer->display_title }}</h3>
         <div class="gk-offer-variant">{{ $variant?->variant_name }}</div>
         <div class="gk-offer-prices">
             @if ($mrp && $mrp > $sellingPrice)
@@ -38,6 +39,9 @@
                 @csrf
                 <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
                 <input type="hidden" name="quantity" value="1">
+                @if ($dailyOffer->max_quantity_per_order)
+                    <input type="hidden" name="max_quantity_hint" value="{{ $dailyOffer->max_quantity_per_order }}">
+                @endif
                 <button type="submit">Add to Cart</button>
             </form>
         @endif

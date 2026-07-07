@@ -21,7 +21,7 @@
         </div>
     </section>
 
-    @include('frontend.home.partials.daily-offers', ['products' => $dailyOffers])
+    @include('frontend.home.partials.daily-offers', ['dailyOffers' => $dailyOffers])
 
     @include('frontend.home.partials.trust-icons', ['items' => $trustItems])
 

@@ -6,6 +6,7 @@ use App\Domains\Cart\Contracts\CartRepositoryInterface;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\DailyOffer;
 use App\Models\ProductVariant;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
@@ -50,8 +51,10 @@ class CartService
             $variant = ProductVariant::query()
                 ->with(['product', 'attributeValues.attribute'])
                 ->findOrFail($productVariantId);
+            $dailyOffer = $this->currentDailyOfferForVariant($variant->id);
 
             $this->validateVariantIsPurchasable($variant);
+            $this->applyDailyOfferHoldIfNeeded($cart, $dailyOffer);
 
             $existingItem = $this->repository->findItemInCart($cart, $variant->id);
             $existingQuantity = $existingItem && ! $existingItem->trashed()
@@ -59,6 +62,7 @@ class CartService
                 : 0;
             $targetQuantity = $quantity + $existingQuantity;
 
+            $this->validateDailyOfferQuantity($dailyOffer, $targetQuantity);
             $this->validateSufficientStock($variant->id, $targetQuantity);
 
             if ($existingItem) {
@@ -66,14 +70,16 @@ class CartService
                     $existingItem->restore();
                 }
 
-                return $this->repository->updateItem($existingItem, ['quantity' => $targetQuantity]);
+                return $this->repository->updateItem($existingItem, array_merge([
+                    'quantity' => $targetQuantity,
+                ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
             }
 
             return CartItem::query()->create(array_merge([
                 'cart_id' => $cart->id,
                 'product_variant_id' => $variant->id,
                 'quantity' => $quantity,
-            ], $this->prepareCartItemSnapshot($variant)));
+            ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
         });
     }
 
@@ -85,6 +91,7 @@ class CartService
             $cart = $this->getOrCreateCartForSession($sessionId);
             $cartItem = $this->repository->findItem($cartItem->id);
             $this->ensureCartItemBelongsToCurrentCart($cart, $cartItem);
+            $this->validateDailyOfferQuantity($this->currentDailyOfferForVariant($cartItem->product_variant_id), $quantity);
             $this->validateSufficientStock($cartItem->product_variant_id, $quantity);
 
             return $this->repository->updateItem($cartItem, ['quantity' => $quantity]);
@@ -157,12 +164,12 @@ class CartService
         return $cart;
     }
 
-    public function prepareCartItemSnapshot(ProductVariant $variant): array
+    public function prepareCartItemSnapshot(ProductVariant $variant, ?DailyOffer $dailyOffer = null): array
     {
         $product = $variant->product;
 
         return [
-            'unit_price' => $variant->selling_price,
+            'unit_price' => $dailyOffer?->offer_price ?? $variant->selling_price,
             'mrp' => $variant->mrp,
             'product_name_snapshot' => $product->name,
             'variant_name_snapshot' => $variant->variant_name,
@@ -193,5 +200,34 @@ class CartService
         }
 
         return (int) $quantity;
+    }
+
+    private function currentDailyOfferForVariant(int $productVariantId): ?DailyOffer
+    {
+        return DailyOffer::query()
+            ->current()
+            ->where('product_variant_id', $productVariantId)
+            ->orderBy('display_order')
+            ->first();
+    }
+
+    private function applyDailyOfferHoldIfNeeded(Cart $cart, ?DailyOffer $dailyOffer): void
+    {
+        if (! $dailyOffer) {
+            return;
+        }
+
+        $holdExpiresAt = now()->addMinutes(30);
+
+        if ($cart->expires_at === null || $cart->expires_at->greaterThan($holdExpiresAt)) {
+            $cart->update(['expires_at' => $holdExpiresAt]);
+        }
+    }
+
+    private function validateDailyOfferQuantity(?DailyOffer $dailyOffer, float $quantity): void
+    {
+        if ($dailyOffer?->max_quantity_per_order && $quantity > $dailyOffer->max_quantity_per_order) {
+            throw new InvalidArgumentException('Daily offer quantity is limited to '.$dailyOffer->max_quantity_per_order.' per order.');
+        }
     }
 }

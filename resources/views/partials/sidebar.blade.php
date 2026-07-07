@@ -33,6 +33,11 @@
             Products
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.daily-offers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.daily-offers.index') }}">
+            Daily Offers
+        </a>
+
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Operations</div>
 
         <a class="nav-link {{ request()->routeIs('admin.inventories.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
