@@ -35,7 +35,7 @@
 
                 @if ($payment->proof_path)
                     <div class="mt-4">
-                        <a href="{{ Storage::url($payment->proof_path) }}" target="_blank" class="btn btn-outline-success">Open Payment Proof</a>
+                        <a href="{{ app(\App\Services\MediaResolver::class)->url($payment->proof_path) }}" target="_blank" class="btn btn-outline-success">Open Payment Proof</a>
                     </div>
                 @endif
             </div>

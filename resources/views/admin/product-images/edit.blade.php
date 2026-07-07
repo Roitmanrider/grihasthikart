@@ -16,7 +16,7 @@
     <div class="row g-4">
         <div class="col-lg-5">
             <div class="card border-0 shadow-sm">
-                <img src="{{ Storage::url($productImage->path) }}" class="card-img-top" alt="{{ $productImage->alt_text }}" style="max-height: 360px; object-fit: cover;">
+                <img src="{{ app(\App\Services\MediaResolver::class)->url($productImage->path) }}" class="card-img-top" alt="{{ $productImage->alt_text }}" style="max-height: 360px; object-fit: cover;">
             </div>
         </div>
         <div class="col-lg-7">

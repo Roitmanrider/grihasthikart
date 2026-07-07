@@ -72,7 +72,7 @@ class PaymentManagementTest extends TestCase
 
     public function test_qr_proof_upload_is_session_protected_and_sets_awaiting_verification(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
         app(BusinessSettingService::class)->set('payment.qr_enabled', true);
         [, $variant] = $this->cartItem();
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
@@ -94,7 +94,7 @@ class PaymentManagementTest extends TestCase
         $payment = Payment::query()->firstOrFail();
         $this->assertSame('awaiting_verification', $payment->fresh()->payment_status);
         $this->assertSame('awaiting_verification', $order->fresh()->payment_status);
-        Storage::disk('public')->assertExists($payment->fresh()->proof_path);
+        Storage::disk('uploads')->assertExists($payment->fresh()->proof_path);
     }
 
     public function test_admin_can_verify_and_fail_qr_payments(): void

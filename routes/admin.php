@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
+use App\Http\Controllers\Admin\AdminSiteMediaController;
 use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
@@ -338,6 +339,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.business.update');
         Route::get('contact-messages', [AdminContactMessageController::class, 'index'])
             ->name('contact-messages.index');
+        Route::get('settings/site-media', [AdminSiteMediaController::class, 'edit'])
+            ->name('settings.site-media.edit');
+        Route::patch('settings/site-media', [AdminSiteMediaController::class, 'update'])
+            ->name('settings.site-media.update');
     });
 
     Route::middleware(['auth', 'can:manage-payment-settings'])->group(function () {

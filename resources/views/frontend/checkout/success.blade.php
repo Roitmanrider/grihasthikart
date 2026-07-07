@@ -56,7 +56,7 @@
                                     <div class="text-muted">UPI ID: {{ $paymentSettings['qr_upi_id'] }}</div>
                                 @endif
                                 @if ($paymentSettings['qr_image_path'])
-                                    <img src="{{ Storage::url($paymentSettings['qr_image_path']) }}" alt="Payment QR" class="img-fluid border rounded mt-3" style="max-width: 220px;">
+                                    <img src="{{ app(\App\Services\MediaResolver::class)->url($paymentSettings['qr_image_path']) }}" alt="Payment QR" class="img-fluid border rounded mt-3" style="max-width: 220px;">
                                 @endif
                                 <form method="POST" action="{{ route('orders.payment-proof.store', $order->order_number) }}" enctype="multipart/form-data" class="row g-3 mt-2">
                                     @csrf

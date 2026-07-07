@@ -36,6 +36,7 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
         return $cart->load([
             'coupon',
             'items.productVariant.product.primaryImage',
+            'items.productVariant.product.categories.parent',
             'items.productVariant.primaryImage',
         ]);
     }

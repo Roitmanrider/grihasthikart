@@ -1,5 +1,6 @@
 @php
     $image = $category->image;
+    $mediaResolver = app(\App\Services\MediaResolver::class);
     $categoryKey = \Illuminate\Support\Str::lower($category->slug.' '.$category->name);
     $fallbackIcon = match (true) {
         str_contains($categoryKey, 'fruit') || str_contains($categoryKey, 'vegetable') => 'fa-solid fa-leaf',
@@ -17,7 +18,7 @@
 
 <a href="{{ route('categories.show', $category->slug) }}" class="gk-home-category-tile">
     @if ($image)
-        <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}" alt="{{ $category->name }}">
+        <img src="{{ $mediaResolver->url($image) }}" alt="{{ $category->name }}">
     @else
         <span class="gk-home-category-fallback">
             <i class="{{ $category->icon ?: $fallbackIcon }}"></i>

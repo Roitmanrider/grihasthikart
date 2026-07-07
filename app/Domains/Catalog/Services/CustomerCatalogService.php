@@ -148,7 +148,7 @@ class CustomerCatalogService
         return Product::query()
             ->active()
             ->whereHas('defaultVariant', fn ($query) => $query->active())
-            ->with(['brand', 'categories', 'defaultVariant', 'primaryImage']);
+            ->with(['brand', 'categories.parent', 'defaultVariant.primaryImage', 'primaryImage']);
     }
 
     private function homepageCategorySections()

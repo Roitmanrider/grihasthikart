@@ -19,7 +19,7 @@ class StoreProductImageRequest extends FormRequest
     {
         return [
             'images' => ['required', 'array', 'min:1'],
-            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'alt_text' => ['nullable', 'string', 'max:255'],
             'title' => ['nullable', 'string', 'max:255'],
             'display_order' => ['nullable', 'integer', 'min:0'],

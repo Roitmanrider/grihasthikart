@@ -17,7 +17,7 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
     public function paginatedList(array $filters = [], int $perPage = 20)
     {
         $query = $this->model->newQuery()
-            ->with(['productVariant.product', 'productVariant.primaryImage', 'productVariant.product.primaryImage']);
+            ->with(['productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage']);
 
         if (($filters['search'] ?? null) !== null && $filters['search'] !== '') {
             $search = $filters['search'];
@@ -56,7 +56,7 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
         return $this->model->newQuery()
             ->current()
             ->whereHas('productVariant', fn ($query) => $query->active()->whereHas('product', fn ($query) => $query->active()))
-            ->with(['productVariant.product.brand', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
+            ->with(['productVariant.product.brand', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
             ->orderBy('display_order')
             ->orderByDesc('created_at')
             ->take($limit)

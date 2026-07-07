@@ -6,7 +6,7 @@
 
     <a href="{{ route('categories.show', $category->slug) }}" class="text-decoration-none">
         @if ($image)
-            <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}"
+            <img src="{{ app(\App\Services\MediaResolver::class)->url($image) }}"
                  alt="{{ $category->name }}">
         @else
             <div class="gk-category-fallback">

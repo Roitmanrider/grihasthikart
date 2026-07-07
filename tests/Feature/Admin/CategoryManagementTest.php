@@ -42,7 +42,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_admin_can_create_category_with_generated_slug_seo_and_image(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
 
         $response = $this->actingAs($this->admin)->post('/admin/categories', [
             'name' => 'Fresh Vegetables',
@@ -66,7 +66,7 @@ class CategoryManagementTest extends TestCase
         $this->assertSame('Fresh Vegetables Online', $category->meta_title);
         $this->assertTrue($category->is_featured);
         $this->assertNotNull($category->image);
-        Storage::disk('public')->assertExists($category->image);
+        Storage::disk('uploads')->assertExists($category->image);
     }
 
     public function test_admin_can_update_category_and_prevent_circular_parent_relationships(): void

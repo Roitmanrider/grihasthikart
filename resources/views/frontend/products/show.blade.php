@@ -6,7 +6,8 @@
 @php
     $defaultVariant = $product->defaultVariant;
     $galleryImages = $product->images->merge($product->variants->flatMap->images)->unique('id')->values();
-    $primaryImage = $product->primaryImage?->path ?? $defaultVariant?->primaryImage?->path;
+    $mediaResolver = app(\App\Services\MediaResolver::class);
+    $primaryImage = $mediaResolver->productImageUrl($product, $defaultVariant);
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
     $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
     $isDefaultWishlisted = $defaultVariant && in_array((int) $defaultVariant->id, $wishlistedVariantIds, true);
@@ -28,7 +29,7 @@
                     <div class="border rounded-3 bg-light overflow-hidden mb-3">
                         @if ($primaryImage)
                             <img id="variantImage"
-                                 src="{{ \Illuminate\Support\Facades\Storage::url($primaryImage) }}"
+                                 src="{{ $primaryImage }}"
                                  class="w-100 object-fit-cover"
                                  style="height: 430px;"
                                  alt="{{ $product->name }}">
@@ -43,7 +44,7 @@
                         <div class="row g-2">
                             @foreach ($galleryImages as $image)
                                 <div class="col-3">
-                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($image->path) }}"
+                                    <img src="{{ $mediaResolver->url($image->path) }}"
                                          class="img-thumbnail object-fit-cover w-100"
                                          style="height: 90px;"
                                          alt="{{ $image->alt_text ?: $product->name }}">
@@ -89,7 +90,7 @@
                                         data-sku="{{ $variant->sku }}"
                                         data-barcode="{{ $variant->barcode }}"
                                         data-weight="{{ $variant->weight }} {{ $variant->unit }}"
-                                        data-image="{{ $variantImage ? \Illuminate\Support\Facades\Storage::url($variantImage) : '' }}"
+                                        data-image="{{ $variantImage ? $mediaResolver->url($variantImage) : '' }}"
                                         @selected($defaultVariant?->id === $variant->id)>
                                     {{ $variant->variant_name }}
                                 </option>

@@ -97,20 +97,36 @@
             <div class="card-body">
                 <div class="mb-3">
                     <label class="form-label">Logo</label>
+                    @if (! empty($brand?->logo))
+                        <div class="border rounded p-2 mb-2">
+                            <img src="{{ app(\App\Services\MediaResolver::class)->url($brand->logo) }}" alt="{{ $brand->name }}" class="img-fluid rounded" style="max-height: 140px; object-fit: contain;">
+                            <div class="small text-muted mt-2">{{ $brand->logo }}</div>
+                            <div class="form-check mt-2">
+                                <input type="hidden" name="remove_logo" value="0">
+                                <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove_logo">
+                                <label class="form-check-label" for="remove_logo">Remove logo</label>
+                            </div>
+                        </div>
+                    @endif
                     <input type="file" name="logo" class="form-control @error('logo') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp">
                     @error('logo') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    @if (! empty($brand?->logo))
-                        <div class="small text-muted mt-2">{{ $brand->logo }}</div>
-                    @endif
                 </div>
 
                 <div>
                     <label class="form-label">Banner</label>
+                    @if (! empty($brand?->banner))
+                        <div class="border rounded p-2 mb-2">
+                            <img src="{{ app(\App\Services\MediaResolver::class)->url($brand->banner) }}" alt="{{ $brand->name }} banner" class="img-fluid rounded" style="max-height: 140px; object-fit: contain;">
+                            <div class="small text-muted mt-2">{{ $brand->banner }}</div>
+                            <div class="form-check mt-2">
+                                <input type="hidden" name="remove_banner" value="0">
+                                <input class="form-check-input" type="checkbox" name="remove_banner" value="1" id="remove_brand_banner">
+                                <label class="form-check-label" for="remove_brand_banner">Remove banner</label>
+                            </div>
+                        </div>
+                    @endif
                     <input type="file" name="banner" class="form-control @error('banner') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp">
                     @error('banner') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    @if (! empty($brand?->banner))
-                        <div class="small text-muted mt-2">{{ $brand->banner }}</div>
-                    @endif
                 </div>
             </div>
         </div>

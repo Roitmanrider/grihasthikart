@@ -35,7 +35,7 @@ class ProductImageManagementTest extends TestCase
 
     public function test_admin_can_upload_product_image(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
         $product = Product::factory()->create();
 
         $response = $this->actingAs($this->admin)->post(route('admin.products.images.store', $product), [
@@ -53,12 +53,12 @@ class ProductImageManagementTest extends TestCase
         $this->assertNull($image->product_variant_id);
         $this->assertTrue($image->is_primary);
         $this->assertSame('Front Pack', $image->title);
-        Storage::disk('public')->assertExists($image->path);
+        Storage::disk('uploads')->assertExists($image->path);
     }
 
     public function test_admin_can_upload_variant_image(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
         $product = Product::factory()->create();
         $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
 
@@ -73,12 +73,12 @@ class ProductImageManagementTest extends TestCase
 
         $this->assertSame($product->id, $image->product_id);
         $this->assertTrue($image->is_primary);
-        Storage::disk('public')->assertExists($image->path);
+        Storage::disk('uploads')->assertExists($image->path);
     }
 
     public function test_variant_image_rejects_variant_from_another_product(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
         $product = Product::factory()->create();
         $otherProduct = Product::factory()->create();
         $variant = ProductVariant::factory()->create(['product_id' => $otherProduct->id]);
@@ -91,7 +91,7 @@ class ProductImageManagementTest extends TestCase
             ->assertRedirect(route('admin.products.edit', $product))
             ->assertSessionHasErrors('image');
 
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('uploads')->allFiles());
     }
 
     public function test_primary_product_image_clears_previous_primary(): void
@@ -171,7 +171,7 @@ class ProductImageManagementTest extends TestCase
 
     public function test_image_upload_cleans_new_file_when_database_create_fails(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
 
         $product = Product::factory()->create();
         $repository = Mockery::mock(ProductImageRepositoryInterface::class);
@@ -189,7 +189,7 @@ class ProductImageManagementTest extends TestCase
             $this->assertSame('Database failed.', $exception->getMessage());
         }
 
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('uploads')->allFiles());
     }
 
     public function test_routes_require_authentication_and_authorization_middleware(): void

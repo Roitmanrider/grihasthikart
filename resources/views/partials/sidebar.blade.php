@@ -104,6 +104,11 @@
             Payment Settings
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.settings.site-media.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.settings.site-media.edit') }}">
+            Site Media
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.contact-messages.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.contact-messages.index') }}">
             Contact Messages

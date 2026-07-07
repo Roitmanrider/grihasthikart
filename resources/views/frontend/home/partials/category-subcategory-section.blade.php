@@ -1,5 +1,6 @@
 @php
     $categoryKey = \Illuminate\Support\Str::lower($category->slug.' '.$category->name);
+    $mediaResolver = app(\App\Services\MediaResolver::class);
     $fallbackIcon = match (true) {
         str_contains($categoryKey, 'fruit') || str_contains($categoryKey, 'vegetable') => 'fa-solid fa-leaf',
         str_contains($categoryKey, 'grain') || str_contains($categoryKey, 'flour') || str_contains($categoryKey, 'rice') || str_contains($categoryKey, 'atta') => 'fa-solid fa-wheat-awn',
@@ -20,7 +21,7 @@
             <div class="gk-subcategory-heading">
                 <h2>
                     @if ($category->image)
-                        <img class="gk-heading-category-image" src="{{ \Illuminate\Support\Facades\Storage::url($category->image) }}" alt="{{ $category->name }}">
+                        <img class="gk-heading-category-image" src="{{ $mediaResolver->url($category->image) }}" alt="{{ $category->name }}">
                     @else
                         <i class="{{ $category->icon ?: $fallbackIcon }}"></i>
                     @endif

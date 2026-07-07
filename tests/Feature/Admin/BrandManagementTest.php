@@ -45,7 +45,7 @@ class BrandManagementTest extends TestCase
 
     public function test_admin_can_create_brand_with_generated_slug_seo_and_logo(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
 
         $response = $this->actingAs($this->admin)->post('/admin/brands', [
             'name' => 'Tata Sampann',
@@ -68,7 +68,7 @@ class BrandManagementTest extends TestCase
         $this->assertSame('Tata Sampann Products Online', $brand->meta_title);
         $this->assertTrue($brand->is_featured);
         $this->assertNotNull($brand->logo);
-        Storage::disk('public')->assertExists($brand->logo);
+        Storage::disk('uploads')->assertExists($brand->logo);
     }
 
     public function test_admin_can_update_brand(): void
@@ -199,7 +199,7 @@ class BrandManagementTest extends TestCase
 
     public function test_failed_brand_media_update_keeps_existing_media_and_removes_new_upload(): void
     {
-        Storage::fake('public');
+        Storage::fake('uploads');
 
         $brand = Brand::factory()->create([
             'name' => 'Old Brand',
@@ -207,7 +207,7 @@ class BrandManagementTest extends TestCase
             'logo' => 'brands/logo/original.jpg',
         ]);
 
-        Storage::disk('public')->put($brand->logo, 'old logo');
+        Storage::disk('uploads')->put($brand->logo, 'old logo');
 
         $repository = Mockery::mock(BrandRepositoryInterface::class);
         $repository->shouldReceive('update')
@@ -235,8 +235,8 @@ class BrandManagementTest extends TestCase
             $this->assertSame('Database update failed.', $exception->getMessage());
         }
 
-        Storage::disk('public')->assertExists('brands/logo/original.jpg');
-        $this->assertSame(['brands/logo/original.jpg'], Storage::disk('public')->allFiles('brands/logo'));
+        Storage::disk('uploads')->assertExists('brands/logo/original.jpg');
+        $this->assertSame([], Storage::disk('uploads')->allFiles('uploads/brands/logo'));
         $this->assertSame('brands/logo/original.jpg', $brand->fresh()->logo);
     }
 }

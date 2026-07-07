@@ -37,25 +37,28 @@ class BrandService
 
     public function create(array $data)
     {
-        [$brandData, $mediaFiles] = $this->extractMediaFiles($data);
+        [$brandData, $mediaFiles, $removeMedia] = $this->extractMediaFiles($data);
 
-        return $this->persistWithUniqueSlug(function (array $preparedData) use ($mediaFiles) {
+        return $this->persistWithUniqueSlug(function (array $preparedData) use ($mediaFiles, $removeMedia) {
             return $this->persistWithMedia(
                 fn () => $this->repository->create($preparedData),
-                $mediaFiles
+                $mediaFiles,
+                null,
+                $removeMedia
             );
         }, $brandData);
     }
 
     public function update(Brand $brand, array $data)
     {
-        [$brandData, $mediaFiles] = $this->extractMediaFiles($data);
+        [$brandData, $mediaFiles, $removeMedia] = $this->extractMediaFiles($data);
 
-        return $this->persistWithUniqueSlug(function (array $preparedData) use ($brand, $mediaFiles) {
+        return $this->persistWithUniqueSlug(function (array $preparedData) use ($brand, $mediaFiles, $removeMedia) {
             return $this->persistWithMedia(
                 fn () => $this->repository->update($brand, $preparedData),
                 $mediaFiles,
-                $brand
+                $brand,
+                $removeMedia
             );
         }, $brandData, $brand);
     }
@@ -129,16 +132,23 @@ class BrandService
         return $data;
     }
 
-    private function persistWithMedia(callable $operation, array $mediaFiles, ?Brand $existingBrand = null): Brand
+    private function persistWithMedia(callable $operation, array $mediaFiles, ?Brand $existingBrand = null, array $removeMedia = []): Brand
     {
         $storedPaths = [];
         $oldPaths = [];
 
         try {
-            $brand = DB::transaction(function () use ($operation, $mediaFiles, $existingBrand, &$storedPaths, &$oldPaths) {
+            $brand = DB::transaction(function () use ($operation, $mediaFiles, $existingBrand, $removeMedia, &$storedPaths, &$oldPaths) {
                 /** @var Brand $brand */
                 $brand = $operation();
                 $mediaData = [];
+
+                foreach ($removeMedia as $field => $remove) {
+                    if ($remove) {
+                        $oldPaths[] = $existingBrand?->{$field};
+                        $mediaData[$field] = null;
+                    }
+                }
 
                 foreach ($mediaFiles as $field => $file) {
                     $oldPaths[] = $existingBrand?->{$field};
@@ -175,7 +185,13 @@ class BrandService
             unset($data[$field]);
         }
 
-        return [$data, $mediaFiles];
+        $removeMedia = array_filter([
+            'logo' => (bool) ($data['remove_logo'] ?? false),
+            'banner' => (bool) ($data['remove_banner'] ?? false),
+        ]);
+        unset($data['remove_logo'], $data['remove_banner']);
+
+        return [$data, $mediaFiles, $removeMedia];
     }
 
     private function deleteStoredPaths(array $paths): void

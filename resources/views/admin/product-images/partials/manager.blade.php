@@ -71,7 +71,7 @@
                 @endphp
                 <div class="col-md-4 col-xl-3">
                     <div class="card h-100">
-                        <img src="{{ Storage::url($image->path) }}" class="card-img-top" alt="{{ $image->alt_text }}" style="height: 160px; object-fit: cover;">
+                        <img src="{{ app(\App\Services\MediaResolver::class)->url($image->path) }}" class="card-img-top" alt="{{ $image->alt_text }}" style="height: 160px; object-fit: cover;">
                         <div class="card-body">
                             <div class="fw-semibold text-truncate">{{ $image->title ?? 'Untitled' }}</div>
                             <div class="small text-muted text-truncate">{{ $image->alt_text ?? 'No alt text' }}</div>

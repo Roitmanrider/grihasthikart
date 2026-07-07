@@ -39,13 +39,13 @@
                                         @foreach ($cart->items as $item)
                                             @php
                                                 $variant = $item->productVariant;
-                                                $image = $variant?->primaryImage?->path ?? $variant?->product?->primaryImage?->path;
+                                                $imageUrl = app(\App\Services\MediaResolver::class)->productImageUrl($variant?->product, $variant);
                                             @endphp
                                             <tr>
                                                 <td>
                                                     <div class="d-flex gap-3">
-                                                        @if ($image)
-                                                            <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}" class="rounded object-fit-cover" style="width: 72px; height: 72px;" alt="{{ $item->product_name_snapshot }}">
+                                                        @if ($imageUrl)
+                                                            <img src="{{ $imageUrl }}" class="rounded object-fit-cover" style="width: 72px; height: 72px;" alt="{{ $item->product_name_snapshot }}">
                                                         @else
                                                             <div class="rounded bg-light d-flex align-items-center justify-content-center text-success" style="width: 72px; height: 72px;">
                                                                 <i class="fa-solid fa-basket-shopping"></i>

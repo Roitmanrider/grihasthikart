@@ -159,6 +159,13 @@ class CategoryService
             } elseif (array_key_exists($field, $data) && $data[$field] === null) {
                 unset($data[$field]);
             }
+
+            if ((bool) ($data['remove_'.$field] ?? false)) {
+                $this->mediaService->delete($category?->{$field});
+                $data[$field] = null;
+            }
+
+            unset($data['remove_'.$field]);
         }
 
         return $data;

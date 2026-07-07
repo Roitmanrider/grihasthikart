@@ -28,15 +28,15 @@
                         @php
                             $variant = $item->productVariant;
                             $product = $item->product ?? $variant?->product;
-                            $image = $variant?->primaryImage?->path ?? $product?->primaryImage?->path;
+                            $imageUrl = app(\App\Services\MediaResolver::class)->productImageUrl($product, $variant);
                         @endphp
 
                         <div class="col-md-6 col-lg-4">
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="row g-0 h-100">
                                     <div class="col-4">
-                                        @if ($image)
-                                            <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}"
+                                        @if ($imageUrl)
+                                            <img src="{{ $imageUrl }}"
                                                  class="img-fluid rounded-start object-fit-cover h-100"
                                                  alt="{{ $product?->name ?? 'Wishlist item' }}">
                                         @else

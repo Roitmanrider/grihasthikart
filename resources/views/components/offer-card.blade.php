@@ -1,7 +1,7 @@
 @php
     $variant = $dailyOffer->productVariant;
     $product = $variant?->product;
-    $image = $variant?->primaryImage?->path ?? $product?->primaryImage?->path;
+    $imageUrl = app(\App\Services\MediaResolver::class)->productImageUrl($product, $variant);
     $sellingPrice = $dailyOffer->offer_price;
     $mrp = $variant?->mrp;
     $badge = $dailyOffer->discountBadge();
@@ -13,8 +13,8 @@
     @endif
 
     <div class="gk-offer-image">
-        @if ($image)
-            <img src="{{ \Illuminate\Support\Facades\Storage::url($image) }}" alt="{{ $product?->name }}">
+        @if ($imageUrl)
+            <img src="{{ $imageUrl }}" alt="{{ $product?->name }}">
         @else
             <i class="fa-solid fa-basket-shopping"></i>
         @endif
