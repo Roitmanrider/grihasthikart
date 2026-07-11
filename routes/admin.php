@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\DailyOfferController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImageController;
+use App\Http\Controllers\Admin\ProductImportController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Models\CashbackRedemptionRequest;
 use App\Models\Inventory;
@@ -132,6 +133,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.restore');
 
         Route::resource('products', ProductController::class);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Product Imports
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'can:manage-product-imports'])->group(function () {
+        Route::get('product-imports', [ProductImportController::class, 'index'])
+            ->name('product-imports.index');
+        Route::get('product-imports/template', [ProductImportController::class, 'template'])
+            ->name('product-imports.template');
+        Route::post('product-imports/preview', [ProductImportController::class, 'preview'])
+            ->name('product-imports.preview');
+        Route::post('product-imports/import', [ProductImportController::class, 'import'])
+            ->name('product-imports.import');
     });
 
     /*
