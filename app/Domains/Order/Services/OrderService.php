@@ -23,15 +23,6 @@ use InvalidArgumentException;
 
 class OrderService
 {
-    private const ALLOWED_TRANSITIONS = [
-        'placed' => ['confirmed', 'cancelled'],
-        'confirmed' => ['preparing', 'cancelled'],
-        'preparing' => ['ready_for_delivery', 'cancelled'],
-        'ready_for_delivery' => ['delivered'],
-        'delivered' => [],
-        'cancelled' => [],
-    ];
-
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepository,
         private readonly CartService $cartService,
@@ -39,7 +30,8 @@ class OrderService
         private readonly CheckoutRuleService $checkoutRuleService,
         private readonly CouponService $couponService,
         private readonly PaymentService $paymentService,
-        private readonly BusinessSettingService $settingService
+        private readonly BusinessSettingService $settingService,
+        private readonly OrderStatusService $orderStatusService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -84,11 +76,11 @@ class OrderService
             $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $oldStatus = $lockedOrder->order_status;
 
-            if (! in_array($newStatus, self::ALLOWED_TRANSITIONS[$oldStatus] ?? [], true)) {
+            if (! $this->orderStatusService->canTransition($oldStatus, $newStatus)) {
                 throw new InvalidArgumentException('This order status transition is not allowed.');
             }
 
-            if ($newStatus === 'cancelled') {
+            if ($this->orderStatusService->isCancellation($newStatus)) {
                 $this->restoreStockOnCancellation($lockedOrder);
                 $lockedOrder->cancelled_at = now();
             }

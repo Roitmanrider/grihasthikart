@@ -2,6 +2,7 @@
 
 namespace App\Domains\Report\Services;
 
+use App\Domains\Order\Services\OrderStatusService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -10,7 +11,8 @@ use Illuminate\Support\Collection;
 class TaxReportService
 {
     public function __construct(
-        private readonly BusinessSettingService $settings
+        private readonly BusinessSettingService $settings,
+        private readonly OrderStatusService $orderStatusService
     ) {}
 
     public function gstSummary(array $filters): array
@@ -109,7 +111,7 @@ class TaxReportService
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('placed_at', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('placed_at', '<=', $date))
             ->when($filters['order_status'] ?? null, fn ($query, $status) => $query->where('order_status', $status))
-            ->when(! ($filters['order_status'] ?? null), fn ($query) => $query->where('order_status', '!=', 'cancelled'))
+            ->when(! ($filters['order_status'] ?? null), fn ($query) => $query->whereNotIn('order_status', $this->orderStatusService->cancelledStatuses()))
             ->when($filters['payment_status'] ?? null, fn ($query, $status) => $query->where('payment_status', $status))
             ->when(! ($filters['payment_status'] ?? null), fn ($query) => $query->whereNotIn('payment_status', ['failed', 'cancelled', 'refunded']))
             ->when($filters['payment_method'] ?? null, fn ($query, $method) => $query->where('payment_method', $method))

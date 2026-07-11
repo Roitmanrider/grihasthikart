@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Domains\Customer\Services\CustomerAuthService;
+use App\Domains\Order\Services\OrderStatusService;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 
 class CustomerDashboardController extends Controller
 {
     public function __construct(
-        private readonly CustomerAuthService $authService
+        private readonly CustomerAuthService $authService,
+        private readonly OrderStatusService $orderStatusService
     ) {}
 
     public function dashboard()
@@ -37,8 +39,9 @@ class CustomerDashboardController extends Controller
             ->where('order_number', $orderNumber)
             ->with('items')
             ->firstOrFail();
+        $statusTimeline = $this->orderStatusService->timelineFor($order);
 
-        return view('frontend.customer.orders.show', compact('customer', 'order'));
+        return view('frontend.customer.orders.show', compact('customer', 'order', 'statusTimeline'));
     }
 
     private function requireCustomer()

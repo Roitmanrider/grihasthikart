@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
 use App\Domains\Order\Services\OrderService;
+use App\Domains\Order\Services\OrderStatusService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Models\Order;
@@ -14,7 +15,8 @@ class AdminOrderController extends Controller
 {
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepository,
-        private readonly OrderService $orderService
+        private readonly OrderService $orderService,
+        private readonly OrderStatusService $orderStatusService
     ) {}
 
     public function index(Request $request)
@@ -30,8 +32,10 @@ class AdminOrderController extends Controller
     public function show(Order $order)
     {
         $order = $this->orderRepository->findWithDetails($order->id);
+        $statusActions = $this->orderStatusService->actionsFor($order);
+        $statusTimeline = $this->orderStatusService->timelineFor($order);
 
-        return view('admin.orders.show', compact('order'));
+        return view('admin.orders.show', compact('order', 'statusActions', 'statusTimeline'));
     }
 
     public function updateStatus(Order $order, UpdateOrderStatusRequest $request)

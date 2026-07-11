@@ -10,7 +10,20 @@ class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public const STATUSES = ['placed', 'confirmed', 'preparing', 'ready_for_delivery', 'delivered', 'cancelled'];
+    public const STATUSES = [
+        'pending',
+        'placed',
+        'confirmed',
+        'picking',
+        'preparing',
+        'packed',
+        'ready_for_delivery',
+        'out_for_delivery',
+        'delivered',
+        'cancelled',
+        'cancelled_by_admin',
+        'cancelled_by_customer',
+    ];
 
     public const PAYMENT_STATUSES = ['pending', 'awaiting_verification', 'paid', 'failed', 'cancelled', 'refunded'];
 

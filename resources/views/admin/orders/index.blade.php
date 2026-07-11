@@ -3,6 +3,7 @@
 @section('title','Orders')
 
 @section('admin-content')
+@inject('orderStatusService', 'App\Domains\Order\Services\OrderStatusService')
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
@@ -23,7 +24,7 @@
                 <select name="order_status" class="form-select">
                     <option value="">All</option>
                     @foreach (\App\Models\Order::STATUSES as $status)
-                        <option value="{{ $status }}" @selected(request('order_status') === $status)>{{ str_replace('_', ' ', $status) }}</option>
+                        <option value="{{ $status }}" @selected(request('order_status') === $status)>{{ $orderStatusService->label($status) }}</option>
                     @endforeach
                 </select>
             </div>
@@ -58,8 +59,9 @@
                 <tr>
                     <th>Order</th>
                     <th>Customer</th>
-                    <th>Status</th>
+                    <th>Delivery</th>
                     <th>Payment</th>
+                    <th>Status</th>
                     <th>Total</th>
                     <th>Placed</th>
                     <th class="text-end">Actions</th>
@@ -73,8 +75,12 @@
                             <div>{{ $order->customer_name }}</div>
                             <div class="small text-muted">{{ $order->customer_mobile }}</div>
                         </td>
-                        <td><span class="badge text-bg-light border">{{ str_replace('_', ' ', $order->order_status) }}</span></td>
+                        <td>
+                            <div>{{ $order->delivery_date?->format('d M Y') ?? 'Not set' }}</div>
+                            <div class="small text-muted">{{ $order->delivery_slot ?? 'No slot' }}</div>
+                        </td>
                         <td>{{ strtoupper($order->payment_method) }} / {{ $order->payment_status }}</td>
+                        <td><span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span></td>
                         <td>Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
                         <td>{{ $order->placed_at?->format('d M Y, h:i A') }}</td>
                         <td class="text-end">
@@ -87,7 +93,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center text-muted py-5">No orders found.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-5">No orders found.</td></tr>
                 @endforelse
             </tbody>
         </table>

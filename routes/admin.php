@@ -46,7 +46,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         return view('admin.dashboard.index', [
             'totalProducts' => Product::query()->count(),
             'totalOrders' => Order::query()->count(),
-            'pendingOrders' => Order::query()->whereIn('order_status', ['placed', 'confirmed', 'preparing'])->count(),
+            'pendingOrders' => Order::query()->whereIn('order_status', ['pending', 'placed', 'confirmed', 'picking', 'preparing', 'packed', 'ready_for_delivery', 'out_for_delivery'])->count(),
             'lowStockItems' => Inventory::query()
                 ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= low_stock_threshold')
                 ->count(),

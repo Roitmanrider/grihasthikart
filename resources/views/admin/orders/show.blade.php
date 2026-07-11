@@ -3,6 +3,7 @@
 @section('title','Order Details')
 
 @section('admin-content')
+@inject('orderStatusService', 'App\Domains\Order\Services\OrderStatusService')
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
@@ -27,6 +28,32 @@
 
 <div class="row g-4">
     <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">Order Timeline</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach ($statusTimeline['steps'] as $step)
+                        @php
+                            $badgeClass = match ($step['state']) {
+                                'completed' => 'text-bg-success',
+                                'current' => 'text-bg-warning',
+                                default => 'text-bg-light border',
+                            };
+                        @endphp
+                        <span class="badge {{ $badgeClass }} px-3 py-2">
+                            {{ $step['label'] }}
+                            @if ($step['completed_at'])
+                                <span class="ms-1 fw-normal">({{ $step['completed_at'] }})</span>
+                            @endif
+                        </span>
+                    @endforeach
+                    @if ($statusTimeline['final_state'])
+                        <span class="badge text-bg-danger px-3 py-2">{{ $statusTimeline['final_state'] }}</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Order Items</div>
             <div class="table-responsive">
@@ -62,7 +89,7 @@
             <div class="card-body">
                 @forelse ($order->statusHistories as $history)
                     <div class="border-bottom pb-2 mb-2">
-                        <div class="fw-semibold">{{ $history->old_status ?? 'New' }} -> {{ $history->new_status }}</div>
+                        <div class="fw-semibold">{{ $history->old_status ? $orderStatusService->label($history->old_status) : 'New' }} -> {{ $orderStatusService->label($history->new_status) }}</div>
                         <div class="small text-muted">{{ $history->note ?? 'No note' }} / {{ $history->created_at?->format('d M Y, h:i A') }}</div>
                     </div>
                 @empty
@@ -85,7 +112,7 @@
                 @endif
                 <hr>
                 <div class="d-flex justify-content-between h5"><span>Grand Total</span><strong>Rs. {{ number_format((float) $order->grand_total, 2) }}</strong></div>
-                <div class="mt-3"><span class="badge text-bg-light border">{{ str_replace('_', ' ', $order->order_status) }}</span></div>
+                <div class="mt-3"><span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span></div>
             </div>
         </div>
 
@@ -99,25 +126,18 @@
         </div>
 
         <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white fw-semibold">Update Status</div>
+            <div class="card-header bg-white fw-semibold">Order Actions</div>
             <div class="card-body">
-                <form method="POST" action="{{ route('admin.orders.update-status', $order) }}" class="row g-3">
-                    @csrf
-                    @method('PATCH')
-                    <div class="col-12">
-                        <select name="order_status" class="form-select">
-                            @foreach (\App\Models\Order::STATUSES as $status)
-                                <option value="{{ $status }}" @selected($order->order_status === $status)>{{ str_replace('_', ' ', $status) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <textarea name="admin_notes" class="form-control" rows="3" placeholder="Admin notes">{{ old('admin_notes', $order->admin_notes) }}</textarea>
-                    </div>
-                    <div class="col-12">
-                        <button class="btn btn-success w-100">Update Status</button>
-                    </div>
-                </form>
+                @forelse ($statusActions as $action)
+                    <form method="POST" action="{{ route('admin.orders.update-status', $order) }}" class="mb-2">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="order_status" value="{{ $action['status'] }}">
+                        <button class="btn {{ $action['class'] }} w-100">{{ $action['label'] }}</button>
+                    </form>
+                @empty
+                    <div class="text-muted">No further status actions are available.</div>
+                @endforelse
             </div>
         </div>
     </div>
