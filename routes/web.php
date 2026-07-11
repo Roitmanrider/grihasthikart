@@ -11,6 +11,7 @@ use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
 use App\Http\Controllers\Frontend\CustomerCashbackController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
+use App\Http\Controllers\Frontend\CustomerNotificationController;
 use App\Http\Controllers\Frontend\CustomerOrderDocumentController;
 use App\Http\Controllers\Frontend\DailyOfferCatalogController;
 use App\Http\Controllers\Frontend\PaymentController;
@@ -78,6 +79,9 @@ Route::post('/customer/verify', [CustomerAuthController::class, 'verify'])->name
 Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name('customer.logout');
 
 Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
+Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
+Route::patch('/account/notifications/read-all', [CustomerNotificationController::class, 'readAll'])->name('customer.notifications.read-all');
+Route::patch('/account/notifications/{notification}/read', [CustomerNotificationController::class, 'read'])->name('customer.notifications.read');
 Route::get('/account/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders.index');
 Route::get('/account/orders/{order}/invoice', [CustomerOrderDocumentController::class, 'invoice'])->name('customer.orders.invoice');
 Route::patch('/account/orders/{orderNumber}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');

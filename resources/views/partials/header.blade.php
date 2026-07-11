@@ -4,6 +4,7 @@
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
     $settingService = app(\App\Domains\Setting\Services\BusinessSettingService::class);
     $wishlistCount = app(\App\Domains\Wishlist\Services\WishlistService::class)->countForCustomer($currentCustomer);
+    $notificationCount = $currentCustomer ? app(\App\Domains\Notification\Services\NotificationService::class)->customerUnreadCount($currentCustomer) : 0;
     $cartCount = rtrim(rtrim(number_format($cartSummary['item_count'], 3), '0'), '.');
     $whatsappUrl = $settingService->whatsappUrl();
     $phoneUrl = $settingService->phoneUrl();
@@ -40,6 +41,15 @@
                     <a href="{{ route('customer.login') }}" class="gk-account">
                         <i class="fa-regular fa-user"></i>
                         <span>Login</span>
+                    </a>
+                @endif
+
+                @if ($currentCustomer)
+                    <a href="{{ route('customer.notifications.index') }}" class="gk-icon-link {{ $notificationCount > 0 ? 'is-active' : '' }}" aria-label="Notifications">
+                        <i class="{{ $notificationCount > 0 ? 'fa-solid' : 'fa-regular' }} fa-bell"></i>
+                        @if ($notificationCount > 0)
+                            <span class="gk-cart-badge">{{ $notificationCount }}</span>
+                        @endif
                     </a>
                 @endif
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Frontend;
 
+use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreContactMessageRequest;
@@ -11,7 +12,8 @@ use Illuminate\Http\Request;
 class ContentPageController extends Controller
 {
     public function __construct(
-        private readonly BusinessSettingService $settingService
+        private readonly BusinessSettingService $settingService,
+        private readonly NotificationService $notificationService
     ) {}
 
     public function page(string $page)
@@ -37,9 +39,10 @@ class ContentPageController extends Controller
 
     public function storeContact(StoreContactMessageRequest $request)
     {
-        ContactMessage::query()->create(array_merge($request->validated(), [
+        $message = ContactMessage::query()->create(array_merge($request->validated(), [
             'status' => 'new',
         ]));
+        $this->notificationService->notifyAdminNewContactMessage($message);
 
         return back()->with('success', 'Thank you. Our support team will get back to you soon.');
     }

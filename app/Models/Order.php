@@ -102,6 +102,11 @@ class Order extends Model
         return $this->belongsTo(Coupon::class);
     }
 
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
     public function cashbackLedgers()
     {
         return $this->hasMany(CashbackLedger::class);

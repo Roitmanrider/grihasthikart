@@ -3,6 +3,7 @@
 namespace App\Domains\Cashback\Services;
 
 use App\Domains\Coupon\Services\CouponService;
+use App\Domains\Notification\Services\NotificationService;
 use App\Models\CashbackRedemptionRequest;
 use App\Models\Coupon;
 use App\Models\Customer;
@@ -15,7 +16,8 @@ class CashbackRedemptionService
 {
     public function __construct(
         private readonly CashbackService $cashbackService,
-        private readonly CouponService $couponService
+        private readonly CouponService $couponService,
+        private readonly NotificationService $notificationService
     ) {}
 
     public function request(Customer $customer, float $amount, ?string $note = null): CashbackRedemptionRequest
@@ -23,13 +25,17 @@ class CashbackRedemptionService
         $rule = $this->cashbackService->defaultRule();
         $this->validateAmount($customer, $amount, (float) $rule->redemption_multiple);
 
-        return CashbackRedemptionRequest::query()->create([
+        $redemption = CashbackRedemptionRequest::query()->create([
             'customer_id' => $customer->id,
             'requested_amount' => $amount,
             'status' => 'pending',
             'customer_note' => $note,
             'requested_at' => now(),
         ]);
+
+        $this->notificationService->notifyAdminCashbackRedemptionRequested($redemption);
+
+        return $redemption;
     }
 
     public function approve(CashbackRedemptionRequest $request, float $amount, ?string $note = null): CashbackRedemptionRequest
@@ -52,6 +58,12 @@ class CashbackRedemptionService
                 'approved_by' => Auth::id(),
             ]);
 
+            $this->notificationService->notifyCustomerCashbackUpdated(
+                $request->fresh('customer'),
+                'Cashback redemption approved',
+                'Your cashback redemption request for Rs. '.number_format($amount, 2).' was approved.'
+            );
+
             return $request;
         });
     }
@@ -64,6 +76,12 @@ class CashbackRedemptionService
             'rejected_at' => now(),
             'approved_by' => Auth::id(),
         ]);
+
+        $this->notificationService->notifyCustomerCashbackUpdated(
+            $request->fresh('customer'),
+            'Cashback redemption rejected',
+            'Your cashback redemption request was rejected. Reason: '.$note
+        );
 
         return $request;
     }
@@ -116,6 +134,12 @@ class CashbackRedemptionService
                 couponId: $coupon->id,
                 redemptionRequestId: $request->id,
                 description: 'Cashback redeemed into coupon '.$coupon->code
+            );
+
+            $this->notificationService->notifyCustomerCashbackUpdated(
+                $request->fresh('customer'),
+                'Cashback coupon generated',
+                'Your cashback coupon '.$coupon->code.' is ready to use.'
             );
 
             return $coupon;

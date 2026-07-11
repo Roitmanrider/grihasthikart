@@ -72,6 +72,11 @@ class Customer extends Model
         return $this->hasMany(CashbackMonthlySummary::class)->latest();
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class)->latest();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

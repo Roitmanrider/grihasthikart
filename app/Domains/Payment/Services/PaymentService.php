@@ -2,6 +2,7 @@
 
 namespace App\Domains\Payment\Services;
 
+use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Payment\Contracts\PaymentRepositoryInterface;
 use App\Domains\Payment\Gateways\CodPaymentGateway;
 use App\Domains\Payment\Gateways\QrPaymentGateway;
@@ -25,7 +26,8 @@ class PaymentService
         private readonly MediaService $mediaService,
         private readonly CodPaymentGateway $codGateway,
         private readonly QrPaymentGateway $qrGateway,
-        private readonly RazorpayPaymentGateway $razorpayGateway
+        private readonly RazorpayPaymentGateway $razorpayGateway,
+        private readonly NotificationService $notificationService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -172,6 +174,10 @@ class PaymentService
 
             $this->syncOrderPaymentStatus($lockedPayment->order, 'failed', $lockedPayment->payment_method);
             $this->log($lockedPayment, 'failed', 'failed', (float) $lockedPayment->amount, note: $reason);
+
+            if ($lockedPayment->payment_method === 'razorpay') {
+                $this->notificationService->notifyRazorpayPaymentFailed($lockedPayment->order, $lockedPayment, $reason);
+            }
 
             return $lockedPayment->fresh(['order', 'transactions']);
         });

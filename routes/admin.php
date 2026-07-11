@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AdminContactMessageController;
 use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
+use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOrderDocumentController;
 use App\Http\Controllers\Admin\AdminPaymentController;
@@ -54,6 +55,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'pendingCashbackRedemptions' => CashbackRedemptionRequest::query()->where('status', 'pending')->count(),
         ]);
     })->middleware(['auth', 'can:manage-admin'])->name('dashboard');
+
+    Route::middleware(['auth', 'can:manage-admin'])->group(function () {
+        Route::get('notifications', [AdminNotificationController::class, 'index'])
+            ->name('notifications.index');
+        Route::patch('notifications/read-all', [AdminNotificationController::class, 'readAll'])
+            ->name('notifications.read-all');
+        Route::patch('notifications/{notification}/read', [AdminNotificationController::class, 'read'])
+            ->name('notifications.read');
+    });
 
     /*
     |--------------------------------------------------------------------------

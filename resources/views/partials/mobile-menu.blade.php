@@ -1,6 +1,7 @@
 @php
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
     $wishlistCount = app(\App\Domains\Wishlist\Services\WishlistService::class)->countForCustomer($currentCustomer);
+    $notificationCount = $currentCustomer ? app(\App\Domains\Notification\Services\NotificationService::class)->customerUnreadCount($currentCustomer) : 0;
 @endphp
 
 <nav class="gk-mobile-nav" aria-label="Mobile navigation">
@@ -23,8 +24,11 @@
         <i class="fa-solid fa-bag-shopping"></i>
         <span>Orders</span>
     </a>
-    <a href="{{ route('customer.dashboard') }}" class="{{ request()->routeIs('customer.*') && ! request()->routeIs('customer.orders.*') ? 'active' : '' }}">
-        <i class="fa-regular fa-user"></i>
-        <span>Account</span>
+    <a href="{{ $currentCustomer ? route('customer.notifications.index') : route('customer.dashboard') }}" class="{{ request()->routeIs('customer.notifications.*') || ($notificationCount > 0 && ! request()->routeIs('customer.orders.*')) ? 'active' : '' }}">
+        <i class="{{ $notificationCount > 0 ? 'fa-solid' : 'fa-regular' }} fa-bell"></i>
+        @if ($notificationCount > 0)
+            <span class="gk-mobile-badge">{{ $notificationCount }}</span>
+        @endif
+        <span>Alerts</span>
     </a>
 </nav>

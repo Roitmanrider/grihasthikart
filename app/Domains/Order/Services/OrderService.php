@@ -6,6 +6,7 @@ use App\Domains\Cart\Services\CartService;
 use App\Domains\Checkout\Services\CheckoutRuleService;
 use App\Domains\Coupon\Services\CouponService;
 use App\Domains\Inventory\Services\InventoryService;
+use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
 use App\Domains\Payment\Services\PaymentService;
 use App\Domains\Setting\Services\BusinessSettingService;
@@ -31,7 +32,8 @@ class OrderService
         private readonly CouponService $couponService,
         private readonly PaymentService $paymentService,
         private readonly BusinessSettingService $settingService,
-        private readonly OrderStatusService $orderStatusService
+        private readonly OrderStatusService $orderStatusService,
+        private readonly NotificationService $notificationService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -60,6 +62,7 @@ class OrderService
             $this->createStatusHistory($order, null, 'placed', 'Order placed.');
             $this->couponService->clearCouponAfterOrder($cart);
             $this->cartService->clearCart($sessionId);
+            $this->notificationService->notifyAdminNewOrder($order);
 
             return $order->fresh(['items', 'statusHistories', 'payment']);
         });
@@ -118,6 +121,8 @@ class OrderService
 
             $this->paymentService->verifyRazorpayPayment($payment, $payload);
 
+            $completedOnlinePayment = false;
+
             if ($lockedOrder->order_status !== 'placed') {
                 $this->deductInventoryForOrder($lockedOrder);
 
@@ -133,6 +138,13 @@ class OrderService
                 ]);
                 $this->createStatusHistory($lockedOrder, $oldStatus, 'placed', 'Online payment successful.');
                 $this->cartService->clearCart($lockedOrder->session_id);
+                $completedOnlinePayment = true;
+            }
+
+            if ($completedOnlinePayment) {
+                $lockedOrder->refresh();
+                $this->notificationService->notifyAdminNewOrder($lockedOrder);
+                $this->notificationService->notifyRazorpayPaymentSuccess($lockedOrder, $lockedOrder->payment);
             }
 
             return $lockedOrder->fresh(['items', 'statusHistories', 'payment']);
@@ -184,6 +196,13 @@ class OrderService
             $lockedOrder->admin_notes = $note;
             $lockedOrder->save();
             $this->createStatusHistory($lockedOrder, $oldStatus, $newStatus, $note);
+            $lockedOrder->refresh();
+
+            if ($newStatus === 'cancelled_by_customer') {
+                $this->notificationService->notifyAdminCustomerCancelledOrder($lockedOrder, $note);
+            }
+
+            $this->notificationService->notifyCustomerOrderStatusChanged($lockedOrder, $newStatus, $note);
 
             return $lockedOrder->fresh(['items', 'statusHistories']);
         });
@@ -332,7 +351,8 @@ class OrderService
                 $deductQuantity = min($remaining, $inventory->available_quantity);
 
                 if ($deductQuantity > 0) {
-                    $this->inventoryService->adjustStock($inventory, 'sale', $deductQuantity, 'Order '.$order->order_number);
+                    $updatedInventory = $this->inventoryService->adjustStock($inventory, 'sale', $deductQuantity, 'Order '.$order->order_number);
+                    $this->notificationService->notifyAdminLowStock($updatedInventory);
                     $remaining -= $deductQuantity;
                 }
             }
