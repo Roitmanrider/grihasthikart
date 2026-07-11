@@ -57,42 +57,42 @@
 
                                 <div class="col-12">
                                     <label class="form-label">Address Line 1</label>
-                                    <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1') }}" class="form-control @error('delivery_address_line1') is-invalid @enderror" required>
+                                    <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1', $preferredAddress?->address_line1) }}" class="form-control @error('delivery_address_line1') is-invalid @enderror" required>
                                     @error('delivery_address_line1')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Address Line 2</label>
-                                    <input type="text" name="delivery_address_line2" value="{{ old('delivery_address_line2') }}" class="form-control @error('delivery_address_line2') is-invalid @enderror">
+                                    <input type="text" name="delivery_address_line2" value="{{ old('delivery_address_line2', $preferredAddress?->address_line2) }}" class="form-control @error('delivery_address_line2') is-invalid @enderror">
                                     @error('delivery_address_line2')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">City</label>
-                                    <input type="text" name="delivery_city" value="{{ old('delivery_city') }}" class="form-control @error('delivery_city') is-invalid @enderror" required>
+                                    <input type="text" name="delivery_city" value="{{ old('delivery_city', $preferredAddress?->city) }}" class="form-control @error('delivery_city') is-invalid @enderror" required>
                                     @error('delivery_city')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">State</label>
-                                    <input type="text" name="delivery_state" value="{{ old('delivery_state') }}" class="form-control @error('delivery_state') is-invalid @enderror" required>
+                                    <input type="text" name="delivery_state" value="{{ old('delivery_state', $preferredAddress?->state) }}" class="form-control @error('delivery_state') is-invalid @enderror" required>
                                     @error('delivery_state')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Pincode</label>
-                                    <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode') }}" class="form-control @error('delivery_pincode') is-invalid @enderror" required>
+                                    <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode', $preferredAddress?->pincode) }}" class="form-control @error('delivery_pincode') is-invalid @enderror" required>
                                     @error('delivery_pincode')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Landmark</label>
-                                    <input type="text" name="delivery_landmark" value="{{ old('delivery_landmark') }}" class="form-control @error('delivery_landmark') is-invalid @enderror">
+                                    <input type="text" name="delivery_landmark" value="{{ old('delivery_landmark', $preferredAddress?->landmark) }}" class="form-control @error('delivery_landmark') is-invalid @enderror">
                                     @error('delivery_landmark')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

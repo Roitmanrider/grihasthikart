@@ -26,9 +26,12 @@ class CheckoutService
         $selectedDeliveryDate = $this->deliverySlotService->defaultDeliveryDate($deliveryDate);
 
         $data['customer'] = $customer;
-        $data['approvedAddresses'] = $customer
+        $approvedAddresses = $customer
             ? $customer->approvedAddresses()->orderByDesc('is_default')->get()
             : collect();
+
+        $data['approvedAddresses'] = $approvedAddresses;
+        $data['preferredAddress'] = $approvedAddresses->firstWhere('is_default', true) ?? $approvedAddresses->first();
         $data['selectedDeliveryDate'] = $selectedDeliveryDate;
         $data['minimumDeliveryDate'] = $this->deliverySlotService->earliestSelectableDeliveryDate();
         $data['deliverySlots'] = $this->deliverySlotService->activeSlotsForDate($selectedDeliveryDate);

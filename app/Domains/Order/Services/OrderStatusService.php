@@ -11,9 +11,9 @@ class OrderStatusService
     public const CANCELLATION_STATUSES = ['cancelled', 'cancelled_by_admin', 'cancelled_by_customer'];
 
     private const ALLOWED_TRANSITIONS = [
-        'pending' => ['confirmed', 'cancelled_by_admin', 'cancelled'],
-        'placed' => ['confirmed', 'cancelled_by_admin', 'cancelled'],
-        'confirmed' => ['picking', 'preparing', 'cancelled_by_admin', 'cancelled'],
+        'pending' => ['confirmed', 'cancelled_by_admin', 'cancelled_by_customer', 'cancelled'],
+        'placed' => ['confirmed', 'cancelled_by_admin', 'cancelled_by_customer', 'cancelled'],
+        'confirmed' => ['picking', 'preparing', 'cancelled_by_admin', 'cancelled_by_customer', 'cancelled'],
         'picking' => ['packed', 'cancelled_by_admin', 'cancelled'],
         'preparing' => ['packed', 'ready_for_delivery', 'cancelled_by_admin', 'cancelled'],
         'packed' => ['out_for_delivery', 'cancelled_by_admin', 'cancelled'],
@@ -60,6 +60,8 @@ class OrderStatusService
         ],
     ];
 
+    private const CUSTOMER_CANCELLABLE_STATUSES = ['pending', 'placed', 'confirmed'];
+
     private const LABELS = [
         'pending' => 'Placed',
         'placed' => 'Placed',
@@ -96,6 +98,12 @@ class OrderStatusService
             })
             ->values()
             ->all();
+    }
+
+    public function canCustomerCancel(Order $order): bool
+    {
+        return in_array($order->order_status, self::CUSTOMER_CANCELLABLE_STATUSES, true)
+            && $this->canTransition($order->order_status, 'cancelled_by_customer');
     }
 
     public function timelineFor(Order $order): array

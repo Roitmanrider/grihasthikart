@@ -19,7 +19,7 @@
 <div class="col-md-4"><label class="form-label">Default State</label><input name="default_state" value="{{ old('default_state', $settings['default_state']) }}" class="form-control"></div>
 <div class="col-md-6"><label class="form-label">Contact Mobile</label><input name="store_contact_mobile" value="{{ old('store_contact_mobile', $settings['store_contact_mobile']) }}" class="form-control"></div>
 <div class="col-md-6"><label class="form-label">WhatsApp Number</label><input name="store_whatsapp_number" value="{{ old('store_whatsapp_number', $settings['store_whatsapp_number']) }}" class="form-control"></div>
-@foreach (['cod_enabled'=>'COD Enabled','today_delivery_enabled'=>'Today Delivery Enabled','custom_delivery_date_enabled'=>'Custom Delivery Date Enabled'] as $field => $label)
+@foreach (['cod_enabled'=>'COD Enabled','today_delivery_enabled'=>'Today Delivery Enabled','custom_delivery_date_enabled'=>'Custom Delivery Date Enabled','customer_invoice_enabled'=>'Customer Invoice Printing Enabled'] as $field => $label)
 <div class="col-md-4"><div class="form-check mt-2"><input type="hidden" name="{{ $field }}" value="0"><input class="form-check-input" type="checkbox" name="{{ $field }}" value="1" id="{{ $field }}" @checked(old($field, $settings[$field]))><label class="form-check-label" for="{{ $field }}">{{ $label }}</label></div></div>
 @endforeach
 <div class="col-12"><button class="btn btn-success">Save Settings</button></div>

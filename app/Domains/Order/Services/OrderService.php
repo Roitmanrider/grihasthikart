@@ -102,6 +102,15 @@ class OrderService
         });
     }
 
+    public function cancelByCustomer(Order $order, string $reason): Order
+    {
+        if (! $this->orderStatusService->canCustomerCancel($order)) {
+            throw new InvalidArgumentException('This order can no longer be cancelled online.');
+        }
+
+        return $this->updateOrderStatus($order, 'cancelled_by_customer', $reason);
+    }
+
     public function validateCartIsNotEmpty(Cart $cart): void
     {
         if ($cart->items->isEmpty()) {

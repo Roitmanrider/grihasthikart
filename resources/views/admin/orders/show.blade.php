@@ -129,17 +129,52 @@
             <div class="card-header bg-white fw-semibold">Order Actions</div>
             <div class="card-body">
                 @forelse ($statusActions as $action)
-                    <form method="POST" action="{{ route('admin.orders.update-status', $order) }}" class="mb-2">
-                        @csrf
-                        @method('PATCH')
-                        <input type="hidden" name="order_status" value="{{ $action['status'] }}">
-                        <button class="btn {{ $action['class'] }} w-100">{{ $action['label'] }}</button>
-                    </form>
+                    @if ($orderStatusService->isCancellation($action['status']))
+                        <button class="btn {{ $action['class'] }} w-100 mb-2" type="button" data-bs-toggle="modal" data-bs-target="#adminCancelOrderModal">
+                            {{ $action['label'] }}
+                        </button>
+                    @else
+                        <form method="POST" action="{{ route('admin.orders.update-status', $order) }}" class="mb-2">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="order_status" value="{{ $action['status'] }}">
+                            <button class="btn {{ $action['class'] }} w-100">{{ $action['label'] }}</button>
+                        </form>
+                    @endif
                 @empty
                     <div class="text-muted">No further status actions are available.</div>
                 @endforelse
             </div>
         </div>
+
+        @if ($orderStatusService->isCancellation($order->order_status) && $order->admin_notes)
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white fw-semibold">Cancellation Reason</div>
+                <div class="card-body text-muted">{{ $order->admin_notes }}</div>
+            </div>
+        @endif
+    </div>
+</div>
+
+<div class="modal fade" id="adminCancelOrderModal" tabindex="-1" aria-labelledby="adminCancelOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('admin.orders.update-status', $order) }}" class="modal-content">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="order_status" value="cancelled_by_admin">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="adminCancelOrderModalLabel">Cancel Order</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="adminCancelReason">Cancellation reason</label>
+                <textarea id="adminCancelReason" name="admin_notes" class="form-control" rows="4" required>{{ old('admin_notes') }}</textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Back</button>
+                <button class="btn btn-danger">Cancel Order</button>
+            </div>
+        </form>
     </div>
 </div>
 

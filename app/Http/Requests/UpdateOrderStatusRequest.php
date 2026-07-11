@@ -21,7 +21,7 @@ class UpdateOrderStatusRequest extends FormRequest
     {
         return [
             'order_status' => ['required', 'string', Rule::in(Order::STATUSES)],
-            'admin_notes' => ['nullable', 'string', 'max:1000'],
+            'admin_notes' => ['required_if:order_status,cancelled,cancelled_by_admin', 'nullable', 'string', 'max:1000'],
         ];
     }
 }

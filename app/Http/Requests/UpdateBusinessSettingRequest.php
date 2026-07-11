@@ -27,6 +27,7 @@ class UpdateBusinessSettingRequest extends FormRequest
             'default_city' => ['nullable', 'string', 'max:100'],
             'store_contact_mobile' => ['nullable', 'string', 'max:15'],
             'store_whatsapp_number' => ['nullable', 'string', 'max:15'],
+            'customer_invoice_enabled' => ['nullable', 'boolean'],
         ];
     }
 }

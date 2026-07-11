@@ -106,6 +106,62 @@ class CustomerAccountTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])->get(route('customer.addresses.edit', $otherAddress))->assertNotFound();
     }
 
+    public function test_setting_default_address_works_and_ui_renders_state(): void
+    {
+        $customer = Customer::factory()->create();
+        $home = CustomerAddress::factory()->create(['customer_id' => $customer->id, 'label' => 'Home', 'is_default' => true]);
+        $office = CustomerAddress::factory()->create(['customer_id' => $customer->id, 'label' => 'Office', 'is_default' => false]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.addresses.default', $office))
+            ->assertRedirect();
+
+        $this->assertFalse($home->fresh()->is_default);
+        $this->assertTrue($office->fresh()->is_default);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.addresses.index'))
+            ->assertOk()
+            ->assertSee('Default Address')
+            ->assertSee('Set Default');
+    }
+
+    public function test_checkout_prefills_default_approved_address(): void
+    {
+        $customer = Customer::factory()->create(['name' => 'Rohit Kumar', 'mobile' => '9876543210']);
+        CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'address_line1' => 'Non Default Address',
+            'is_default' => false,
+            'is_approved' => true,
+        ]);
+        CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'address_line1' => '42 Default Street',
+            'address_line2' => 'Near Park',
+            'city' => 'Patna',
+            'state' => 'Bihar',
+            'pincode' => '800001',
+            'landmark' => 'Clock Tower',
+            'is_default' => true,
+            'is_approved' => true,
+        ]);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('value="42 Default Street"', false)
+            ->assertSee('value="Near Park"', false)
+            ->assertSee('value="Patna"', false)
+            ->assertSee('value="Bihar"', false)
+            ->assertSee('value="800001"', false)
+            ->assertSee('value="Clock Tower"', false);
+    }
+
     public function test_customer_order_history_shows_only_own_orders_and_checkout_sets_customer_id(): void
     {
         $customer = Customer::factory()->create(['mobile' => '9876543210']);
@@ -124,6 +180,39 @@ class CustomerAccountTest extends TestCase
 
         $this->assertDatabaseHas('orders', ['customer_id' => $customer->id]);
         $this->withSession(['customer_id' => $customer->id])->get(route('checkout.show'))->assertRedirect(route('cart.show'));
+    }
+
+    public function test_customer_can_cancel_eligible_order_with_reason(): void
+    {
+        $customer = Customer::factory()->create();
+        $order = Order::factory()->create(['customer_id' => $customer->id, 'order_status' => 'placed']);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.orders.cancel', $order->order_number), ['reason' => 'Ordered by mistake'])
+            ->assertRedirect(route('customer.orders.show', $order->order_number));
+
+        $this->assertSame('cancelled_by_customer', $order->fresh()->order_status);
+        $this->assertSame('Ordered by mistake', $order->fresh()->admin_notes);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.orders.show', $order->order_number))
+            ->assertOk()
+            ->assertSee('Cancellation reason')
+            ->assertSee('Ordered by mistake');
+    }
+
+    public function test_customer_cannot_cancel_ineligible_order(): void
+    {
+        $customer = Customer::factory()->create();
+        $order = Order::factory()->create(['customer_id' => $customer->id, 'order_status' => 'picking']);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->from(route('customer.orders.show', $order->order_number))
+            ->patch(route('customer.orders.cancel', $order->order_number), ['reason' => 'Too late'])
+            ->assertRedirect(route('customer.orders.show', $order->order_number))
+            ->assertSessionHasErrors('order');
+
+        $this->assertSame('picking', $order->fresh()->order_status);
     }
 
     public function test_session_cart_attaches_to_customer_after_login_and_guest_checkout_still_works(): void

@@ -49,7 +49,13 @@ class BusinessSettingService
             'default_city' => $this->get('checkout.default_city'),
             'store_contact_mobile' => $this->get('checkout.store_contact_mobile'),
             'store_whatsapp_number' => $this->get('checkout.store_whatsapp_number'),
+            'customer_invoice_enabled' => (bool) $this->get('order.customer_invoice_enabled', true),
         ];
+    }
+
+    public function customerInvoiceEnabled(): bool
+    {
+        return (bool) $this->get('order.customer_invoice_enabled', true);
     }
 
     public function paymentSettings(): array
@@ -112,6 +118,12 @@ class BusinessSettingService
     public function updateCheckoutSettings(array $data): void
     {
         foreach ($data as $key => $value) {
+            if ($key === 'customer_invoice_enabled') {
+                $this->set('order.customer_invoice_enabled', $value);
+
+                continue;
+            }
+
             $this->set('checkout.'.$key, $value);
         }
     }

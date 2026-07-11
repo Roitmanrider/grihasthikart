@@ -31,6 +31,7 @@ class BusinessSettingSeeder extends Seeder
             ['payment', 'razorpay_key_id', null, 'string', 'Razorpay Key ID', 8],
             ['payment', 'razorpay_key_secret', null, 'string', 'Razorpay Key Secret', 9],
             ['payment', 'currency', 'INR', 'string', 'Currency', 10],
+            ['order', 'customer_invoice_enabled', '1', 'boolean', 'Customer Invoice Printing Enabled', 1],
             ['tax', 'prices_include_gst', '1', 'boolean', 'Prices Include GST', 1],
             ['tax', 'default_gst_rate', '0', 'decimal', 'Default GST Rate', 2],
             ['tax', 'company_gstin', null, 'string', 'Company GSTIN', 3],

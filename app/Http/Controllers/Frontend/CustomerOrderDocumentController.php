@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Domains\Customer\Services\CustomerAuthService;
 use App\Domains\Order\Services\OrderDocumentService;
+use App\Domains\Setting\Services\BusinessSettingService;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use InvalidArgumentException;
@@ -12,7 +13,8 @@ class CustomerOrderDocumentController extends Controller
 {
     public function __construct(
         private readonly CustomerAuthService $authService,
-        private readonly OrderDocumentService $documents
+        private readonly OrderDocumentService $documents,
+        private readonly BusinessSettingService $settingService
     ) {}
 
     public function invoice(string $order)
@@ -21,6 +23,10 @@ class CustomerOrderDocumentController extends Controller
             $customer = $this->authService->requireCustomer(request()->session());
         } catch (InvalidArgumentException) {
             abort(redirect()->route('customer.login'));
+        }
+
+        if (! $this->settingService->customerInvoiceEnabled()) {
+            return response('Customer invoice printing is currently disabled.', 403);
         }
 
         $order = Order::query()

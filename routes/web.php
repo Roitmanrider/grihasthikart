@@ -77,6 +77,7 @@ Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name
 Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
 Route::get('/account/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders.index');
 Route::get('/account/orders/{order}/invoice', [CustomerOrderDocumentController::class, 'invoice'])->name('customer.orders.invoice');
+Route::patch('/account/orders/{orderNumber}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');
 Route::get('/account/orders/{orderNumber}', [CustomerDashboardController::class, 'orderShow'])->name('customer.orders.show');
 Route::get('/account/cashback', [CustomerCashbackController::class, 'index'])->name('customer.cashback.index');
 Route::post('/account/cashback/redeem', [CustomerCashbackController::class, 'redeem'])->name('customer.cashback.redeem');

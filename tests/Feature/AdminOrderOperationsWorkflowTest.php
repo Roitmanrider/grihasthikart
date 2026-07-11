@@ -106,6 +106,27 @@ class AdminOrderOperationsWorkflowTest extends TestCase
         $this->assertSame('delivered', $order->fresh()->order_status);
     }
 
+    public function test_admin_cancel_stores_reason_and_displays_it(): void
+    {
+        $order = Order::factory()->create(['order_status' => 'confirmed']);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.orders.update-status', $order), [
+                'order_status' => 'cancelled_by_admin',
+                'admin_notes' => 'Stock unavailable',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertSame('cancelled_by_admin', $order->fresh()->order_status);
+        $this->assertSame('Stock unavailable', $order->fresh()->admin_notes);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('Cancellation Reason')
+            ->assertSee('Stock unavailable');
+    }
+
     public function test_admin_order_page_shows_document_buttons_and_valid_actions(): void
     {
         $order = $this->orderWithItem(['order_status' => 'confirmed']);

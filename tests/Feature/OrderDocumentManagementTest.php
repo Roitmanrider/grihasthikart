@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessSetting;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class OrderDocumentManagementTest extends TestCase
@@ -88,6 +90,38 @@ class OrderDocumentManagementTest extends TestCase
             ->assertSee($order->order_number)
             ->assertSee($order->customer_name)
             ->assertSee('Rs. 220.00');
+    }
+
+    public function test_customer_invoice_visibility_follows_order_setting(): void
+    {
+        $customer = Customer::factory()->create();
+        $order = $this->orderWithItem(['customer_id' => $customer->id]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.orders.show', $order->order_number))
+            ->assertOk()
+            ->assertSee('View/Print Invoice');
+
+        BusinessSetting::query()->updateOrCreate(
+            ['group' => 'order', 'key' => 'customer_invoice_enabled'],
+            ['value' => '0', 'value_type' => 'boolean', 'label' => 'Customer Invoice Printing Enabled']
+        );
+        Cache::forget('business_setting_order.customer_invoice_enabled');
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.orders.show', $order->order_number))
+            ->assertOk()
+            ->assertDontSee('View/Print Invoice');
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.orders.invoice', $order->order_number))
+            ->assertForbidden()
+            ->assertSee('Customer invoice printing is currently disabled.');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.orders.invoice', $order))
+            ->assertOk()
+            ->assertSee('Tax Invoice');
     }
 
     public function test_customer_cannot_view_another_customer_invoice(): void
