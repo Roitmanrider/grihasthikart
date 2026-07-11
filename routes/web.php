@@ -65,6 +65,9 @@ Route::delete('/wishlist/items/{wishlistItem}', [WishlistController::class, 'des
 
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout', [CheckoutController::class, 'place'])->name('checkout.place');
+Route::post('/checkout/razorpay/order', [CheckoutController::class, 'createRazorpayOrder'])->name('checkout.razorpay.order');
+Route::post('/checkout/razorpay/verify', [CheckoutController::class, 'verifyRazorpayPayment'])->name('checkout.razorpay.verify');
+Route::post('/checkout/razorpay/failure', [CheckoutController::class, 'failRazorpayPayment'])->name('checkout.razorpay.failure');
 Route::get('/orders/success/{orderNumber}', [CheckoutController::class, 'success'])->name('checkout.success');
 Route::post('/orders/{orderNumber}/payment-proof', [PaymentController::class, 'uploadProof'])->name('orders.payment-proof.store');
 

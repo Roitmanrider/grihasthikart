@@ -239,7 +239,6 @@ class CustomerAccountTest extends TestCase
         $this->actingAs($user)->get(route('admin.customers.index'))->assertForbidden();
 
         $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
-        $this->assertNotContains('razorpay', $uris);
         $this->assertNotContains('cashback', $uris);
         $this->assertNotContains('coupons', $uris);
     }

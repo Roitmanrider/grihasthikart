@@ -78,6 +78,8 @@ class PaymentService
                 'gateway_order_id',
                 'gateway_payment_id',
                 'gateway_signature',
+            ])->merge([
+                'metadata' => collect($gatewayData)->only(['key_id', 'amount', 'currency', 'raw_response'])->all() ?: null,
             ])->all());
 
             $this->syncOrderPaymentStatus($order, $payment->payment_status, $method);
@@ -170,6 +172,58 @@ class PaymentService
 
             $this->syncOrderPaymentStatus($lockedPayment->order, 'failed', $lockedPayment->payment_method);
             $this->log($lockedPayment, 'failed', 'failed', (float) $lockedPayment->amount, note: $reason);
+
+            return $lockedPayment->fresh(['order', 'transactions']);
+        });
+    }
+
+    public function verifyRazorpayPayment(Payment $payment, array $payload): Payment
+    {
+        if ($payment->payment_method !== 'razorpay') {
+            throw new InvalidArgumentException('This payment is not a Razorpay payment.');
+        }
+
+        if ($payment->gateway_order_id !== ($payload['razorpay_order_id'] ?? null)) {
+            throw new InvalidArgumentException('Payment order reference does not match.');
+        }
+
+        if (! $this->razorpayGateway->verifyPayment($payload)) {
+            $this->fail($payment, 'Razorpay signature verification failed.');
+
+            throw new InvalidArgumentException('Payment verification failed.');
+        }
+
+        return DB::transaction(function () use ($payment, $payload) {
+            /** @var Payment $lockedPayment */
+            $lockedPayment = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedPayment->payment_status === 'paid') {
+                return $lockedPayment->fresh(['order', 'transactions']);
+            }
+
+            if (in_array($lockedPayment->payment_status, ['refunded', 'cancelled'], true)) {
+                throw new InvalidArgumentException('This payment can no longer be verified.');
+            }
+
+            $lockedPayment->update([
+                'payment_status' => 'paid',
+                'gateway_payment_id' => $payload['razorpay_payment_id'],
+                'gateway_signature' => $payload['razorpay_signature'],
+                'verified_at' => now(),
+                'failure_reason' => null,
+                'metadata' => array_merge($lockedPayment->metadata ?? [], [
+                    'razorpay_verify_response' => [
+                        'razorpay_order_id' => $payload['razorpay_order_id'],
+                        'razorpay_payment_id' => $payload['razorpay_payment_id'],
+                    ],
+                ]),
+            ]);
+
+            $this->syncOrderPaymentStatus($lockedPayment->order, 'paid', 'razorpay');
+            $this->log($lockedPayment, 'verified', 'paid', (float) $lockedPayment->amount, [
+                'razorpay_order_id' => $payload['razorpay_order_id'],
+                'razorpay_payment_id' => $payload['razorpay_payment_id'],
+            ]);
 
             return $lockedPayment->fresh(['order', 'transactions']);
         });

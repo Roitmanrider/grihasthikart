@@ -65,6 +65,93 @@ class OrderService
         });
     }
 
+    public function createRazorpayOrderFromCart(string $sessionId, array $checkoutData): array
+    {
+        if (($checkoutData['payment_method'] ?? null) !== 'razorpay') {
+            throw new InvalidArgumentException('Invalid online payment method.');
+        }
+
+        return DB::transaction(function () use ($sessionId, $checkoutData) {
+            $cart = $this->cartService->cartForSession($sessionId);
+
+            $this->validateCartIsNotEmpty($cart);
+            $this->validateCartItemsStillPurchasable($cart);
+            $this->validateInventoryAvailabilityForEveryCartItem($cart);
+
+            $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
+            $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
+            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount']);
+            $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal']);
+
+            $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals, 'pending');
+            $this->createOrderItems($order, $cart);
+            $payment = $this->paymentService->createForOrder($order, 'razorpay');
+            $this->createStatusHistory($order, null, 'pending', 'Online payment initiated.');
+
+            return [
+                'order' => $order->fresh(['items', 'payment']),
+                'payment' => $payment,
+                'razorpay' => [
+                    'key_id' => $payment->metadata['key_id'] ?? $this->settingService->get('payment.razorpay_key_id'),
+                    'order_id' => $payment->gateway_order_id,
+                    'amount' => (int) round((float) $payment->amount * 100),
+                    'currency' => $payment->currency,
+                ],
+            ];
+        });
+    }
+
+    public function completeRazorpayPayment(Order $order, array $payload): Order
+    {
+        return DB::transaction(function () use ($order, $payload) {
+            /** @var Order $lockedOrder */
+            $lockedOrder = Order::query()
+                ->with(['items', 'payment'])
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $payment = $lockedOrder->payment;
+
+            if (! $payment || $payment->payment_method !== 'razorpay') {
+                throw new InvalidArgumentException('Online payment record was not found.');
+            }
+
+            $this->paymentService->verifyRazorpayPayment($payment, $payload);
+
+            if ($lockedOrder->order_status !== 'placed') {
+                $this->deductInventoryForOrder($lockedOrder);
+
+                if ($lockedOrder->coupon_id && (float) $lockedOrder->coupon_discount_amount > 0) {
+                    $coupon = Coupon::query()->find($lockedOrder->coupon_id);
+                    $this->createCouponUsageIfApplied($lockedOrder, $coupon, (float) $lockedOrder->coupon_discount_amount);
+                }
+
+                $oldStatus = $lockedOrder->order_status;
+                $lockedOrder->update([
+                    'order_status' => 'placed',
+                    'placed_at' => $lockedOrder->placed_at ?? now(),
+                ]);
+                $this->createStatusHistory($lockedOrder, $oldStatus, 'placed', 'Online payment successful.');
+                $this->cartService->clearCart($lockedOrder->session_id);
+            }
+
+            return $lockedOrder->fresh(['items', 'statusHistories', 'payment']);
+        });
+    }
+
+    public function failRazorpayPayment(Order $order, ?string $reason = null): Order
+    {
+        $payment = $order->payment;
+
+        if (! $payment || $payment->payment_method !== 'razorpay') {
+            throw new InvalidArgumentException('Online payment record was not found.');
+        }
+
+        $this->paymentService->fail($payment, $reason ?: 'Customer cancelled Razorpay checkout.');
+
+        return $order->fresh(['payment']);
+    }
+
     public function updateOrderStatus(Order $order, string $newStatus, ?string $note = null): Order
     {
         if (! in_array($newStatus, Order::STATUSES, true)) {
@@ -168,7 +255,7 @@ class OrderService
         ];
     }
 
-    public function createOrder(Cart $cart, string $sessionId, array $checkoutData, array $totals): Order
+    public function createOrder(Cart $cart, string $sessionId, array $checkoutData, array $totals, string $initialStatus = 'placed'): Order
     {
         /** @var Order $order */
         $order = $this->orderRepository->create(array_merge($checkoutData, $totals, [
@@ -180,8 +267,8 @@ class OrderService
             'coupon_discount_amount' => $totals['discount_total'],
             'payment_method' => $checkoutData['payment_method'] ?? 'cod',
             'payment_status' => 'pending',
-            'order_status' => 'placed',
-            'placed_at' => now(),
+            'order_status' => $initialStatus,
+            'placed_at' => $initialStatus === 'placed' ? now() : null,
         ]));
 
         return $order;

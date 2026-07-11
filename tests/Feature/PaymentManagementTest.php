@@ -14,6 +14,7 @@ use App\Models\User;
 use Database\Seeders\BusinessSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -68,6 +69,22 @@ class PaymentManagementTest extends TestCase
         app(BusinessSettingService::class)->set('payment.qr_enabled', true);
 
         $this->get(route('checkout.show'))->assertOk()->assertSee('Pay by QR');
+    }
+
+    public function test_razorpay_option_hidden_when_disabled_and_shown_when_enabled(): void
+    {
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertDontSee('Online Payment');
+
+        app(BusinessSettingService::class)->set('payment.razorpay_enabled', true);
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('Online Payment');
     }
 
     public function test_qr_proof_upload_is_session_protected_and_sets_awaiting_verification(): void
@@ -168,6 +185,116 @@ class PaymentManagementTest extends TestCase
         $this->assertSame(1, CartItem::query()->count());
     }
 
+    public function test_cannot_create_razorpay_order_with_empty_cart(): void
+    {
+        $this->enableRazorpay();
+
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertUnprocessable()
+            ->assertJson(['message' => 'Your cart is empty.']);
+    }
+
+    public function test_razorpay_order_uses_server_amount(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_server_amount'], 200),
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 2]);
+
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+            'amount' => 1,
+        ]))->assertOk()
+            ->assertJsonPath('amount', 13600)
+            ->assertJsonPath('order_id', 'order_server_amount');
+
+        Http::assertSent(fn ($request) => $request['amount'] === 13600);
+    }
+
+    public function test_successful_razorpay_signature_marks_payment_paid_and_clears_cart(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_success'], 200),
+        ]);
+        [, $variant, $inventory] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertOk();
+
+        $order = Order::query()->firstOrFail();
+        $signature = hash_hmac('sha256', 'order_success|pay_success', 'secret-value');
+
+        $this->postJson(route('checkout.razorpay.verify'), [
+            'order_number' => $order->order_number,
+            'razorpay_order_id' => 'order_success',
+            'razorpay_payment_id' => 'pay_success',
+            'razorpay_signature' => $signature,
+        ])->assertOk()
+            ->assertJsonStructure(['redirect_url']);
+
+        $payment = Payment::query()->firstOrFail();
+        $this->assertSame('paid', $payment->fresh()->payment_status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('placed', $order->fresh()->order_status);
+        $this->assertSame('9.000', $inventory->fresh()->quantity_on_hand);
+        $this->assertSame(0, CartItem::query()->count());
+    }
+
+    public function test_failed_razorpay_signature_does_not_mark_payment_paid(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_failed_signature'], 200),
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertOk();
+
+        $order = Order::query()->firstOrFail();
+
+        $this->postJson(route('checkout.razorpay.verify'), [
+            'order_number' => $order->order_number,
+            'razorpay_order_id' => 'order_failed_signature',
+            'razorpay_payment_id' => 'pay_failed',
+            'razorpay_signature' => 'bad-signature',
+        ])->assertUnprocessable();
+
+        $this->assertNotSame('paid', Payment::query()->firstOrFail()->fresh()->payment_status);
+        $this->assertSame(1, CartItem::query()->count());
+    }
+
+    public function test_failed_or_cancelled_razorpay_payment_keeps_cart_and_order_safe(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_cancelled'], 200),
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertOk();
+
+        $order = Order::query()->firstOrFail();
+
+        $this->postJson(route('checkout.razorpay.failure'), [
+            'order_number' => $order->order_number,
+            'razorpay_order_id' => 'order_cancelled',
+            'reason' => 'Customer cancelled',
+        ])->assertOk();
+
+        $this->assertSame('failed', Payment::query()->firstOrFail()->fresh()->payment_status);
+        $this->assertSame('pending', $order->fresh()->order_status);
+        $this->assertSame(1, CartItem::query()->count());
+    }
+
     public function test_payment_admin_routes_require_authorization(): void
     {
         $user = User::factory()->create(['email' => 'customer@example.com']);
@@ -222,5 +349,14 @@ class PaymentManagementTest extends TestCase
             'delivery_slot' => '9 AM - 11 AM',
             'payment_method' => 'cod',
         ];
+    }
+
+    private function enableRazorpay(): void
+    {
+        $service = app(BusinessSettingService::class);
+        $service->set('payment.razorpay_enabled', true);
+        $service->set('payment.razorpay_key_id', 'rzp_test_123');
+        $service->set('payment.razorpay_key_secret', 'secret-value');
+        $service->set('payment.currency', 'INR');
     }
 }

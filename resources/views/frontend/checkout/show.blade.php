@@ -19,7 +19,11 @@
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white fw-semibold">Delivery Details</div>
                         <div class="card-body">
-                            <form method="POST" action="{{ route('checkout.place') }}" class="row g-3">
+                            <form method="POST" action="{{ route('checkout.place') }}" class="row g-3" id="checkoutForm"
+                                data-razorpay-order-url="{{ route('checkout.razorpay.order') }}"
+                                data-razorpay-verify-url="{{ route('checkout.razorpay.verify') }}"
+                                data-razorpay-failure-url="{{ route('checkout.razorpay.failure') }}"
+                                data-csrf-token="{{ csrf_token() }}">
                                 @csrf
                                 <div class="col-md-6">
                                     <label class="form-label">Name</label>
@@ -214,3 +218,126 @@
         </div>
     </section>
 @endsection
+
+@if (in_array('razorpay', $enabledPaymentMethods, true))
+@push('scripts')
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('checkoutForm');
+            if (!form || typeof Razorpay === 'undefined') {
+                return;
+            }
+
+            form.addEventListener('submit', async function (event) {
+                const method = form.querySelector('input[name="payment_method"]:checked')?.value;
+
+                if (method !== 'razorpay') {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalText = submitButton ? submitButton.textContent : '';
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Opening payment...';
+                }
+
+                try {
+                    const orderResponse = await fetch(form.dataset.razorpayOrderUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': form.dataset.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: new FormData(form),
+                    });
+                    const orderData = await orderResponse.json();
+
+                    if (!orderResponse.ok) {
+                        throw new Error(orderData.message || 'Unable to initiate online payment.');
+                    }
+
+                    const razorpay = new Razorpay({
+                        key: orderData.key,
+                        amount: orderData.amount,
+                        currency: orderData.currency,
+                        name: orderData.name,
+                        description: orderData.description,
+                        order_id: orderData.order_id,
+                        prefill: orderData.prefill,
+                        handler: async function (response) {
+                            const verifyResponse = await fetch(form.dataset.razorpayVerifyUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': form.dataset.csrfToken,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    order_number: orderData.order_number,
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                }),
+                            });
+                            const verifyData = await verifyResponse.json();
+
+                            if (!verifyResponse.ok) {
+                                throw new Error(verifyData.message || 'Payment verification failed.');
+                            }
+
+                            window.location.href = verifyData.redirect_url;
+                        },
+                        modal: {
+                            ondismiss: function () {
+                                fetch(form.dataset.razorpayFailureUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': form.dataset.csrfToken,
+                                        'Accept': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        order_number: orderData.order_number,
+                                        razorpay_order_id: orderData.order_id,
+                                        reason: 'Customer closed Razorpay checkout.',
+                                    }),
+                                });
+                            },
+                        },
+                    });
+
+                    razorpay.on('payment.failed', function (response) {
+                        fetch(form.dataset.razorpayFailureUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': form.dataset.csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                order_number: orderData.order_number,
+                                razorpay_order_id: orderData.order_id,
+                                reason: response.error?.description || 'Razorpay payment failed.',
+                            }),
+                        });
+                    });
+
+                    razorpay.open();
+                } catch (error) {
+                    alert(error.message || 'Unable to complete online payment.');
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = originalText;
+                    }
+                }
+            });
+        });
+    </script>
+@endpush
+@endif
