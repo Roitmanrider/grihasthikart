@@ -13,6 +13,7 @@ class MediaService
         $extension = $file->extension();
         $safeDirectory = $this->normalizeDirectory($directory);
         $filename = Str::uuid().($extension ? '.'.$extension : '');
+        $this->ensureUploadDirectories($safeDirectory, $disk);
 
         return $file->storeAs($safeDirectory, $filename, $disk);
     }
@@ -61,5 +62,25 @@ class MediaService
         return Str::startsWith($directory, 'uploads/')
             ? $directory
             : 'uploads/'.$directory;
+    }
+
+    private function ensureUploadDirectories(string $targetDirectory, string $disk): void
+    {
+        if ($disk !== 'uploads') {
+            Storage::disk($disk)->makeDirectory($targetDirectory);
+
+            return;
+        }
+
+        foreach ([
+            'uploads/categories',
+            'uploads/brands',
+            'uploads/products',
+            'uploads/site',
+            'uploads/temp',
+            $targetDirectory,
+        ] as $directory) {
+            Storage::disk($disk)->makeDirectory($directory);
+        }
     }
 }

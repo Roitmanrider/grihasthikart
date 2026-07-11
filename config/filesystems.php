@@ -1,5 +1,10 @@
 <?php
 
+$uploadsPublicPath = env('UPLOADS_PUBLIC_PATH');
+$uploadsPublicRoot = $uploadsPublicPath
+    ? dirname(preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $uploadsPublicPath) ? $uploadsPublicPath : base_path($uploadsPublicPath))
+    : public_path();
+
 return [
 
     /*
@@ -49,7 +54,7 @@ return [
 
         'uploads' => [
             'driver' => 'local',
-            'root' => public_path(),
+            'root' => $uploadsPublicRoot,
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/'),
             'visibility' => 'public',
             'throw' => false,
