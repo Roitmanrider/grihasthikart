@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminOrderController;
+use App\Http\Controllers\Admin\AdminOrderDocumentController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
@@ -247,6 +248,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth', 'can:manage-orders'])->group(function () {
         Route::get('orders', [AdminOrderController::class, 'index'])
             ->name('orders.index');
+        Route::get('orders/{order}/invoice', [AdminOrderDocumentController::class, 'invoice'])
+            ->name('orders.invoice');
+        Route::get('orders/{order}/picking-slip', [AdminOrderDocumentController::class, 'pickingSlip'])
+            ->name('orders.picking-slip');
+        Route::get('orders/{order}/packing-slip', [AdminOrderDocumentController::class, 'packingSlip'])
+            ->name('orders.packing-slip');
         Route::get('orders/{order}', [AdminOrderController::class, 'show'])
             ->name('orders.show');
         Route::patch('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])

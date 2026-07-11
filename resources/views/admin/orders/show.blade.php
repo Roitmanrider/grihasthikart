@@ -9,7 +9,12 @@
         <h1 class="h3 mb-1">{{ $order->order_number }}</h1>
         <div class="text-muted">{{ $order->customer_name }} / {{ $order->customer_mobile }}</div>
     </div>
-    <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">Back</a>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('admin.orders.invoice', $order) }}" class="btn btn-outline-success" target="_blank">Invoice</a>
+        <a href="{{ route('admin.orders.picking-slip', $order) }}" class="btn btn-outline-success" target="_blank">Picking Slip</a>
+        <a href="{{ route('admin.orders.packing-slip', $order) }}" class="btn btn-outline-success" target="_blank">Packing Slip</a>
+        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">Back</a>
+    </div>
 </div>
 
 @if (session('success'))

@@ -78,7 +78,12 @@
                         <td>Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
                         <td>{{ $order->placed_at?->format('d M Y, h:i A') }}</td>
                         <td class="text-end">
-                            <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-outline-success">View</a>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-outline-success">View</a>
+                                <a href="{{ route('admin.orders.invoice', $order) }}" class="btn btn-outline-secondary" target="_blank">Invoice</a>
+                                <a href="{{ route('admin.orders.picking-slip', $order) }}" class="btn btn-outline-secondary" target="_blank">Pick</a>
+                                <a href="{{ route('admin.orders.packing-slip', $order) }}" class="btn btn-outline-secondary" target="_blank">Pack</a>
+                            </div>
                         </td>
                     </tr>
                 @empty
