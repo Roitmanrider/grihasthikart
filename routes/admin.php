@@ -15,6 +15,8 @@ use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
 use App\Http\Controllers\Admin\AdminPurchaseController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
+use App\Http\Controllers\Admin\AdminStockAdjustmentController;
+use App\Http\Controllers\Admin\AdminStockVerificationController;
 use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
@@ -235,6 +237,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
     */
 
     Route::middleware(['auth', 'can:manage-inventory'])->group(function () {
+        Route::get('stock-adjustments', [AdminStockAdjustmentController::class, 'index'])
+            ->name('stock-adjustments.index');
+        Route::get('stock-adjustments/create', [AdminStockAdjustmentController::class, 'create'])
+            ->name('stock-adjustments.create');
+        Route::post('stock-adjustments', [AdminStockAdjustmentController::class, 'store'])
+            ->name('stock-adjustments.store');
+        Route::get('stock-adjustments/{stockAdjustment}', [AdminStockAdjustmentController::class, 'show'])
+            ->name('stock-adjustments.show');
+
+        Route::get('stock-verifications', [AdminStockVerificationController::class, 'index'])
+            ->name('stock-verifications.index');
+        Route::get('stock-verifications/create', [AdminStockVerificationController::class, 'create'])
+            ->name('stock-verifications.create');
+        Route::post('stock-verifications', [AdminStockVerificationController::class, 'store'])
+            ->name('stock-verifications.store');
+
         Route::get('purchases', [AdminPurchaseController::class, 'index'])
             ->name('purchases.index');
         Route::get('purchases/create', [AdminPurchaseController::class, 'create'])

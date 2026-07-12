@@ -50,6 +50,16 @@
             Inventory
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.stock-adjustments.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.stock-adjustments.index') }}">
+            Stock Adjustments
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.stock-verifications.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.stock-verifications.index') }}">
+            Stock Verification
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.purchases.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.purchases.index') }}">
             Purchases
