@@ -285,6 +285,71 @@ class PurchaseEntryManagementTest extends TestCase
         $this->assertSame('50.00', PurchaseEntry::query()->firstOrFail()->freight_allocation);
     }
 
+    public function test_purchase_csv_preview_rejects_duplicate_skus_clearly(): void
+    {
+        [$variant] = $this->variantWithInventory();
+        $csv = implode("\n", [
+            'product_name,variant_name,sku,current_stock,quantity,purchase_price,discount,gst_rate,cgst_rate,sgst_rate,batch_number,expiry_date',
+            'Wheat,1kg,'.$variant->sku.',5,1,100,0,5,,,B-1,'.now()->addYear()->toDateString(),
+            'Wheat,1kg,'.$variant->sku.',5,2,100,0,5,,,B-2,'.now()->addYear()->toDateString(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.purchases.preview'), [
+                'purchase_date' => now()->toDateString(),
+                'csv_file' => UploadedFile::fake()->createWithContent('purchase.csv', $csv),
+            ])
+            ->assertOk()
+            ->assertSee('Duplicate SKU '.$variant->sku.' is not allowed');
+    }
+
+    public function test_purchase_csv_preview_rejects_invalid_expiry_date(): void
+    {
+        [$variant] = $this->variantWithInventory();
+        $csv = implode("\n", [
+            'product_name,variant_name,sku,current_stock,quantity,purchase_price,discount,gst_rate,cgst_rate,sgst_rate,batch_number,expiry_date',
+            'Wheat,1kg,'.$variant->sku.',5,1,100,0,5,,,B-1,31-07-2026',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.purchases.preview'), [
+                'purchase_date' => now()->toDateString(),
+                'csv_file' => UploadedFile::fake()->createWithContent('purchase.csv', $csv),
+            ])
+            ->assertOk()
+            ->assertSee('Expiry date must use YYYY-MM-DD format.');
+    }
+
+    public function test_purchase_csv_import_rejects_duplicate_variants_before_creating_purchase(): void
+    {
+        [$variant, $inventory] = $this->variantWithInventory(['quantity_on_hand' => 5]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.purchases.import'), [
+                'purchase_date' => now()->toDateString(),
+                'items' => [
+                    [
+                        'product_variant_id' => $variant->id,
+                        'quantity' => 1,
+                        'purchase_price' => 100,
+                        'discount_amount' => 0,
+                        'gst_rate' => 5,
+                    ],
+                    [
+                        'product_variant_id' => $variant->id,
+                        'quantity' => 1,
+                        'purchase_price' => 100,
+                        'discount_amount' => 0,
+                        'gst_rate' => 5,
+                    ],
+                ],
+            ])
+            ->assertSessionHasErrors('items');
+
+        $this->assertSame(0, PurchaseEntry::query()->count());
+        $this->assertSame('5.000', $inventory->fresh()->quantity_on_hand);
+    }
+
     public function test_purchase_print_page_loads(): void
     {
         [$variant] = $this->variantWithInventory();

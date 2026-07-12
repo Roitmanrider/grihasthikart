@@ -111,6 +111,14 @@ class AdminPurchaseController extends Controller
             'items.*.expiry_date' => ['nullable', 'date'],
         ]);
 
+        $variantIds = collect($data['items'])->pluck('product_variant_id');
+
+        if ($variantIds->count() !== $variantIds->unique()->count()) {
+            return back()
+                ->withInput()
+                ->withErrors(['items' => 'Duplicate variants are not allowed in one purchase import.']);
+        }
+
         try {
             $purchase = $this->purchaseService->create($data);
         } catch (InvalidArgumentException $exception) {

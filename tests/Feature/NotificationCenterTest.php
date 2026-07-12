@@ -202,7 +202,7 @@ class NotificationCenterTest extends TestCase
     public function test_guest_blocked_from_notification_centers(): void
     {
         $this->get(route('admin.notifications.index'))
-            ->assertRedirect(route('login'));
+            ->assertRedirect(route('admin.login'));
 
         $this->get(route('customer.notifications.index'))
             ->assertRedirect(route('customer.login'));

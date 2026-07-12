@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Models\PurchaseEntry;
 use App\Models\StockLocation;
 use App\Models\Supplier;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -146,6 +147,7 @@ class PurchaseEntryService
 
         $items = [];
         $errors = [];
+        $seenSkus = [];
 
         foreach ($rows as $line => $row) {
             if (($row['quantity'] ?? '') === '') {
@@ -153,6 +155,14 @@ class PurchaseEntryService
             }
 
             $sku = trim((string) ($row['sku'] ?? ''));
+
+            if (isset($seenSkus[$sku])) {
+                $errors[] = 'Line '.($line + 2).': Duplicate SKU '.$sku.' is not allowed in one purchase import.';
+
+                continue;
+            }
+
+            $seenSkus[$sku] = true;
             $variant = $variants->get($sku);
 
             if (! $variant) {
@@ -214,6 +224,7 @@ class PurchaseEntryService
         }
 
         [$gstRate, $cgstRate, $sgstRate] = $this->splitRates($item);
+        $expiryDate = $this->validatedDate($item['expiry_date'] ?? null);
         $taxable = round($base - $discount, 2);
         $cgstAmount = round($taxable * $cgstRate / 100, 2);
         $sgstAmount = round($taxable * $sgstRate / 100, 2);
@@ -235,8 +246,27 @@ class PurchaseEntryService
             'gst_amount' => $gstAmount,
             'line_total' => round($taxable + $gstAmount, 2),
             'batch_number' => $item['batch_number'] ?? null,
-            'expiry_date' => $item['expiry_date'] ?? null,
+            'expiry_date' => $expiryDate,
         ];
+    }
+
+    private function validatedDate(?string $date): ?string
+    {
+        if ($date === null || trim($date) === '') {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::createFromFormat('Y-m-d', $date);
+
+            if ($parsed->format('Y-m-d') !== $date) {
+                throw new InvalidArgumentException('Expiry date must use YYYY-MM-DD format.');
+            }
+
+            return $parsed->toDateString();
+        } catch (\Throwable) {
+            throw new InvalidArgumentException('Expiry date must use YYYY-MM-DD format.');
+        }
     }
 
     private function splitRates(array $item): array

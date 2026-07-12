@@ -36,8 +36,8 @@ class StockAdjustmentManagementTest extends TestCase
 
     public function test_guest_blocked(): void
     {
-        $this->get(route('admin.stock-adjustments.index'))->assertRedirect(route('login'));
-        $this->get(route('admin.stock-adjustments.create'))->assertRedirect(route('login'));
+        $this->get(route('admin.stock-adjustments.index'))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.stock-adjustments.create'))->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_page_loads(): void

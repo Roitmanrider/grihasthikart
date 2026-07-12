@@ -202,7 +202,7 @@ class ReturnRequestManagementTest extends TestCase
         $this->flushSession();
 
         $this->get(route('customer.returns.index'))->assertRedirect(route('customer.login'));
-        $this->get(route('admin.returns.index'))->assertRedirect(route('login'));
+        $this->get(route('admin.returns.index'))->assertRedirect(route('admin.login'));
         $this->get(route('customer.returns.show', $return))->assertRedirect(route('customer.login'));
     }
 

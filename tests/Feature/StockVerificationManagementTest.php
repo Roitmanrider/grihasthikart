@@ -36,8 +36,8 @@ class StockVerificationManagementTest extends TestCase
 
     public function test_guest_blocked(): void
     {
-        $this->get(route('admin.stock-verifications.index'))->assertRedirect(route('login'));
-        $this->get(route('admin.stock-verifications.create'))->assertRedirect(route('login'));
+        $this->get(route('admin.stock-verifications.index'))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.stock-verifications.create'))->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_page_loads(): void

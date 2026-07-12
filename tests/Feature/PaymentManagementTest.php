@@ -87,6 +87,21 @@ class PaymentManagementTest extends TestCase
             ->assertSee('Online Payment');
     }
 
+    public function test_disabled_razorpay_order_route_fails_without_creating_order(): void
+    {
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertUnprocessable()
+            ->assertJson(['message' => 'Selected payment method is currently unavailable.']);
+
+        $this->assertSame(0, Order::query()->count());
+        $this->assertSame(0, Payment::query()->count());
+        $this->assertSame(1, CartItem::query()->count());
+    }
+
     public function test_qr_proof_upload_is_session_protected_and_sets_awaiting_verification(): void
     {
         Storage::fake('uploads');

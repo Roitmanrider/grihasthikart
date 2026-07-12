@@ -231,10 +231,14 @@ document.addEventListener('DOMContentLoaded', function () {
             cgst.value = half.toFixed(2);
             sgst.value = half.toFixed(2);
         } else if (changedField === 'cgst_rate') {
-            sgst.value = number(row, 'cgst_rate').toFixed(2);
+            if (number(row, 'sgst_rate') === 0) {
+                sgst.value = number(row, 'cgst_rate').toFixed(2);
+            }
             gst.value = (number(row, 'cgst_rate') + number(row, 'sgst_rate')).toFixed(2);
         } else if (changedField === 'sgst_rate') {
-            cgst.value = number(row, 'sgst_rate').toFixed(2);
+            if (number(row, 'cgst_rate') === 0) {
+                cgst.value = number(row, 'sgst_rate').toFixed(2);
+            }
             gst.value = (number(row, 'cgst_rate') + number(row, 'sgst_rate')).toFixed(2);
         }
 
