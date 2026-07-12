@@ -130,13 +130,35 @@ class ReportDashboardService
 
     private function taxSummary(float $outputGst, float $inputGst): array
     {
+        $inputCgst = $this->purchaseInputSplit('cgst_total', $inputGst);
+        $inputSgst = $this->purchaseInputSplit('sgst_total', $inputGst);
+        $outputCgst = round($outputGst / 2, 2);
+        $outputSgst = round($outputGst / 2, 2);
+
         return [
             'output_gst' => round($outputGst, 2),
             'input_gst' => round($inputGst, 2),
+            'output_cgst' => $outputCgst,
+            'output_sgst' => $outputSgst,
+            'input_cgst' => $inputCgst,
+            'input_sgst' => $inputSgst,
+            'net_cgst_payable' => round($outputCgst - $inputCgst, 2),
+            'net_sgst_payable' => round($outputSgst - $inputSgst, 2),
             'net_gst_payable' => round($outputGst - $inputGst, 2),
             'has_exact_output' => Schema::hasTable('orders') && Schema::hasColumn('orders', 'tax_total'),
             'has_exact_input' => Schema::hasTable('purchase_entries') && Schema::hasColumn('purchase_entries', 'gst_total'),
         ];
+    }
+
+    private function purchaseInputSplit(string $column, float $inputGst): float
+    {
+        if (! Schema::hasTable('purchase_entries') || ! Schema::hasColumn('purchase_entries', $column)) {
+            return round($inputGst / 2, 2);
+        }
+
+        $amount = round((float) PurchaseEntry::query()->sum($column), 2);
+
+        return $amount > 0 ? $amount : round($inputGst / 2, 2);
     }
 
     private function paymentMethodBreakdown(): array

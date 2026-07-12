@@ -19,7 +19,10 @@ class PurchaseEntry extends Model
         'subtotal',
         'gst_total',
         'discount_total',
+        'cgst_total',
+        'sgst_total',
         'grand_total',
+        'freight_allocation',
         'notes',
         'status',
     ];
@@ -29,7 +32,10 @@ class PurchaseEntry extends Model
         'subtotal' => 'decimal:2',
         'gst_total' => 'decimal:2',
         'discount_total' => 'decimal:2',
+        'cgst_total' => 'decimal:2',
+        'sgst_total' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'freight_allocation' => 'decimal:2',
     ];
 
     public function items()

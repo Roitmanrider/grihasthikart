@@ -16,6 +16,7 @@
             <div class="text-end">
                 <div><strong>Date:</strong> {{ $purchase->purchase_date?->format('d M Y') }}</div>
                 <div><strong>Bill:</strong> {{ $purchase->bill_number ?: 'N/A' }}</div>
+                <div><strong>Supplier:</strong> {{ $purchase->supplier?->name ?: 'N/A' }}</div>
                 <div><strong>Status:</strong> {{ str($purchase->status)->headline() }}</div>
             </div>
         </div>
@@ -27,6 +28,9 @@
                     <th>SKU</th>
                     <th>Qty</th>
                     <th>Price</th>
+                    <th>Discount</th>
+                    <th>CGST</th>
+                    <th>SGST</th>
                     <th>GST</th>
                     <th>Total</th>
                 </tr>
@@ -38,7 +42,10 @@
                         <td>{{ $item->sku }}</td>
                         <td>{{ number_format((float) $item->quantity, 3) }}</td>
                         <td>Rs. {{ number_format((float) $item->purchase_price, 2) }}</td>
-                        <td>{{ number_format((float) $item->gst_rate, 2) }}%</td>
+                        <td>Rs. {{ number_format((float) $item->discount_amount, 2) }}</td>
+                        <td>{{ number_format((float) $item->cgst_rate, 2) }}% / Rs. {{ number_format((float) $item->cgst_amount, 2) }}</td>
+                        <td>{{ number_format((float) $item->sgst_rate, 2) }}% / Rs. {{ number_format((float) $item->sgst_amount, 2) }}</td>
+                        <td>{{ number_format((float) $item->gst_rate, 2) }}% / Rs. {{ number_format((float) $item->gst_amount, 2) }}</td>
                         <td>Rs. {{ number_format((float) $item->line_total, 2) }}</td>
                     </tr>
                 @endforeach
@@ -48,8 +55,12 @@
         <div class="row justify-content-end">
             <div class="col-md-4">
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong>Rs. {{ number_format((float) $purchase->subtotal, 2) }}</strong></div>
-                <div class="d-flex justify-content-between"><span>GST</span><span>Rs. {{ number_format((float) $purchase->gst_total, 2) }}</span></div>
                 <div class="d-flex justify-content-between"><span>Discount</span><span>Rs. {{ number_format((float) $purchase->discount_total, 2) }}</span></div>
+                <div class="d-flex justify-content-between"><span>CGST</span><span>Rs. {{ number_format((float) $purchase->cgst_total, 2) }}</span></div>
+                <div class="d-flex justify-content-between"><span>SGST</span><span>Rs. {{ number_format((float) $purchase->sgst_total, 2) }}</span></div>
+                <div class="d-flex justify-content-between"><span>GST</span><span>Rs. {{ number_format((float) $purchase->gst_total, 2) }}</span></div>
+                <div class="d-flex justify-content-between"><span>Freight Allocation</span><span>Rs. {{ number_format((float) $purchase->freight_allocation, 2) }}</span></div>
+                <div class="small text-muted">Freight allocation is audit-only and excluded from total.</div>
                 <hr>
                 <div class="d-flex justify-content-between h5"><span>Total</span><strong>Rs. {{ number_format((float) $purchase->grand_total, 2) }}</strong></div>
             </div>

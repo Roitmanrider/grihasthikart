@@ -9,8 +9,10 @@ use App\Models\ProductVariant;
 use App\Models\PurchaseEntry;
 use App\Models\PurchaseEntryItem;
 use App\Models\StockLocation;
+use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class PurchaseEntryManagementTest extends TestCase
@@ -37,8 +39,8 @@ class PurchaseEntryManagementTest extends TestCase
 
     public function test_guest_blocked_from_purchases(): void
     {
-        $this->get(route('admin.purchases.index'))->assertRedirect(route('login'));
-        $this->get(route('admin.purchases.create'))->assertRedirect(route('login'));
+        $this->get(route('admin.purchases.index'))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.purchases.create'))->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_purchase_index_and_create_load(): void
@@ -154,6 +156,135 @@ class PurchaseEntryManagementTest extends TestCase
         $this->assertSame('315.00', $purchase->grand_total);
     }
 
+    public function test_purchase_item_discount_and_cgst_sgst_are_calculated_server_side(): void
+    {
+        [$variant] = $this->variantWithInventory();
+
+        $payload = $this->payload($variant);
+        $payload['freight_allocation'] = 75;
+        $payload['items'][0]['discount_amount'] = 30;
+        $payload['items'][0]['gst_rate'] = 12;
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.purchases.store'), $payload)
+            ->assertRedirect();
+
+        $purchase = PurchaseEntry::query()->firstOrFail();
+        $item = PurchaseEntryItem::query()->firstOrFail();
+
+        $this->assertSame('300.00', $purchase->subtotal);
+        $this->assertSame('30.00', $purchase->discount_total);
+        $this->assertSame('16.20', $purchase->cgst_total);
+        $this->assertSame('16.20', $purchase->sgst_total);
+        $this->assertSame('32.40', $purchase->gst_total);
+        $this->assertSame('302.40', $purchase->grand_total);
+        $this->assertSame('75.00', $purchase->freight_allocation);
+        $this->assertSame('30.00', $item->discount_amount);
+        $this->assertSame('6.00', $item->cgst_rate);
+        $this->assertSame('6.00', $item->sgst_rate);
+        $this->assertSame('16.20', $item->cgst_amount);
+        $this->assertSame('16.20', $item->sgst_amount);
+    }
+
+    public function test_purchase_create_shows_confirmation_modal(): void
+    {
+        $this->variantWithInventory();
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.purchases.create'))
+            ->assertOk()
+            ->assertSee('Confirm Posted Purchase')
+            ->assertSee('Freight allocation is audit-only');
+    }
+
+    public function test_can_submit_more_than_eight_purchase_rows(): void
+    {
+        $items = [];
+
+        for ($index = 0; $index < 9; $index++) {
+            [$variant] = $this->variantWithInventory();
+            $items[] = [
+                'product_variant_id' => $variant->id,
+                'quantity' => 1,
+                'purchase_price' => 10,
+                'discount_amount' => 0,
+                'gst_rate' => 0,
+            ];
+        }
+
+        $payload = $this->payload($items[0]['product_variant_id'] ? ProductVariant::query()->findOrFail($items[0]['product_variant_id']) : $this->variant());
+        $payload['items'] = $items;
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.purchases.store'), $payload)
+            ->assertRedirect();
+
+        $this->assertSame(9, PurchaseEntryItem::query()->count());
+    }
+
+    public function test_purchase_csv_template_downloads_with_gst_split_columns(): void
+    {
+        $this->variantWithInventory();
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.purchases.template'))
+            ->assertOk();
+
+        $csv = $response->streamedContent();
+
+        $this->assertStringContainsString(
+            'product_name,variant_name,sku,current_stock,quantity,purchase_price,discount,gst_rate,cgst_rate,sgst_rate,batch_number,expiry_date',
+            $csv
+        );
+    }
+
+    public function test_purchase_csv_import_ignores_blank_quantity_rows_and_updates_inventory(): void
+    {
+        [$variant, $inventory] = $this->variantWithInventory(['quantity_on_hand' => 5]);
+        $supplier = Supplier::factory()->create();
+        $csv = implode("\n", [
+            'product_name,variant_name,sku,current_stock,quantity,purchase_price,discount,gst_rate,cgst_rate,sgst_rate,batch_number,expiry_date',
+            'Wheat,1kg,'.$variant->sku.',5,2,100,10,12,,,B-CSV,'.now()->addYear()->toDateString(),
+            'Blank,1kg,NO-SKU,0,,,,,,,,',
+        ]);
+
+        $preview = $this->actingAs($this->admin)
+            ->post(route('admin.purchases.preview'), [
+                'supplier_id' => $supplier->id,
+                'purchase_date' => now()->toDateString(),
+                'freight_allocation' => 50,
+                'csv_file' => UploadedFile::fake()->createWithContent('purchase.csv', $csv),
+            ])
+            ->assertOk()
+            ->assertSee($variant->sku)
+            ->assertDontSee('NO-SKU');
+
+        $preview->assertSee('Rs. 212.80');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.purchases.import'), [
+                'supplier_id' => $supplier->id,
+                'purchase_date' => now()->toDateString(),
+                'freight_allocation' => 50,
+                'items' => [
+                    [
+                        'product_variant_id' => $variant->id,
+                        'quantity' => 2,
+                        'purchase_price' => 100,
+                        'discount_amount' => 10,
+                        'gst_rate' => 12,
+                        'batch_number' => 'B-CSV',
+                        'expiry_date' => now()->addYear()->toDateString(),
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('7.000', $inventory->fresh()->quantity_on_hand);
+        $this->assertSame(1, PurchaseEntryItem::query()->count());
+        $this->assertSame('50.00', PurchaseEntry::query()->firstOrFail()->freight_allocation);
+    }
+
     public function test_purchase_print_page_loads(): void
     {
         [$variant] = $this->variantWithInventory();
@@ -171,12 +302,14 @@ class PurchaseEntryManagementTest extends TestCase
         return [
             'purchase_date' => now()->toDateString(),
             'bill_number' => 'BILL-100',
+            'freight_allocation' => 0,
             'notes' => 'Opening supplier bill',
             'items' => [
                 [
                     'product_variant_id' => $variant->id,
                     'quantity' => 3,
                     'purchase_price' => 100,
+                    'discount_amount' => 0,
                     'gst_rate' => 5,
                     'batch_number' => 'B-1',
                     'expiry_date' => now()->addYear()->toDateString(),

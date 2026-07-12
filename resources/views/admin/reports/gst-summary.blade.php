@@ -12,6 +12,13 @@
         'Gross Orders' => 'Rs. '.number_format($summary['gross_order_amount'], 2),
         'Taxable' => 'Rs. '.number_format($summary['taxable_amount'], 2),
         'GST Collected' => 'Rs. '.number_format($summary['total_gst_collected'], 2),
+        'Output CGST' => 'Rs. '.number_format($summary['output_cgst'], 2),
+        'Output SGST' => 'Rs. '.number_format($summary['output_sgst'], 2),
+        'Input CGST' => 'Rs. '.number_format($summary['input_cgst'], 2),
+        'Input SGST' => 'Rs. '.number_format($summary['input_sgst'], 2),
+        'Net CGST Payable' => 'Rs. '.number_format($summary['net_cgst_payable'], 2),
+        'Net SGST Payable' => 'Rs. '.number_format($summary['net_sgst_payable'], 2),
+        'Total Net GST Payable' => 'Rs. '.number_format($summary['total_net_gst_payable'], 2),
         'Coupon Discount' => 'Rs. '.number_format($summary['total_coupon_discount'], 2),
         'Grand Total' => 'Rs. '.number_format($summary['grand_total'], 2),
     ] as $label => $value)

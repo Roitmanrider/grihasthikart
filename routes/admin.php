@@ -258,6 +258,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::resource('suppliers', AdminSupplierController::class);
 
+        Route::get('purchases/template', [AdminPurchaseController::class, 'template'])
+            ->name('purchases.template');
+        Route::post('purchases/preview', [AdminPurchaseController::class, 'preview'])
+            ->name('purchases.preview');
+        Route::post('purchases/import', [AdminPurchaseController::class, 'import'])
+            ->name('purchases.import');
         Route::get('purchases', [AdminPurchaseController::class, 'index'])
             ->name('purchases.index');
         Route::get('purchases/create', [AdminPurchaseController::class, 'create'])

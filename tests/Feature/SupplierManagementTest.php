@@ -29,10 +29,10 @@ class SupplierManagementTest extends TestCase
     {
         $supplier = Supplier::factory()->create();
 
-        $this->get(route('admin.suppliers.index'))->assertRedirect(route('login'));
-        $this->get(route('admin.suppliers.create'))->assertRedirect(route('login'));
-        $this->get(route('admin.suppliers.edit', $supplier))->assertRedirect(route('login'));
-        $this->get(route('admin.suppliers.show', $supplier))->assertRedirect(route('login'));
+        $this->get(route('admin.suppliers.index'))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.suppliers.create'))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.suppliers.edit', $supplier))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.suppliers.show', $supplier))->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_supplier_index_create_edit_and_show_load(): void
@@ -141,14 +141,58 @@ class SupplierManagementTest extends TestCase
     public function test_supplier_detail_shows_recent_purchases(): void
     {
         $supplier = Supplier::factory()->create(['name' => 'Recent Supplier']);
-        $purchase = $this->purchaseFor($supplier, ['purchase_number' => 'PUR-RECENT-001']);
+        $purchase = $this->purchaseFor($supplier, [
+            'purchase_number' => 'PUR-RECENT-001',
+            'freight_allocation' => 25,
+        ]);
 
         $this->actingAs($this->admin)
             ->get(route('admin.suppliers.show', $supplier))
             ->assertOk()
             ->assertSee('Recent Supplier')
             ->assertSee($purchase->purchase_number)
-            ->assertSee('Rs. 120.00');
+            ->assertSee('Rs. 120.00')
+            ->assertSee('Rs. 25.00');
+    }
+
+    public function test_supplier_detail_year_and_date_filters_update_totals(): void
+    {
+        $supplier = Supplier::factory()->create(['name' => 'Filtered Supplier']);
+        $this->purchaseFor($supplier, [
+            'purchase_number' => 'PUR-2026',
+            'purchase_date' => '2026-07-10',
+            'grand_total' => 236,
+            'freight_allocation' => 40,
+            'discount_total' => 20,
+            'gst_total' => 36,
+            'cgst_total' => 18,
+            'sgst_total' => 18,
+        ]);
+        $this->purchaseFor($supplier, [
+            'purchase_number' => 'PUR-2025',
+            'purchase_date' => '2025-07-10',
+            'grand_total' => 118,
+            'freight_allocation' => 10,
+            'discount_total' => 0,
+            'gst_total' => 18,
+            'cgst_total' => 9,
+            'sgst_total' => 9,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.suppliers.show', [
+                'supplier' => $supplier,
+                'year' => 2026,
+                'date_from' => '2026-07-01',
+                'date_to' => '2026-07-31',
+            ]))
+            ->assertOk()
+            ->assertSee('PUR-2026')
+            ->assertDontSee('PUR-2025')
+            ->assertSee('Rs. 236.00')
+            ->assertSee('Rs. 40.00')
+            ->assertSee('Rs. 20.00')
+            ->assertSee('Rs. 18.00');
     }
 
     private function purchaseFor(Supplier $supplier, array $overrides = []): PurchaseEntry
@@ -160,8 +204,11 @@ class SupplierManagementTest extends TestCase
             'purchase_date' => now()->toDateString(),
             'subtotal' => 100,
             'gst_total' => 20,
+            'cgst_total' => 10,
+            'sgst_total' => 10,
             'discount_total' => 0,
             'grand_total' => 120,
+            'freight_allocation' => 0,
             'status' => PurchaseEntry::STATUS_POSTED,
         ], $overrides));
     }

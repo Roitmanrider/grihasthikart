@@ -46,11 +46,49 @@
     </div>
 
     <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">Filtered Purchase Totals</div>
+            <div class="card-body">
+                <form method="GET" action="{{ route('admin.suppliers.show', $supplier) }}" class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Year</label>
+                        <select name="year" class="form-select">
+                            <option value="">All years</option>
+                            @foreach ($years as $year)
+                                <option value="{{ $year }}" @selected((string) ($filters['year'] ?? '') === (string) $year)>{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">From</label>
+                        <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">To</label>
+                        <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-outline-success btn-sm">Filter</button>
+                        <a href="{{ route('admin.suppliers.show', $supplier) }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                    </div>
+                </form>
+                <div class="row g-3">
+                    <div class="col-sm-4"><div class="text-muted small">Purchases</div><div class="fw-semibold">{{ $summary['purchase_count'] }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Purchase Amount</div><div class="fw-semibold">Rs. {{ number_format($summary['purchase_total'], 2) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Freight Allocation</div><div class="fw-semibold">Rs. {{ number_format($summary['freight_total'], 2) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Discount</div><div class="fw-semibold">Rs. {{ number_format($summary['discount_total'], 2) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">CGST</div><div class="fw-semibold">Rs. {{ number_format($summary['cgst_total'], 2) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">SGST</div><div class="fw-semibold">Rs. {{ number_format($summary['sgst_total'], 2) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">GST</div><div class="fw-semibold">Rs. {{ number_format($summary['gst_total'], 2) }}</div></div>
+                </div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Recent Purchases</div>
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
-                    <thead class="table-light"><tr><th>Purchase</th><th>Date</th><th>Items</th><th>Total</th><th></th></tr></thead>
+                    <thead class="table-light"><tr><th>Purchase</th><th>Date</th><th>Items</th><th>Total</th><th>Freight</th><th></th></tr></thead>
                     <tbody>
                         @forelse ($recentPurchases as $purchase)
                             <tr>
@@ -61,10 +99,11 @@
                                 <td>{{ $purchase->purchase_date?->format('d M Y') }}</td>
                                 <td>{{ $purchase->items_count }}</td>
                                 <td>Rs. {{ number_format((float) $purchase->grand_total, 2) }}</td>
+                                <td>Rs. {{ number_format((float) $purchase->freight_allocation, 2) }}</td>
                                 <td class="text-end"><a href="{{ route('admin.purchases.show', $purchase) }}" class="btn btn-sm btn-outline-secondary">View</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-center text-muted py-4">No purchase entries for this supplier.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">No purchase entries for this supplier.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

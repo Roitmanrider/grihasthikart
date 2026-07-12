@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\PurchaseEntry;
 use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\BusinessSettingSeeder;
@@ -32,11 +33,27 @@ class TaxReportManagementTest extends TestCase
     public function test_gst_summary_page_loads_for_admin_and_blocks_unauthorized_user(): void
     {
         $this->orderWithItem();
+        PurchaseEntry::query()->create([
+            'supplier_id' => null,
+            'purchase_number' => 'PUR-GST-001',
+            'purchase_date' => now()->toDateString(),
+            'subtotal' => 100,
+            'discount_total' => 0,
+            'cgst_total' => 2,
+            'sgst_total' => 3,
+            'gst_total' => 5,
+            'grand_total' => 105,
+            'status' => PurchaseEntry::STATUS_POSTED,
+        ]);
 
         $this->actingAs($this->admin)->get(route('admin.reports.gst-summary'))
             ->assertOk()
             ->assertSee('GST Summary Report')
-            ->assertSee('GST report uses item-level tax snapshots');
+            ->assertSee('GST report uses item-level tax snapshots')
+            ->assertSee('Output CGST')
+            ->assertSee('Input CGST')
+            ->assertSee('Net CGST Payable')
+            ->assertSee('Total Net GST Payable');
 
         $user = User::factory()->create(['email' => 'customer@example.com']);
         $this->actingAs($user)->get(route('admin.reports.gst-summary'))->assertForbidden();
@@ -65,12 +82,16 @@ class TaxReportManagementTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.reports.gst-by-rate'))
             ->assertOk()
             ->assertSee('5.00%')
-            ->assertSee('12.00%');
+            ->assertSee('12.00%')
+            ->assertSee('Output CGST')
+            ->assertSee('Output SGST');
 
         $this->actingAs($this->admin)->get(route('admin.reports.gst-monthly'))
             ->assertOk()
             ->assertSee(now()->format('Y-m'))
-            ->assertSee(now()->subMonth()->format('Y-m'));
+            ->assertSee(now()->subMonth()->format('Y-m'))
+            ->assertSee('Input CGST')
+            ->assertSee('Net SGST');
     }
 
     public function test_order_tax_detail_page_loads(): void

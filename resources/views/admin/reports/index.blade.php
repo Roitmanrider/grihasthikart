@@ -146,9 +146,13 @@
                     <div class="alert alert-light border">Some exact GST fields are unavailable, so unavailable values are shown as zero.</div>
                 @endif
                 <div class="row g-3">
-                    <div class="col-sm-4"><div class="text-muted small">Output GST</div><div class="fw-semibold">{{ $money($dashboard['tax']['output_gst']) }}</div></div>
-                    <div class="col-sm-4"><div class="text-muted small">Input GST</div><div class="fw-semibold">{{ $money($dashboard['tax']['input_gst']) }}</div></div>
-                    <div class="col-sm-4"><div class="text-muted small">Net GST Payable</div><div class="fw-semibold">{{ $money($dashboard['tax']['net_gst_payable']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Output CGST</div><div class="fw-semibold">{{ $money($dashboard['tax']['output_cgst']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Output SGST</div><div class="fw-semibold">{{ $money($dashboard['tax']['output_sgst']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Input CGST</div><div class="fw-semibold">{{ $money($dashboard['tax']['input_cgst']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Input SGST</div><div class="fw-semibold">{{ $money($dashboard['tax']['input_sgst']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Net CGST Payable</div><div class="fw-semibold">{{ $money($dashboard['tax']['net_cgst_payable']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Net SGST Payable</div><div class="fw-semibold">{{ $money($dashboard['tax']['net_sgst_payable']) }}</div></div>
+                    <div class="col-sm-4"><div class="text-muted small">Total Net GST Payable</div><div class="fw-semibold">{{ $money($dashboard['tax']['net_gst_payable']) }}</div></div>
                 </div>
             </div>
         </div>

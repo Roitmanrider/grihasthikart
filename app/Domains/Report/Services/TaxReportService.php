@@ -6,7 +6,9 @@ use App\Domains\Order\Services\OrderStatusService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PurchaseEntry;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class TaxReportService
 {
@@ -20,6 +22,7 @@ class TaxReportService
         $orders = $this->orders($filters)->get();
         $items = $orders->flatMap->items;
         $itemTotals = $this->summarizeItems($items);
+        $input = $this->inputGstSummary($filters);
 
         return array_merge($itemTotals, [
             'total_orders' => $orders->count(),
@@ -27,6 +30,14 @@ class TaxReportService
             'total_coupon_discount' => round($orders->sum('discount_total'), 2),
             'total_delivery_charge' => round($orders->sum('delivery_charge'), 2),
             'grand_total' => round($orders->sum('grand_total'), 2),
+            'output_cgst' => round($itemTotals['total_gst_collected'] / 2, 2),
+            'output_sgst' => round($itemTotals['total_gst_collected'] / 2, 2),
+            'input_cgst' => $input['input_cgst'],
+            'input_sgst' => $input['input_sgst'],
+            'input_gst' => $input['input_gst'],
+            'net_cgst_payable' => round(($itemTotals['total_gst_collected'] / 2) - $input['input_cgst'], 2),
+            'net_sgst_payable' => round(($itemTotals['total_gst_collected'] / 2) - $input['input_sgst'], 2),
+            'total_net_gst_payable' => round($itemTotals['total_gst_collected'] - $input['input_gst'], 2),
             'payment_split' => $orders
                 ->groupBy('payment_method')
                 ->map(fn ($orders) => [
@@ -48,6 +59,8 @@ class TaxReportService
 
                 return array_merge($totals, [
                     'gst_rate' => (float) $rate,
+                    'output_cgst' => round($totals['total_gst_collected'] / 2, 2),
+                    'output_sgst' => round($totals['total_gst_collected'] / 2, 2),
                     'order_item_count' => $items->count(),
                     'quantity_total' => round($items->sum(fn ($item) => (float) $item->quantity), 3),
                 ]);
@@ -62,10 +75,19 @@ class TaxReportService
             ->groupBy(fn (Order $order) => ($order->placed_at ?: $order->created_at)->format('Y-m'))
             ->map(function ($orders, $month) {
                 $itemTotals = $this->summarizeItems($orders->flatMap->items);
+                $input = $this->inputGstSummaryForMonth($month);
 
                 return array_merge($itemTotals, [
                     'month' => $month,
                     'order_count' => $orders->count(),
+                    'output_cgst' => round($itemTotals['total_gst_collected'] / 2, 2),
+                    'output_sgst' => round($itemTotals['total_gst_collected'] / 2, 2),
+                    'input_cgst' => $input['input_cgst'],
+                    'input_sgst' => $input['input_sgst'],
+                    'input_gst' => $input['input_gst'],
+                    'net_cgst_payable' => round(($itemTotals['total_gst_collected'] / 2) - $input['input_cgst'], 2),
+                    'net_sgst_payable' => round(($itemTotals['total_gst_collected'] / 2) - $input['input_sgst'], 2),
+                    'total_net_gst_payable' => round($itemTotals['total_gst_collected'] - $input['input_gst'], 2),
                     'coupon_discounts' => round($orders->sum('discount_total'), 2),
                     'delivery_charges' => round($orders->sum('delivery_charge'), 2),
                     'grand_total' => round($orders->sum('grand_total'), 2),
@@ -137,6 +159,52 @@ class TaxReportService
             'taxable_amount' => round($taxable, 2),
             'total_gst_collected' => round($gst, 2),
             'gross_amount' => round($gross, 2),
+        ];
+    }
+
+    private function inputGstSummary(array $filters): array
+    {
+        if (! Schema::hasTable('purchase_entries')) {
+            return ['input_cgst' => 0.0, 'input_sgst' => 0.0, 'input_gst' => 0.0];
+        }
+
+        $query = PurchaseEntry::query()
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('purchase_date', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('purchase_date', '<=', $date));
+
+        return $this->purchaseInputTotals($query);
+    }
+
+    private function inputGstSummaryForMonth(string $month): array
+    {
+        if (! Schema::hasTable('purchase_entries')) {
+            return ['input_cgst' => 0.0, 'input_sgst' => 0.0, 'input_gst' => 0.0];
+        }
+
+        return $this->purchaseInputTotals(
+            PurchaseEntry::query()->where('purchase_date', 'like', $month.'%')
+        );
+    }
+
+    private function purchaseInputTotals($query): array
+    {
+        $gst = round((float) (clone $query)->sum('gst_total'), 2);
+        $cgst = Schema::hasColumn('purchase_entries', 'cgst_total')
+            ? round((float) (clone $query)->sum('cgst_total'), 2)
+            : round($gst / 2, 2);
+        $sgst = Schema::hasColumn('purchase_entries', 'sgst_total')
+            ? round((float) (clone $query)->sum('sgst_total'), 2)
+            : round($gst / 2, 2);
+
+        if ($cgst == 0.0 && $sgst == 0.0 && $gst > 0) {
+            $cgst = round($gst / 2, 2);
+            $sgst = round($gst / 2, 2);
+        }
+
+        return [
+            'input_cgst' => $cgst,
+            'input_sgst' => $sgst,
+            'input_gst' => round($cgst + $sgst, 2),
         ];
     }
 
