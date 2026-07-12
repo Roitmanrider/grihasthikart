@@ -59,7 +59,18 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Summary</div>
             <div class="card-body">
-                <div class="d-flex justify-content-between"><span>Supplier</span><span>{{ $purchase->supplier_id ? '#'.$purchase->supplier_id : 'Not recorded' }}</span></div>
+                <div class="d-flex justify-content-between">
+                    <span>Supplier</span>
+                    <span>
+                        @if ($purchase->supplier)
+                            <a href="{{ route('admin.suppliers.show', $purchase->supplier) }}" class="text-decoration-none">{{ $purchase->supplier->name }}</a>
+                        @elseif ($purchase->supplier_id)
+                            #{{ $purchase->supplier_id }}
+                        @else
+                            Not recorded
+                        @endif
+                    </span>
+                </div>
                 <div class="d-flex justify-content-between"><span>Status</span><span class="badge text-bg-success">{{ str($purchase->status)->headline() }}</span></div>
                 <hr>
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong>Rs. {{ number_format((float) $purchase->subtotal, 2) }}</strong></div>

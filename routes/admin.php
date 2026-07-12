@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AdminReturnController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
 use App\Http\Controllers\Admin\AdminStockAdjustmentController;
 use App\Http\Controllers\Admin\AdminStockVerificationController;
+use App\Http\Controllers\Admin\AdminSupplierController;
 use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
@@ -254,6 +255,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('stock-verifications.create');
         Route::post('stock-verifications', [AdminStockVerificationController::class, 'store'])
             ->name('stock-verifications.store');
+
+        Route::resource('suppliers', AdminSupplierController::class);
 
         Route::get('purchases', [AdminPurchaseController::class, 'index'])
             ->name('purchases.index');

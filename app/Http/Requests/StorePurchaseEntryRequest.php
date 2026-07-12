@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StorePurchaseEntryRequest extends FormRequest
@@ -32,7 +33,7 @@ class StorePurchaseEntryRequest extends FormRequest
         $supplierRule = ['nullable', 'integer'];
 
         if (Schema::hasTable('suppliers')) {
-            $supplierRule[] = 'exists:suppliers,id';
+            $supplierRule[] = Rule::exists('suppliers', 'id')->where('status', 'active');
         }
 
         return [

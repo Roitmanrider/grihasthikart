@@ -37,6 +37,11 @@ class PurchaseEntry extends Model
         return $this->hasMany(PurchaseEntryItem::class);
     }
 
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
     public function movements()
     {
         return $this->morphMany(InventoryMovement::class, 'reference');

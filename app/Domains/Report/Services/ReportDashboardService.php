@@ -194,14 +194,21 @@ class ReportDashboardService
             return [];
         }
 
-        return PurchaseEntry::query()
-            ->select('supplier_id', DB::raw('COUNT(*) as purchases_count'), DB::raw('SUM(grand_total) as amount_total'))
-            ->groupBy('supplier_id')
+        $query = PurchaseEntry::query()
+            ->select('purchase_entries.supplier_id', DB::raw('COUNT(*) as purchases_count'), DB::raw('SUM(grand_total) as amount_total'))
+            ->when(Schema::hasTable('suppliers'), function ($query) {
+                $query->leftJoin('suppliers', 'suppliers.id', '=', 'purchase_entries.supplier_id')
+                    ->addSelect('suppliers.name as supplier_name');
+            })
+            ->groupBy('purchase_entries.supplier_id')
+            ->when(Schema::hasTable('suppliers'), fn ($query) => $query->groupBy('suppliers.name'))
             ->orderByDesc('amount_total')
-            ->limit(5)
-            ->get()
+            ->limit(5);
+
+        return $query->get()
             ->map(fn ($row) => [
-                'supplier' => $row->supplier_id ? 'Supplier #'.$row->supplier_id : 'No supplier',
+                'supplier_id' => $row->supplier_id,
+                'supplier' => $row->supplier_name ?? ($row->supplier_id ? 'Supplier #'.$row->supplier_id : 'No supplier'),
                 'count' => (int) $row->purchases_count,
                 'amount' => round((float) $row->amount_total, 2),
             ])

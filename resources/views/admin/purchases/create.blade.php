@@ -31,9 +31,15 @@
                     <input id="bill_number" type="text" name="bill_number" value="{{ old('bill_number') }}" class="form-control">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="supplier_id">Supplier ID</label>
-                    <input id="supplier_id" type="number" name="supplier_id" value="{{ old('supplier_id') }}" class="form-control" placeholder="Optional">
-                    <div class="form-text">Supplier module is not enabled; leave blank unless a supplier ID exists.</div>
+                    <label class="form-label" for="supplier_id">Supplier</label>
+                    <select id="supplier_id" name="supplier_id" class="form-select">
+                        <option value="">Not recorded</option>
+                        @foreach ($options['suppliers'] as $supplier)
+                            <option value="{{ $supplier->id }}" @selected((string) old('supplier_id') === (string) $supplier->id)>
+                                {{ $supplier->name }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-12">
                     <label class="form-label" for="notes">Notes</label>

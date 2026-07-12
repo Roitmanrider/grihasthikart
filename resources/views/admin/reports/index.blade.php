@@ -115,7 +115,17 @@
                         <thead class="table-light"><tr><th>Supplier</th><th>Purchases</th><th>Total</th></tr></thead>
                         <tbody>
                             @forelse ($dashboard['purchase']['supplier_totals'] as $supplier)
-                                <tr><td>{{ $supplier['supplier'] }}</td><td>{{ $supplier['count'] }}</td><td>{{ $money($supplier['amount']) }}</td></tr>
+                                <tr>
+                                    <td>
+                                        @if (! empty($supplier['supplier_id']) && auth()->user()?->can('manage-inventory'))
+                                            <a href="{{ route('admin.suppliers.show', $supplier['supplier_id']) }}" class="text-decoration-none">{{ $supplier['supplier'] }}</a>
+                                        @else
+                                            {{ $supplier['supplier'] }}
+                                        @endif
+                                    </td>
+                                    <td>{{ $supplier['count'] }}</td>
+                                    <td>{{ $money($supplier['amount']) }}</td>
+                                </tr>
                             @empty
                                 <tr><td colspan="3" class="text-muted text-center py-3">No supplier purchases.</td></tr>
                             @endforelse

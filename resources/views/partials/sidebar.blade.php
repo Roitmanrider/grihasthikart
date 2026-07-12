@@ -60,6 +60,11 @@
             Stock Verification
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.suppliers.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.suppliers.index') }}">
+            Suppliers
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.purchases.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.purchases.index') }}">
             Purchases

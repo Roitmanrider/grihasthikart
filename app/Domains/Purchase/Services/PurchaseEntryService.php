@@ -7,7 +7,9 @@ use App\Models\Inventory;
 use App\Models\ProductVariant;
 use App\Models\PurchaseEntry;
 use App\Models\StockLocation;
+use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -20,6 +22,7 @@ class PurchaseEntryService
     public function paginate(int $perPage = 20)
     {
         return PurchaseEntry::query()
+            ->with('supplier')
             ->withCount('items')
             ->latest('purchase_date')
             ->latest()
@@ -74,7 +77,7 @@ class PurchaseEntryService
                 );
             }
 
-            return $purchase->fresh(['items.productVariant.product']);
+            return $purchase->fresh(['supplier', 'items.productVariant.product']);
         });
     }
 
@@ -87,8 +90,13 @@ class PurchaseEntryService
             ->orderBy('sku')
             ->get();
 
+        $suppliers = Schema::hasTable('suppliers')
+            ? Supplier::query()->active()->orderBy('name')->get()
+            : collect();
+
         return [
             'variants' => $variants,
+            'suppliers' => $suppliers,
         ];
     }
 

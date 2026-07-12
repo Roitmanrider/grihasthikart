@@ -46,14 +46,14 @@ class AdminPurchaseController extends Controller
 
     public function show(PurchaseEntry $purchase)
     {
-        $purchase->load(['items.productVariant.product']);
+        $purchase->load(['supplier', 'items.productVariant.product']);
 
         return view('admin.purchases.show', compact('purchase'));
     }
 
     public function print(PurchaseEntry $purchase)
     {
-        $purchase->load(['items.productVariant.product']);
+        $purchase->load(['supplier', 'items.productVariant.product']);
 
         return view('admin.purchases.print', compact('purchase'));
     }

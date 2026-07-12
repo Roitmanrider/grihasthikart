@@ -33,7 +33,15 @@
                             <div class="small text-muted">{{ $purchase->bill_number ?: 'No bill number' }}</div>
                         </td>
                         <td>{{ $purchase->purchase_date?->format('d M Y') }}</td>
-                        <td>{{ $purchase->supplier_id ? '#'.$purchase->supplier_id : 'Not recorded' }}</td>
+                        <td>
+                            @if ($purchase->supplier)
+                                <a href="{{ route('admin.suppliers.show', $purchase->supplier) }}" class="text-decoration-none">{{ $purchase->supplier->name }}</a>
+                            @elseif ($purchase->supplier_id)
+                                #{{ $purchase->supplier_id }}
+                            @else
+                                Not recorded
+                            @endif
+                        </td>
                         <td>{{ $purchase->items_count }}</td>
                         <td>Rs. {{ number_format((float) $purchase->grand_total, 2) }}</td>
                         <td><span class="badge text-bg-success">{{ str($purchase->status)->headline() }}</span></td>
