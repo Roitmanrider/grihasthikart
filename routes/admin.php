@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\AdminOrderDocumentController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
 use App\Http\Controllers\Admin\AdminPurchaseController;
+use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\AdminReturnController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
 use App\Http\Controllers\Admin\AdminStockAdjustmentController;
@@ -324,6 +325,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     */
 
     Route::middleware(['auth', 'can:manage-reports'])->group(function () {
+        Route::get('reports', [AdminReportController::class, 'index'])
+            ->name('reports.index');
         Route::get('reports/gst-summary', [AdminTaxReportController::class, 'gstSummary'])
             ->name('reports.gst-summary');
         Route::get('reports/gst-by-rate', [AdminTaxReportController::class, 'gstByRate'])

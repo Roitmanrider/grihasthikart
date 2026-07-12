@@ -92,6 +92,11 @@
 
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Reports</div>
 
+        <a class="nav-link {{ request()->routeIs('admin.reports.index') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.reports.index') }}">
+            Reports Dashboard
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.reports.gst-summary') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.reports.gst-summary') }}">
             GST Summary
