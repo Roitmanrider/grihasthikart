@@ -90,7 +90,7 @@ class InventoryService
         });
     }
 
-    public function adjustStock(Inventory $inventory, string $movementType, float $quantity, ?string $note = null): Inventory
+    public function adjustStock(Inventory $inventory, string $movementType, float $quantity, ?string $note = null, ?string $referenceType = null, ?int $referenceId = null): Inventory
     {
         if (! in_array($movementType, InventoryMovement::TYPES, true)) {
             throw new InvalidArgumentException('Invalid inventory movement type.');
@@ -100,7 +100,7 @@ class InventoryService
             throw new InvalidArgumentException('Adjustment quantity must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($inventory, $movementType, $quantity, $note) {
+        return DB::transaction(function () use ($inventory, $movementType, $quantity, $note, $referenceType, $referenceId) {
             /** @var Inventory $lockedInventory */
             $lockedInventory = Inventory::query()
                 ->whereKey($inventory->id)
@@ -125,7 +125,7 @@ class InventoryService
             };
 
             $lockedInventory->refresh();
-            $this->writeMovement($lockedInventory, $movementType, $quantity, $note);
+            $this->writeMovement($lockedInventory, $movementType, $quantity, $note, $referenceType, $referenceId);
 
             return $lockedInventory->fresh(['productVariant.product', 'stockLocation']);
         });
@@ -274,7 +274,7 @@ class InventoryService
             ->update(['is_default' => false]);
     }
 
-    private function writeMovement(Inventory $inventory, string $movementType, float $quantity, ?string $note = null): InventoryMovement
+    private function writeMovement(Inventory $inventory, string $movementType, float $quantity, ?string $note = null, ?string $referenceType = null, ?int $referenceId = null): InventoryMovement
     {
         return InventoryMovement::query()->create([
             'inventory_id' => $inventory->id,
@@ -283,6 +283,8 @@ class InventoryService
             'movement_type' => $movementType,
             'quantity' => $quantity,
             'balance_after' => $inventory->quantity_on_hand,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
             'note' => $note,
             'created_by' => Auth::id(),
         ]);

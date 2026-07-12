@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOrderDocumentController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
+use App\Http\Controllers\Admin\AdminPurchaseController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
 use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
@@ -234,6 +235,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
     */
 
     Route::middleware(['auth', 'can:manage-inventory'])->group(function () {
+        Route::get('purchases', [AdminPurchaseController::class, 'index'])
+            ->name('purchases.index');
+        Route::get('purchases/create', [AdminPurchaseController::class, 'create'])
+            ->name('purchases.create');
+        Route::post('purchases', [AdminPurchaseController::class, 'store'])
+            ->name('purchases.store');
+        Route::get('purchases/{purchase}', [AdminPurchaseController::class, 'show'])
+            ->name('purchases.show');
+        Route::get('purchases/{purchase}/print', [AdminPurchaseController::class, 'print'])
+            ->name('purchases.print');
+
         Route::post('inventories/bulk-action', [InventoryController::class, 'bulkAction'])
             ->name('inventories.bulk-action');
 

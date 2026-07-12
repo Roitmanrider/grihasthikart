@@ -50,6 +50,11 @@
             Inventory
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.purchases.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.purchases.index') }}">
+            Purchases
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.orders.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.orders.index') }}">
             Orders
