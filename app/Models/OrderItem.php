@@ -56,4 +56,9 @@ class OrderItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function returnRequestItems()
+    {
+        return $this->hasMany(ReturnRequestItem::class);
+    }
 }

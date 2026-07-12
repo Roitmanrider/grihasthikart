@@ -4,6 +4,7 @@
 
 @section('content')
 @inject('orderStatusService', 'App\Domains\Order\Services\OrderStatusService')
+@inject('returnService', 'App\Domains\ReturnRequest\Services\ReturnRequestService')
 
 <section class="py-5">
     <div class="container">
@@ -18,6 +19,9 @@
                 @endif
                 @if ($canCancel)
                     <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#customerCancelOrderModal">Cancel Order</button>
+                @endif
+                @if ($returnService->isEligible($order))
+                    <a href="{{ route('customer.returns.create', $order) }}" class="btn btn-outline-success">Request Return</a>
                 @endif
                 <a href="{{ route('customer.orders.index') }}" class="btn btn-outline-secondary">Back</a>
             </div>

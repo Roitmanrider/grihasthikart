@@ -13,6 +13,7 @@ use App\Http\Controllers\Frontend\CustomerCashbackController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
 use App\Http\Controllers\Frontend\CustomerNotificationController;
 use App\Http\Controllers\Frontend\CustomerOrderDocumentController;
+use App\Http\Controllers\Frontend\CustomerReturnController;
 use App\Http\Controllers\Frontend\DailyOfferCatalogController;
 use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
@@ -82,6 +83,12 @@ Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name(
 Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
 Route::patch('/account/notifications/read-all', [CustomerNotificationController::class, 'readAll'])->name('customer.notifications.read-all');
 Route::patch('/account/notifications/{notification}/read', [CustomerNotificationController::class, 'read'])->name('customer.notifications.read');
+Route::middleware('customer.auth')->group(function () {
+    Route::get('/account/returns', [CustomerReturnController::class, 'index'])->name('customer.returns.index');
+    Route::get('/account/returns/create/{order}', [CustomerReturnController::class, 'create'])->name('customer.returns.create');
+    Route::post('/account/returns', [CustomerReturnController::class, 'store'])->name('customer.returns.store');
+    Route::get('/account/returns/{returnRequest}', [CustomerReturnController::class, 'show'])->name('customer.returns.show');
+});
 Route::get('/account/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders.index');
 Route::get('/account/orders/{order}/invoice', [CustomerOrderDocumentController::class, 'invoice'])->name('customer.orders.invoice');
 Route::patch('/account/orders/{orderNumber}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');

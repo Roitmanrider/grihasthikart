@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\AdminOrderDocumentController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
 use App\Http\Controllers\Admin\AdminPurchaseController;
+use App\Http\Controllers\Admin\AdminReturnController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
 use App\Http\Controllers\Admin\AdminStockAdjustmentController;
 use App\Http\Controllers\Admin\AdminStockVerificationController;
@@ -286,6 +287,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
     */
 
     Route::middleware(['auth', 'can:manage-orders'])->group(function () {
+        Route::get('returns', [AdminReturnController::class, 'index'])
+            ->name('returns.index');
+        Route::get('returns/{returnRequest}', [AdminReturnController::class, 'show'])
+            ->name('returns.show');
+        Route::patch('returns/{returnRequest}/approve', [AdminReturnController::class, 'approve'])
+            ->name('returns.approve');
+        Route::patch('returns/{returnRequest}/reject', [AdminReturnController::class, 'reject'])
+            ->name('returns.reject');
+        Route::patch('returns/{returnRequest}/mark-refunded', [AdminReturnController::class, 'markRefunded'])
+            ->name('returns.mark-refunded');
+        Route::patch('returns/{returnRequest}/close', [AdminReturnController::class, 'close'])
+            ->name('returns.close');
+
         Route::get('orders', [AdminOrderController::class, 'index'])
             ->name('orders.index');
         Route::get('orders/{order}/invoice', [AdminOrderDocumentController::class, 'invoice'])

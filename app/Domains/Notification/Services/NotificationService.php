@@ -10,6 +10,7 @@ use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\ReturnRequest;
 
 class NotificationService
 {
@@ -199,6 +200,31 @@ class NotificationService
             route('customer.cashback.index'),
             $redemption,
             ['redemption_id' => $redemption->id]
+        );
+    }
+
+    public function notifyAdminReturnRequested(ReturnRequest $returnRequest): void
+    {
+        $this->admin(
+            'return.requested',
+            'Return requested',
+            'Return '.$returnRequest->return_number.' was requested for order '.$returnRequest->order?->order_number.'.',
+            route('admin.returns.show', $returnRequest),
+            $returnRequest,
+            ['return_number' => $returnRequest->return_number, 'order_id' => $returnRequest->order_id]
+        );
+    }
+
+    public function notifyCustomerReturnUpdated(ReturnRequest $returnRequest, string $title, string $message): void
+    {
+        $this->customer(
+            $returnRequest->customer,
+            'return.updated',
+            $title,
+            $message,
+            route('customer.returns.show', $returnRequest),
+            $returnRequest,
+            ['return_number' => $returnRequest->return_number, 'status' => $returnRequest->status]
         );
     }
 

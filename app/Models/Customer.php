@@ -77,6 +77,11 @@ class Customer extends Model
         return $this->hasMany(Notification::class)->latest();
     }
 
+    public function returnRequests()
+    {
+        return $this->hasMany(ReturnRequest::class)->latest();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', true);

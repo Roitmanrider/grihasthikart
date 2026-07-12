@@ -70,6 +70,11 @@
             Orders
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.returns.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.returns.index') }}">
+            Returns
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.payments.index') }}">
             Payments
