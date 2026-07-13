@@ -42,16 +42,16 @@ class CartService
         return $this->repository->cartWithItems($this->getOrCreateCartForSession($sessionId));
     }
 
-    public function addItem(string $sessionId, int $productVariantId, float $quantity): CartItem
+    public function addItem(string $sessionId, int $productVariantId, float $quantity, ?int $dailyOfferId = null): CartItem
     {
         $quantity = $this->normalizeCustomerQuantity($quantity);
 
-        return DB::transaction(function () use ($sessionId, $productVariantId, $quantity) {
+        return DB::transaction(function () use ($sessionId, $productVariantId, $quantity, $dailyOfferId) {
             $cart = $this->getOrCreateCartForSession($sessionId);
             $variant = ProductVariant::query()
                 ->with(['product', 'attributeValues.attribute'])
                 ->findOrFail($productVariantId);
-            $dailyOffer = $this->currentDailyOfferForVariant($variant->id);
+            $dailyOffer = $dailyOfferId ? $this->currentDailyOfferForVariant($variant->id, $dailyOfferId) : null;
 
             $this->validateVariantIsPurchasable($variant);
             $this->applyDailyOfferHoldIfNeeded($cart, $dailyOffer);
@@ -63,6 +63,7 @@ class CartService
             $targetQuantity = $quantity + $existingQuantity;
 
             $this->validateDailyOfferQuantity($dailyOffer, $targetQuantity);
+            $this->validateProductQuantityLimit($variant, $targetQuantity);
             $this->validateSufficientStock($variant->id, $targetQuantity);
 
             if ($existingItem) {
@@ -91,7 +92,13 @@ class CartService
             $cart = $this->getOrCreateCartForSession($sessionId);
             $cartItem = $this->repository->findItem($cartItem->id);
             $this->ensureCartItemBelongsToCurrentCart($cart, $cartItem);
-            $this->validateDailyOfferQuantity($this->currentDailyOfferForVariant($cartItem->product_variant_id), $quantity);
+            $variant = $cartItem->productVariant?->load('product');
+            $dailyOffer = $variant && $this->isDailyOfferSnapshot($cart, $cartItem, $variant)
+                ? $this->currentDailyOfferForVariant($cartItem->product_variant_id)
+                : null;
+
+            $this->validateDailyOfferQuantity($dailyOffer, $quantity);
+            $this->validateProductQuantityLimit($variant, $quantity);
             $this->validateSufficientStock($cartItem->product_variant_id, $quantity);
 
             return $this->repository->updateItem($cartItem, ['quantity' => $quantity]);
@@ -118,7 +125,7 @@ class CartService
 
     public function getCartSummary(string $sessionId): array
     {
-        $cart = $this->cartForSession($sessionId);
+        $cart = $this->refreshCartPrices($this->cartForSession($sessionId));
 
         return [
             'cart' => $cart,
@@ -161,7 +168,47 @@ class CartService
 
     public function refreshCartPrices(Cart $cart): Cart
     {
-        return $cart;
+        $cart->loadMissing(['items.productVariant.product', 'items.productVariant.attributeValues.attribute']);
+
+        foreach ($cart->items as $item) {
+            $variant = $item->productVariant;
+
+            if (! $variant || ! $variant->product) {
+                continue;
+            }
+
+            if (! $this->isDailyOfferSnapshot($cart, $item, $variant)) {
+                continue;
+            }
+
+            $dailyOffer = $this->currentDailyOfferForVariant($variant->id);
+            $expectedPrice = $dailyOffer?->offer_price ?? $variant->selling_price;
+
+            if ((float) $item->unit_price !== (float) $expectedPrice) {
+                $this->repository->updateItem($item, $this->prepareCartItemSnapshot($variant, $dailyOffer));
+            }
+        }
+
+        if ($cart->expires_at && $cart->expires_at->isPast()) {
+            $cart->update(['expires_at' => null]);
+        }
+
+        return $this->repository->cartWithItems($cart->fresh());
+    }
+
+    public function validateDailyOfferHold(Cart $cart): void
+    {
+        if (! $cart->expires_at || $cart->expires_at->isFuture()) {
+            return;
+        }
+
+        foreach ($cart->items as $item) {
+            $sellingPrice = (float) ($item->productVariant?->selling_price ?? 0);
+
+            if ($sellingPrice > 0 && (float) $item->unit_price < $sellingPrice) {
+                throw new InvalidArgumentException('Daily offer reservation expired. Please review your cart before checkout.');
+            }
+        }
     }
 
     public function prepareCartItemSnapshot(ProductVariant $variant, ?DailyOffer $dailyOffer = null): array
@@ -202,13 +249,20 @@ class CartService
         return (int) $quantity;
     }
 
-    private function currentDailyOfferForVariant(int $productVariantId): ?DailyOffer
+    private function currentDailyOfferForVariant(int $productVariantId, ?int $dailyOfferId = null): ?DailyOffer
     {
         return DailyOffer::query()
             ->current()
             ->where('product_variant_id', $productVariantId)
+            ->when($dailyOfferId !== null, fn ($query) => $query->whereKey($dailyOfferId))
             ->orderBy('display_order')
             ->first();
+    }
+
+    private function isDailyOfferSnapshot(Cart $cart, CartItem $item, ProductVariant $variant): bool
+    {
+        return $cart->expires_at !== null
+            && (float) $item->unit_price < (float) $variant->selling_price;
     }
 
     private function applyDailyOfferHoldIfNeeded(Cart $cart, ?DailyOffer $dailyOffer): void
@@ -228,6 +282,15 @@ class CartService
     {
         if ($dailyOffer?->max_quantity_per_order && $quantity > $dailyOffer->max_quantity_per_order) {
             throw new InvalidArgumentException('Daily offer quantity is limited to '.$dailyOffer->max_quantity_per_order.' per order.');
+        }
+    }
+
+    private function validateProductQuantityLimit(?ProductVariant $variant, float $quantity): void
+    {
+        $maximumOrderQuantity = $variant?->product?->maximum_order_quantity;
+
+        if ($maximumOrderQuantity !== null && $quantity > (int) $maximumOrderQuantity) {
+            throw new InvalidArgumentException('Quantity is limited to '.$maximumOrderQuantity.' per order for this product.');
         }
     }
 }

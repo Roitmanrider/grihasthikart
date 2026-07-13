@@ -236,7 +236,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('daily-offers/{dailyOffer}/restore', [DailyOfferController::class, 'restore'])
             ->name('daily-offers.restore');
 
-        Route::resource('daily-offers', DailyOfferController::class)->except('show');
+        Route::resource('daily-offers', DailyOfferController::class);
     });
 
     /*

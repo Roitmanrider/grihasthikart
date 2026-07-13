@@ -47,6 +47,8 @@ class OrderService
             $cart = $this->cartService->cartForSession($sessionId);
 
             $this->validateCartIsNotEmpty($cart);
+            $this->cartService->validateDailyOfferHold($cart);
+            $cart = $this->cartService->refreshCartPrices($cart);
             $this->validateCartItemsStillPurchasable($cart);
             $this->validateInventoryAvailabilityForEveryCartItem($cart);
 
@@ -78,6 +80,8 @@ class OrderService
             $cart = $this->cartService->cartForSession($sessionId);
 
             $this->validateCartIsNotEmpty($cart);
+            $this->cartService->validateDailyOfferHold($cart);
+            $cart = $this->cartService->refreshCartPrices($cart);
             $this->validateCartItemsStillPurchasable($cart);
             $this->validateInventoryAvailabilityForEveryCartItem($cart);
 

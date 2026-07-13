@@ -3,7 +3,7 @@
         <div class="gk-daily-panel">
             <div class="gk-daily-heading">
                 <h2><i class="fa-solid fa-stopwatch"></i> Daily Offers</h2>
-                <span class="gk-deal-timer">Deal Expires In <strong>29m 49s</strong></span>
+                <span class="gk-deal-timer">Fresh deals updated in {{ config('app.timezone') }}</span>
                 <a href="{{ route('daily-offers.index') }}">View All</a>
             </div>
 

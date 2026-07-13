@@ -19,7 +19,7 @@ class DailyOfferController extends Controller
 
     public function index(Request $request)
     {
-        $dailyOffers = $this->dailyOfferService->paginate($request->only(['search', 'status', 'current', 'trashed']));
+        $dailyOffers = $this->dailyOfferService->paginate($request->only(['search', 'status', 'current', 'date', 'trashed']));
 
         return view('admin.daily-offers.index', compact('dailyOffers'));
     }
@@ -47,6 +47,13 @@ class DailyOfferController extends Controller
         $variants = $this->dailyOfferService->productVariantOptions();
 
         return view('admin.daily-offers.edit', compact('dailyOffer', 'variants'));
+    }
+
+    public function show(DailyOffer $dailyOffer)
+    {
+        $dailyOffer->load(['productVariant.product', 'productVariant.inventories']);
+
+        return view('admin.daily-offers.show', compact('dailyOffer'));
     }
 
     public function update(DailyOffer $dailyOffer, UpdateDailyOfferRequest $request)

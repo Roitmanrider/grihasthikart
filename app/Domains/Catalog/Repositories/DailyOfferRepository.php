@@ -34,8 +34,13 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
             $query->where('is_active', (bool) $filters['status']);
         }
 
-        if (($filters['current'] ?? null) === '1') {
-            $query->current();
+        if (($filters['current'] ?? null) !== null && $filters['current'] !== '') {
+            $this->applyLifecycleFilter($query, $filters['current']);
+        }
+
+        if (($filters['date'] ?? null) !== null && $filters['date'] !== '') {
+            $query->whereDate('starts_at', '<=', $filters['date'])
+                ->whereDate('ends_at', '>=', $filters['date']);
         }
 
         if (($filters['trashed'] ?? null) === 'only') {
@@ -56,14 +61,17 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
         return $this->model->newQuery()
             ->current()
             ->whereHas('productVariant', fn ($query) => $query->active()->whereHas('product', fn ($query) => $query->active()))
-            ->with(['productVariant.product.brand', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
+            ->whereHas('productVariant.inventories', fn ($query) => $query
+                ->active()
+                ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) > 0'))
+            ->with(['productVariant.inventories', 'productVariant.product.brand', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
             ->orderBy('display_order')
             ->orderByDesc('created_at')
             ->take($limit)
             ->get();
     }
 
-    public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null): bool
+    public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null): bool
     {
         $query = $this->model->newQuery()
             ->where('product_variant_id', $productVariantId)
@@ -71,6 +79,23 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
 
         if ($ignoreId !== null) {
             $query->whereKeyNot($ignoreId);
+        }
+
+        if ($startsAt || $endsAt) {
+            $query->where(function ($query) use ($startsAt, $endsAt) {
+                $query->whereNull('ends_at')
+                    ->orWhereNull('starts_at')
+                    ->orWhere(function ($query) use ($startsAt, $endsAt) {
+                        if ($startsAt && $endsAt) {
+                            $query->where('starts_at', '<=', $endsAt)
+                                ->where('ends_at', '>=', $startsAt);
+                        } elseif ($startsAt) {
+                            $query->where('ends_at', '>=', $startsAt);
+                        } elseif ($endsAt) {
+                            $query->where('starts_at', '<=', $endsAt);
+                        }
+                    });
+            });
         }
 
         return $query->exists();
@@ -89,5 +114,18 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
     public function findWithTrashed(int $id): DailyOffer
     {
         return $this->model->withTrashed()->findOrFail($id);
+    }
+
+    private function applyLifecycleFilter($query, string $lifecycle): void
+    {
+        $now = now(config('app.timezone'));
+
+        match ($lifecycle) {
+            'scheduled' => $query->where('is_active', true)->where('starts_at', '>', $now),
+            'active' => $query->current(),
+            'expired' => $query->where('is_active', true)->whereNotNull('ends_at')->where('ends_at', '<', $now),
+            'inactive' => $query->where('is_active', false),
+            default => null,
+        };
     }
 }

@@ -30,7 +30,8 @@ class CartController extends Controller
             $this->cartService->addItem(
                 $this->cartService->sessionIdentifier($request->session()),
                 (int) $data['product_variant_id'],
-                (float) $data['quantity']
+                (float) $data['quantity'],
+                isset($data['daily_offer_id']) ? (int) $data['daily_offer_id'] : null
             );
         } catch (InvalidArgumentException $exception) {
             return back()

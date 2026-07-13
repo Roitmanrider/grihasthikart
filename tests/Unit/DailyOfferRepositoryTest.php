@@ -4,8 +4,10 @@ namespace Tests\Unit;
 
 use App\Domains\Catalog\Repositories\DailyOfferRepository;
 use App\Models\DailyOffer;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,6 +21,7 @@ class DailyOfferRepositoryTest extends TestCase
         $currentVariant = $this->variant('GK-CURRENT');
         $expiredVariant = $this->variant('GK-EXPIRED');
         $inactiveVariant = $this->variant('GK-INACTIVE');
+        $this->stock($currentVariant);
 
         $current = DailyOffer::factory()->create([
             'product_variant_id' => $currentVariant->id,
@@ -68,5 +71,17 @@ class DailyOfferRepositoryTest extends TestCase
         $product->update(['default_variant_id' => $variant->id]);
 
         return $variant;
+    }
+
+    private function stock(ProductVariant $variant): Inventory
+    {
+        return Inventory::factory()->create([
+            'product_variant_id' => $variant->id,
+            'stock_location_id' => StockLocation::factory()->default(),
+            'quantity_on_hand' => 10,
+            'reserved_quantity' => 0,
+            'damaged_quantity' => 0,
+            'status' => true,
+        ]);
     }
 }

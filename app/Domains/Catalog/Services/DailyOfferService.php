@@ -65,16 +65,16 @@ class DailyOfferService
             throw new InvalidArgumentException('Daily offers can only use active product variants from active products.');
         }
 
-        if ((float) $data['offer_price'] > (float) $variant->mrp) {
-            throw new InvalidArgumentException('Daily offer price cannot be greater than the variant MRP.');
+        if ((float) $data['offer_price'] >= (float) $variant->selling_price) {
+            throw new InvalidArgumentException('Daily offer price must be lower than the normal selling price.');
         }
 
         if (($data['starts_at'] ?? null) && ($data['ends_at'] ?? null) && $data['ends_at'] <= $data['starts_at']) {
             throw new InvalidArgumentException('Daily offer end date must be after the start date.');
         }
 
-        if (($data['is_active'] ?? true) && $this->repository->activeOfferExistsForVariant($variant->id, $ignoreId)) {
-            throw new InvalidArgumentException('This product variant already has an active daily offer.');
+        if (($data['is_active'] ?? true) && $this->repository->activeOfferExistsForVariant($variant->id, $ignoreId, $data['starts_at'] ?? null, $data['ends_at'] ?? null)) {
+            throw new InvalidArgumentException('This product variant already has an overlapping active daily offer.');
         }
     }
 

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domains\Cart\Services\CartService;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\DailyOffer;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -155,6 +156,77 @@ class CartManagementTest extends TestCase
 
         $summary = app(CartService::class)->getCartSummary($item->cart->session_id);
         $this->assertSame(240.0, $summary['subtotal']);
+    }
+
+    public function test_normal_cart_item_is_not_repriced_after_variant_selling_price_changes(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: [
+            'selling_price' => 120,
+            'mrp' => 150,
+        ]);
+
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $item = CartItem::query()->firstOrFail();
+        $variant->update(['selling_price' => 30]);
+
+        $summary = app(CartService::class)->getCartSummary($item->cart->session_id);
+
+        $this->assertSame('120.00', (string) $item->fresh()->unit_price);
+        $this->assertSame(120.0, $summary['subtotal']);
+    }
+
+    public function test_daily_offer_cart_item_can_refresh_to_current_offer_price(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: [
+            'selling_price' => 120,
+            'mrp' => 150,
+        ]);
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+            'daily_offer_id' => $offer->id,
+        ]);
+        $offer->update(['offer_price' => 80]);
+        $item = CartItem::query()->firstOrFail();
+
+        $summary = app(CartService::class)->getCartSummary($item->cart->session_id);
+
+        $this->assertSame('80.00', (string) $item->fresh()->unit_price);
+        $this->assertSame(80.0, $summary['subtotal']);
+    }
+
+    public function test_normal_cart_item_for_variant_with_active_daily_offer_is_not_treated_as_offer_item(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: [
+            'selling_price' => 120,
+            'mrp' => 150,
+        ]);
+        DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ]);
+        $item = CartItem::query()->firstOrFail();
+        $summary = app(CartService::class)->getCartSummary($item->cart->session_id);
+
+        $this->assertNull($item->cart->expires_at);
+        $this->assertSame('120.00', (string) $item->fresh()->unit_price);
+        $this->assertSame(120.0, $summary['subtotal']);
     }
 
     public function test_update_remove_and_clear_cart(): void

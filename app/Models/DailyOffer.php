@@ -74,14 +74,14 @@ class DailyOffer extends Model
             return $this->badge_text;
         }
 
-        $mrp = (float) ($this->productVariant?->mrp ?? 0);
+        $normalPrice = (float) ($this->productVariant?->selling_price ?? 0);
         $offerPrice = (float) $this->offer_price;
 
-        if ($mrp <= 0 || $offerPrice <= 0 || $offerPrice >= $mrp) {
+        if ($normalPrice <= 0 || $offerPrice <= 0 || $offerPrice >= $normalPrice) {
             return null;
         }
 
-        return round((($mrp - $offerPrice) / $mrp) * 100).'% OFF';
+        return round((($normalPrice - $offerPrice) / $normalPrice) * 100).'% OFF';
     }
 
     public function lifecycleState(): string
@@ -100,16 +100,50 @@ class DailyOffer extends Model
             return 'Expired';
         }
 
-        return 'Live Now';
+        return 'Active';
     }
 
     public function lifecycleBadgeClass(): string
     {
         return match ($this->lifecycleState()) {
-            'Live Now' => 'text-bg-success',
+            'Active' => 'text-bg-success',
             'Scheduled' => 'text-bg-warning',
             'Expired' => 'text-bg-danger',
             default => 'text-bg-secondary',
         };
+    }
+
+    public function discountAmount(): float
+    {
+        return max(0, (float) ($this->productVariant?->selling_price ?? 0) - (float) $this->offer_price);
+    }
+
+    public function discountPercentage(): float
+    {
+        $sellingPrice = (float) ($this->productVariant?->selling_price ?? 0);
+
+        if ($sellingPrice <= 0 || (float) $this->offer_price >= $sellingPrice) {
+            return 0;
+        }
+
+        return round(($this->discountAmount() / $sellingPrice) * 100, 2);
+    }
+
+    public function remainingTimeLabel(): string
+    {
+        if ($this->lifecycleState() !== 'Active' || ! $this->ends_at) {
+            return $this->lifecycleState();
+        }
+
+        $seconds = max(0, now(config('app.timezone'))->diffInSeconds($this->ends_at, false));
+
+        if ($seconds === 0) {
+            return 'Expired';
+        }
+
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        return $hours > 0 ? $hours.'h '.$minutes.'m remaining' : $minutes.'m remaining';
     }
 }
