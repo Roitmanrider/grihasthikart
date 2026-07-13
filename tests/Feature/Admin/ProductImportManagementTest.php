@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\StockLocation;
 use App\Models\User;
@@ -121,7 +122,7 @@ class ProductImportManagementTest extends TestCase
 
         $csv = $this->csv([
             'Basmati Rice',
-            '',
+            'India Gate',
             'Foodgrains',
             'Rice',
             '',
@@ -130,7 +131,7 @@ class ProductImportManagementTest extends TestCase
             '650',
             '599',
             '',
-            '',
+            '5',
             '',
             '',
             '5',
@@ -162,25 +163,26 @@ class ProductImportManagementTest extends TestCase
     public function test_import_rejects_existing_sku_under_different_product(): void
     {
         $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Flours', 'parent_id' => $category->id]);
         $existingProduct = Product::factory()->create(['name' => 'Existing Product']);
         ProductVariant::factory()->create(['product_id' => $existingProduct->id, 'sku' => 'GK-DUPLICATE']);
 
         $csv = $this->csv([
             'New Product',
-            '',
+            'Aashirvaad',
             'Foodgrains',
-            '',
+            'Flours',
             '',
             '1kg',
             'GK-DUPLICATE',
             '100',
             '90',
             '',
+            '5',
+            '1',
             '',
-            '',
-            '',
-            '',
-            '',
+            '1',
+            'kg',
             '',
             '',
             '',
@@ -207,24 +209,25 @@ class ProductImportManagementTest extends TestCase
 
     public function test_import_requires_default_stock_location_for_opening_stock(): void
     {
-        Category::factory()->create(['name' => 'Foodgrains']);
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
 
         $csv = $this->csv([
             'Sugar',
-            '',
+            'Madhur',
             'Foodgrains',
-            '',
+            'Staples',
             '',
             '1kg',
             'GK-SUGAR-1KG',
             '60',
             '52',
             '',
+            '5',
             '',
             '',
-            '',
-            '',
-            '',
+            '1',
+            'kg',
             '10',
             '',
             '',
@@ -252,24 +255,25 @@ class ProductImportManagementTest extends TestCase
     public function test_import_rejects_missing_image_filename(): void
     {
         Storage::fake('uploads');
-        Category::factory()->create(['name' => 'Foodgrains']);
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
 
         $csv = $this->csv([
             'Salt',
-            '',
+            'Tata',
             'Foodgrains',
-            '',
+            'Staples',
             '',
             '1kg',
             'GK-SALT-1KG',
             '30',
             '25',
             '',
+            '5',
+            '1',
             '',
-            '',
-            '',
-            '',
-            '',
+            '1',
+            'kg',
             '',
             '',
             '',
@@ -294,11 +298,182 @@ class ProductImportManagementTest extends TestCase
             ->assertSessionHas('warning');
     }
 
+    public function test_csv_error_report_can_be_downloaded_after_failed_preview(): void
+    {
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
+
+        $csv = $this->csv([
+            '',
+            'Tata',
+            'Foodgrains',
+            'Staples',
+            '',
+            '1kg',
+            'GK-ERR-1KG',
+            '30',
+            '35',
+            '',
+            '5',
+            '',
+            '',
+            '1',
+            'kg',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '1',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.preview'), ['csv_file' => $this->upload($csv)])
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHas('warning');
+
+        $response = $this->actingAs($this->admin)->get(route('admin.product-imports.error-report'));
+
+        $response->assertOk();
+        $response->assertHeader('content-disposition', 'attachment; filename=CSV_Error_Report.csv');
+        $rows = $this->parseCsv($response->streamedContent());
+        $this->assertSame(['Row Number', 'SKU', 'Column', 'Invalid Value', 'Reason'], $rows[0]);
+        $this->assertContains('product_name', array_column(array_slice($rows, 1), 2));
+    }
+
+    public function test_duplicate_sku_can_be_skipped(): void
+    {
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
+        $product = Product::factory()->create(['name' => 'Salt']);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'GK-SALT-1KG', 'variant_name' => '1kg']);
+
+        $csv = $this->validCsvRow('Salt', 'Tata', 'Foodgrains', 'Staples', '1kg', 'GK-SALT-1KG');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.preview'), [
+                'csv_file' => $this->upload($csv),
+                'duplicate_action' => 'skip_existing',
+            ])
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHas('success');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.import'))
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHas('import_summary');
+
+        $this->assertSame(1, ProductVariant::query()->where('sku', 'GK-SALT-1KG')->count());
+        $this->assertDatabaseHas('product_import_histories', [
+            'filename' => 'products.csv',
+            'rows_processed' => 1,
+            'rows_skipped' => 1,
+            'successful' => true,
+        ]);
+    }
+
+    public function test_soft_deleted_product_is_not_recreated(): void
+    {
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
+        Product::factory()->create(['name' => 'Deleted Salt'])->delete();
+
+        $csv = $this->validCsvRow('Deleted Salt', 'Tata', 'Foodgrains', 'Staples', '1kg', 'GK-DELETED-SALT');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.preview'), ['csv_file' => $this->upload($csv)])
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHas('warning');
+
+        $this->assertSame(0, Product::query()->where('name', 'Deleted Salt')->count());
+        $this->assertSame(1, Product::withTrashed()->where('name', 'Deleted Salt')->count());
+    }
+
+    public function test_import_rolls_back_when_database_failure_occurs(): void
+    {
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
+
+        $csv = $this->csvRows([
+            $this->validRow('Rollback Salt', 'Tata', 'Foodgrains', 'Staples', '1kg', 'GK-ROLLBACK-1KG'),
+            $this->validRow('Rollback Sugar', 'Tata', 'Foodgrains', 'Staples', '1kg', 'GK-ROLLBACK-2KG', 'bad.exe'),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.preview'), ['csv_file' => $this->upload($csv)])
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHas('warning');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.import'))
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHasErrors('import');
+
+        $this->assertDatabaseMissing('products', ['name' => 'Rollback Salt']);
+        $this->assertDatabaseMissing('product_variants', ['sku' => 'GK-ROLLBACK-1KG']);
+        $this->assertDatabaseHas('product_import_histories', [
+            'successful' => false,
+            'rows_failed' => 1,
+        ]);
+    }
+
+    public function test_products_can_be_exported_with_images_and_editable_fields(): void
+    {
+        $brand = Brand::factory()->create(['name' => 'Tata']);
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        $subcategory = Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
+        $product = Product::factory()->create(['name' => 'Export Salt', 'brand_id' => $brand->id, 'gst_rate' => 5]);
+        $product->categories()->sync([$category->id => ['is_primary' => false, 'display_order' => 0], $subcategory->id => ['is_primary' => true, 'display_order' => 1]]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'GK-EXPORT-1KG', 'variant_name' => '1kg', 'barcode' => '8900000000001']);
+        ProductImage::factory()->create(['product_id' => $product->id, 'path' => 'uploads/products/export-salt.jpg']);
+        ProductImage::factory()->create(['product_id' => $product->id, 'product_variant_id' => $variant->id, 'path' => 'uploads/products/export-salt/variants/1kg.jpg']);
+
+        $response = $this->actingAs($this->admin)->get(route('admin.product-imports.export', ['brand_id' => $brand->id]));
+
+        $response->assertOk();
+        $rows = $this->parseCsv($response->streamedContent());
+        $this->assertSame(['product_name', 'brand_name', 'category', 'subcategory'], array_slice($rows[0], 0, 4));
+        $this->assertSame(['Export Salt', 'Tata', 'Foodgrains', 'Staples'], array_slice($rows[1], 0, 4));
+        $this->assertContains('uploads/products/export-salt.jpg', $rows[1]);
+        $this->assertContains('uploads/products/export-salt/variants/1kg.jpg', $rows[1]);
+    }
+
+    public function test_large_import_preview_summarizes_all_rows(): void
+    {
+        $category = Category::factory()->create(['name' => 'Foodgrains']);
+        Category::factory()->create(['name' => 'Staples', 'parent_id' => $category->id]);
+
+        $rows = [];
+
+        for ($i = 1; $i <= 600; $i++) {
+            $rows[] = $this->validRow('Bulk Product '.$i, 'Bulk Brand', 'Foodgrains', 'Staples', '1kg', 'GK-BULK-'.$i);
+        }
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.product-imports.preview'), ['csv_file' => $this->upload($this->csvRows($rows))])
+            ->assertRedirect(route('admin.product-imports.index'))
+            ->assertSessionHas('success')
+            ->assertSessionHas('product_import.preview.total_rows', 600)
+            ->assertSessionHas('product_import.preview.display_limit', 200);
+    }
+
     public function test_product_import_routes_are_authorized(): void
     {
         foreach ([
             'admin.product-imports.index',
             'admin.product-imports.template',
+            'admin.product-imports.error-report',
+            'admin.product-imports.export',
             'admin.product-imports.preview',
             'admin.product-imports.import',
         ] as $routeName) {
@@ -323,6 +498,55 @@ class ProductImportManagementTest extends TestCase
     }
 
     private function csv(array $row): string
+    {
+        return $this->csvRows([$row]);
+    }
+
+    private function validCsvRow(string $product, string $brand, string $category, string $subcategory, string $variant, string $sku, string $productImage = ''): string
+    {
+        return $this->csvRows([
+            $this->validRow($product, $brand, $category, $subcategory, $variant, $sku, $productImage),
+        ]);
+    }
+
+    private function validRow(string $product, string $brand, string $category, string $subcategory, string $variant, string $sku, string $productImage = ''): array
+    {
+        return [
+            $product,
+            $brand,
+            $category,
+            $subcategory,
+            '',
+            $variant,
+            $sku,
+            '100',
+            '90',
+            '80',
+            '5',
+            '1101',
+            '',
+            '1',
+            'kg',
+            '',
+            '',
+            '',
+            '',
+            '0',
+            '0',
+            '0',
+            '0',
+            '1',
+            $productImage,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+        ];
+    }
+
+    private function csvRows(array $rows): string
     {
         $handle = fopen('php://temp', 'rb+');
 
@@ -359,7 +583,9 @@ class ProductImportManagementTest extends TestCase
             'meta_description',
             'meta_keywords',
         ]);
-        fputcsv($handle, $row);
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
         rewind($handle);
 
         $content = stream_get_contents($handle);
@@ -371,5 +597,10 @@ class ProductImportManagementTest extends TestCase
     private function upload(string $content): UploadedFile
     {
         return UploadedFile::fake()->createWithContent('products.csv', $content);
+    }
+
+    private function parseCsv(string $content): array
+    {
+        return array_map('str_getcsv', preg_split('/\r\n|\r|\n/', trim($content)));
     }
 }

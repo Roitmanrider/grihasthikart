@@ -163,6 +163,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('product-imports.index');
         Route::get('product-imports/template', [ProductImportController::class, 'template'])
             ->name('product-imports.template');
+        Route::get('product-imports/error-report', [ProductImportController::class, 'errorReport'])
+            ->name('product-imports.error-report');
+        Route::get('product-imports/export', [ProductImportController::class, 'export'])
+            ->name('product-imports.export');
+        Route::get('product-imports/history/{history}/error-report', [ProductImportController::class, 'historyErrorReport'])
+            ->name('product-imports.history.error-report');
         Route::post('product-imports/preview', [ProductImportController::class, 'preview'])
             ->name('product-imports.preview');
         Route::post('product-imports/import', [ProductImportController::class, 'import'])
