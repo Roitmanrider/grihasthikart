@@ -19,6 +19,7 @@ class DailyOfferFactory extends Factory
             'product_variant_id' => ProductVariant::factory(),
             'title' => null,
             'offer_price' => fake()->randomFloat(2, 20, 200),
+            'allocated_quantity' => 10,
             'starts_at' => now()->subHour(),
             'ends_at' => now()->addDay(),
             'is_active' => true,

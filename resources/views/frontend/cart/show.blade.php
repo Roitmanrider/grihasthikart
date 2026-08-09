@@ -21,6 +21,9 @@
                 @if ($errors->has('cart'))
                     <div class="alert alert-danger">{{ $errors->first('cart') }}</div>
                 @endif
+                @if ($cart->expires_at && $cart->expires_at->isPast() && $cart->items->contains(fn ($item) => $item->sale_type === 'daily_offer'))
+                    <div class="alert alert-warning">A Daily Offer reservation in your cart has expired. Please remove and re-add the item if the offer is still available.</div>
+                @endif
                 <div class="row g-4">
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm">

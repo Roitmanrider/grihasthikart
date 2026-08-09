@@ -11,6 +11,11 @@
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
     $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
     $isDefaultWishlisted = $defaultVariant && in_array((int) $defaultVariant->id, $wishlistedVariantIds, true);
+    $eligibleOffers = $product->variants
+        ->flatMap->dailyOffers
+        ->filter(fn ($offer) => $offer->lifecycleState() === 'Active' && $offer->availableOfferQuantity() > 0)
+        ->keyBy('product_variant_id');
+    $defaultOffer = $defaultVariant ? $eligibleOffers->get($defaultVariant->id) : null;
 @endphp
 
 @section('content')
@@ -83,22 +88,35 @@
                             @foreach ($product->variants as $variant)
                                 @php
                                     $variantImage = $variant->primaryImage?->path ?? $product->primaryImage?->path;
+                                    $offer = $eligibleOffers->get($variant->id);
+                                    $displayPrice = $offer?->offer_price ?? $variant->selling_price;
                                 @endphp
                                 <option value="{{ $variant->id }}"
-                                        data-price="{{ number_format((float) $variant->selling_price, 2) }}"
+                                        data-price="{{ number_format((float) $displayPrice, 2) }}"
+                                        data-normal-price="{{ number_format((float) $variant->selling_price, 2) }}"
                                         data-mrp="{{ number_format((float) $variant->mrp, 2) }}"
                                         data-sku="{{ $variant->sku }}"
                                         data-barcode="{{ $variant->barcode }}"
                                         data-weight="{{ $variant->weight }} {{ $variant->unit }}"
                                         data-image="{{ $variantImage ? $mediaResolver->url($variantImage) : '' }}"
+                                        data-daily-offer-id="{{ $offer?->id }}"
+                                        data-offer-label="{{ $offer ? 'DAILY OFFER' : '' }}"
+                                        data-offer-info="{{ $offer ? $offer->remainingTimeLabel().' · '.($offer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($offer->availableOfferQuantity(), 0).' left at this price') : '' }}"
                                         @selected($defaultVariant?->id === $variant->id)>
-                                    {{ $variant->variant_name }}
+                                    {{ $variant->variant_name }}{{ $offer ? '    DAILY OFFER' : '' }}
                                 </option>
                             @endforeach
                         </select>
 
-                        <div class="h3 text-success mb-1">Rs. <span id="variantPrice">{{ number_format((float) $defaultVariant?->selling_price, 2) }}</span></div>
-                        <div class="text-muted small mb-3">MRP Rs. <span id="variantMrp">{{ number_format((float) $defaultVariant?->mrp, 2) }}</span></div>
+                        <div id="variantOfferBadge" class="badge text-bg-success mb-2 {{ $defaultOffer ? '' : 'd-none' }}">Daily Offer</div>
+                        <div class="h3 text-success mb-1">Rs. <span id="variantPrice">{{ number_format((float) ($defaultOffer?->offer_price ?? $defaultVariant?->selling_price), 2) }}</span></div>
+                        <div class="text-muted small mb-1">
+                            <span id="variantNormalPriceWrap" class="{{ $defaultOffer ? '' : 'd-none' }}">
+                                Normal Rs. <span id="variantNormalPrice" class="text-decoration-line-through">{{ number_format((float) $defaultVariant?->selling_price, 2) }}</span>
+                            </span>
+                            <span id="variantMrpWrap" class="{{ $defaultOffer ? 'd-none' : '' }}">MRP Rs. <span id="variantMrp">{{ number_format((float) $defaultVariant?->mrp, 2) }}</span></span>
+                        </div>
+                        <div id="variantOfferInfo" class="small text-success mb-3 {{ $defaultOffer ? '' : 'd-none' }}">{{ $defaultOffer ? $defaultOffer->remainingTimeLabel().' · '.($defaultOffer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($defaultOffer->availableOfferQuantity(), 0).' left at this price') : '' }}</div>
 
                         <dl class="row small mb-0">
                             <dt class="col-sm-4">SKU</dt>
@@ -113,6 +131,7 @@
                     <form method="POST" action="{{ route('cart.items.store') }}" class="row g-2 align-items-end">
                         @csrf
                         <input type="hidden" name="product_variant_id" id="cartVariantId" value="{{ $defaultVariant?->id }}">
+                        <input type="hidden" name="daily_offer_id" id="cartDailyOfferId" value="{{ $defaultOffer?->id }}">
                         <div class="col-sm-4">
                             <label class="form-label" for="cartQuantity">Quantity</label>
                             <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="1" step="1">
@@ -174,6 +193,7 @@
 
                 document.getElementById('variantPrice').textContent = option.dataset.price || '';
                 document.getElementById('variantMrp').textContent = option.dataset.mrp || '';
+                document.getElementById('variantNormalPrice').textContent = option.dataset.normalPrice || '';
                 document.getElementById('variantSku').textContent = option.dataset.sku || '';
                 document.getElementById('variantBarcode').textContent = option.dataset.barcode || 'Not available';
                 document.getElementById('variantWeight').textContent = option.dataset.weight || 'Not available';
@@ -183,6 +203,12 @@
                 }
 
                 document.getElementById('cartVariantId').value = option.value;
+                document.getElementById('cartDailyOfferId').value = option.dataset.dailyOfferId || '';
+                document.getElementById('variantOfferInfo').textContent = option.dataset.offerInfo || '';
+                document.getElementById('variantOfferInfo').classList.toggle('d-none', !option.dataset.dailyOfferId);
+                document.getElementById('variantOfferBadge').classList.toggle('d-none', !option.dataset.dailyOfferId);
+                document.getElementById('variantNormalPriceWrap').classList.toggle('d-none', !option.dataset.dailyOfferId);
+                document.getElementById('variantMrpWrap').classList.toggle('d-none', !!option.dataset.dailyOfferId);
                 const wishlistVariantId = document.getElementById('wishlistVariantId');
 
                 if (wishlistVariantId) {

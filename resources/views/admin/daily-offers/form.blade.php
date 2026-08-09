@@ -3,12 +3,19 @@
     <select name="product_variant_id" class="form-select" required>
         <option value="">Select product variant</option>
         @foreach ($variants as $variant)
+            @php
+                $physicalAvailable = (float) $variant->inventories->sum('available_quantity');
+                $activeAllocated = $variant->dailyOffers
+                    ->filter(fn ($offer) => $offer->is_active && (! $offer->ends_at || $offer->ends_at->isFuture()))
+                    ->sum(fn ($offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));
+                $unallocatedStock = max(0, $physicalAvailable - $activeAllocated);
+            @endphp
             <option value="{{ $variant->id }}" @selected((int) old('product_variant_id', $dailyOffer->product_variant_id ?? 0) === $variant->id)>
-                {{ $variant->product?->name }} - {{ $variant->variant_name }} - {{ $variant->sku }} - Rs. {{ number_format((float) $variant->selling_price, 2) }}
+                {{ $variant->product?->name }} - {{ $variant->variant_name }} - {{ $variant->sku }} - Rs. {{ number_format((float) $variant->selling_price, 2) }} - Stock {{ number_format($physicalAvailable, 0) }} - Active Allocation {{ number_format($activeAllocated, 0) }} - Unallocated {{ number_format($unallocatedStock, 0) }}
             </option>
         @endforeach
     </select>
-    <div class="form-text">Only active variants from active products are available.</div>
+    <div class="form-text">Only active variants from active products are available. Allocation cannot exceed unallocated stock.</div>
 </div>
 
 <div class="col-md-6">
@@ -19,6 +26,11 @@
 <div class="col-md-3">
     <label class="form-label">Offer Price</label>
     <input type="number" step="0.01" min="0" name="offer_price" value="{{ old('offer_price', $dailyOffer->offer_price ?? '') }}" class="form-control" required>
+</div>
+
+<div class="col-md-3">
+    <label class="form-label">Allocated Offer Qty</label>
+    <input type="number" step="1" min="1" name="allocated_quantity" value="{{ old('allocated_quantity', $dailyOffer->allocated_quantity ?? '') }}" class="form-control" required>
 </div>
 
 <div class="col-md-3">

@@ -203,15 +203,52 @@ class CartManagementTest extends TestCase
         $this->assertSame(80.0, $summary['subtotal']);
     }
 
-    public function test_normal_cart_item_for_variant_with_active_daily_offer_is_not_treated_as_offer_item(): void
+    public function test_existing_normal_cart_item_is_not_converted_when_daily_offer_starts_later(): void
     {
         [, $variant] = $this->purchasableVariant(variantOverrides: [
             'selling_price' => 120,
             'mrp' => 150,
         ]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ])->assertRedirect(route('cart.show'));
+        $item = CartItem::query()->firstOrFail();
+        $this->assertSame('normal', $item->sale_type);
+        $this->assertNull($item->daily_offer_id);
+        $this->assertSame('120.00', (string) $item->unit_price);
+        $this->assertNull($item->cart->expires_at);
+
         DailyOffer::factory()->create([
             'product_variant_id' => $variant->id,
             'offer_price' => 90,
+            'allocated_quantity' => 5,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $summary = app(CartService::class)->getCartSummary($item->cart->session_id);
+
+        $item->refresh();
+        $this->assertSame('normal', $item->sale_type);
+        $this->assertNull($item->daily_offer_id);
+        $this->assertNull($item->cart->fresh()->expires_at);
+        $this->assertSame('120.00', (string) $item->unit_price);
+        $this->assertSame(120.0, $summary['subtotal']);
+    }
+
+    public function test_eligible_daily_offer_add_creates_daily_offer_cart_item(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: [
+            'selling_price' => 120,
+            'mrp' => 150,
+        ]);
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'allocated_quantity' => 5,
             'starts_at' => now()->subMinute(),
             'ends_at' => now()->addHour(),
             'is_active' => true,
@@ -220,13 +257,87 @@ class CartManagementTest extends TestCase
         $this->post(route('cart.items.store'), [
             'product_variant_id' => $variant->id,
             'quantity' => 1,
-        ]);
+            'daily_offer_id' => $offer->id,
+        ])->assertRedirect(route('cart.show'));
+
         $item = CartItem::query()->firstOrFail();
         $summary = app(CartService::class)->getCartSummary($item->cart->session_id);
 
-        $this->assertNull($item->cart->expires_at);
-        $this->assertSame('120.00', (string) $item->fresh()->unit_price);
-        $this->assertSame(120.0, $summary['subtotal']);
+        $this->assertSame('daily_offer', $item->sale_type);
+        $this->assertSame($offer->id, $item->daily_offer_id);
+        $this->assertTrue($item->cart->expires_at->isFuture());
+        $this->assertSame('90.00', (string) $item->fresh()->unit_price);
+        $this->assertSame(90.0, $summary['subtotal']);
+        $this->assertSame(1, CartItem::query()->count());
+    }
+
+    public function test_normal_and_daily_offer_rows_for_same_variant_do_not_merge(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: [
+            'selling_price' => 120,
+            'mrp' => 150,
+        ]);
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1])
+            ->assertRedirect(route('cart.show'));
+
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'allocated_quantity' => 5,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+            'daily_offer_id' => $offer->id,
+        ]);
+
+        $items = CartItem::query()->orderBy('sale_type')->get();
+
+        $this->assertCount(2, $items);
+        $this->assertTrue($items->contains(fn (CartItem $item) => $item->sale_type === 'normal' && $item->daily_offer_id === null && (string) $item->unit_price === '120.00'));
+        $this->assertTrue($items->contains(fn (CartItem $item) => $item->sale_type === 'daily_offer' && $item->daily_offer_id === $offer->id && (string) $item->unit_price === '90.00'));
+    }
+
+    public function test_normal_cart_cannot_consume_stock_allocated_to_active_daily_offer(): void
+    {
+        [, $variant] = $this->purchasableVariant(
+            variantOverrides: ['selling_price' => 120, 'mrp' => 150],
+            inventoryOverrides: ['quantity_on_hand' => 5]
+        );
+        DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'allocated_quantity' => 4,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 2])
+            ->assertSessionHasErrors('cart');
+    }
+
+    public function test_daily_offer_cart_cannot_exceed_allocated_offer_quantity(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: ['selling_price' => 120, 'mrp' => 150]);
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'allocated_quantity' => 1,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+            'daily_offer_id' => $offer->id,
+        ])->assertSessionHasErrors('cart');
     }
 
     public function test_update_remove_and_clear_cart(): void

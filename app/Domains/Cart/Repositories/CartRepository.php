@@ -35,6 +35,7 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
     {
         return $cart->load([
             'coupon',
+            'items.dailyOffer',
             'items.productVariant.product.primaryImage',
             'items.productVariant.product.categories.parent',
             'items.productVariant.primaryImage',
@@ -46,12 +47,14 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
         return CartItem::query()->findOrFail($id);
     }
 
-    public function findItemInCart(Cart $cart, int $productVariantId): ?CartItem
+    public function findItemInCart(Cart $cart, int $productVariantId, string $saleType = 'normal', ?int $dailyOfferId = null): ?CartItem
     {
         return CartItem::query()
             ->withTrashed()
             ->where('cart_id', $cart->id)
             ->where('product_variant_id', $productVariantId)
+            ->where('sale_type', $saleType)
+            ->where('daily_offer_id', $dailyOfferId)
             ->first();
     }
 

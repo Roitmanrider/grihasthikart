@@ -13,6 +13,8 @@ class OrderItem extends Model
         'order_id',
         'product_variant_id',
         'product_id',
+        'sale_type',
+        'daily_offer_id',
         'product_name_snapshot',
         'variant_name_snapshot',
         'sku_snapshot',
@@ -55,6 +57,11 @@ class OrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function dailyOffer()
+    {
+        return $this->belongsTo(DailyOffer::class);
     }
 
     public function returnRequestItems()

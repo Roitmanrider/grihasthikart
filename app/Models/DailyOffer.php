@@ -14,6 +14,7 @@ class DailyOffer extends Model
         'product_variant_id',
         'title',
         'offer_price',
+        'allocated_quantity',
         'starts_at',
         'ends_at',
         'is_active',
@@ -24,6 +25,7 @@ class DailyOffer extends Model
 
     protected $casts = [
         'offer_price' => 'decimal:2',
+        'allocated_quantity' => 'decimal:3',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'is_active' => 'boolean',
@@ -46,6 +48,16 @@ class DailyOffer extends Model
             'product_variant_id',
             'product_id'
         );
+    }
+
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
     }
 
     public function scopeActive($query)
@@ -100,6 +112,14 @@ class DailyOffer extends Model
             return 'Expired';
         }
 
+        if ($this->allocated_quantity > 0 && $this->soldQuantity() >= (float) $this->allocated_quantity) {
+            return 'Exhausted';
+        }
+
+        if ($this->allocated_quantity > 0 && $this->availableOfferQuantity() <= 0) {
+            return 'Fully Reserved';
+        }
+
         return 'Active';
     }
 
@@ -108,9 +128,45 @@ class DailyOffer extends Model
         return match ($this->lifecycleState()) {
             'Active' => 'text-bg-success',
             'Scheduled' => 'text-bg-warning',
-            'Expired' => 'text-bg-danger',
+            'Fully Reserved' => 'text-bg-info',
+            'Exhausted', 'Expired' => 'text-bg-danger',
             default => 'text-bg-secondary',
         };
+    }
+
+    public function soldQuantity(): float
+    {
+        if ($this->relationLoaded('orderItems')) {
+            return (float) $this->orderItems->sum('quantity');
+        }
+
+        return (float) $this->orderItems()->sum('quantity');
+    }
+
+    public function reservedQuantity(): float
+    {
+        $now = now(config('app.timezone'));
+
+        if ($this->relationLoaded('cartItems')) {
+            return (float) $this->cartItems
+                ->filter(fn (CartItem $item) => $item->cart?->status === 'active'
+                    && ! $item->trashed()
+                    && $item->cart?->expires_at
+                    && $item->cart->expires_at->greaterThan($now))
+                ->sum('quantity');
+        }
+
+        return (float) $this->cartItems()
+            ->whereHas('cart', fn ($query) => $query
+                ->where('status', 'active')
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '>', $now))
+            ->sum('quantity');
+    }
+
+    public function availableOfferQuantity(): float
+    {
+        return max(0, (float) $this->allocated_quantity - $this->soldQuantity() - $this->reservedQuantity());
     }
 
     public function discountAmount(): float

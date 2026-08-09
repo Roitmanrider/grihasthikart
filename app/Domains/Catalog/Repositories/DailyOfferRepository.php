@@ -17,7 +17,7 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
     public function paginatedList(array $filters = [], int $perPage = 20)
     {
         $query = $this->model->newQuery()
-            ->with(['productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage']);
+            ->with(['cartItems.cart', 'orderItems', 'productVariant.inventories', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage']);
 
         if (($filters['search'] ?? null) !== null && $filters['search'] !== '') {
             $search = $filters['search'];
@@ -64,11 +64,13 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
             ->whereHas('productVariant.inventories', fn ($query) => $query
                 ->active()
                 ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) > 0'))
-            ->with(['productVariant.inventories', 'productVariant.product.brand', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
+            ->with(['cartItems.cart', 'orderItems', 'productVariant.inventories', 'productVariant.product.brand', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
             ->orderBy('display_order')
             ->orderByDesc('created_at')
             ->take($limit)
-            ->get();
+            ->get()
+            ->filter(fn (DailyOffer $offer) => $offer->availableOfferQuantity() > 0)
+            ->values();
     }
 
     public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null): bool
@@ -106,7 +108,7 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
         return ProductVariant::query()
             ->active()
             ->whereHas('product', fn ($query) => $query->active())
-            ->with('product')
+            ->with(['product', 'inventories', 'dailyOffers.cartItems.cart', 'dailyOffers.orderItems'])
             ->orderBy(ProductVariant::query()->getModel()->getTable().'.sku')
             ->get();
     }

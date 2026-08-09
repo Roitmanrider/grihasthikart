@@ -24,6 +24,8 @@ class OrderItemFactory extends Factory
             'order_id' => Order::factory(),
             'product_variant_id' => $variant->id,
             'product_id' => $product->id,
+            'sale_type' => 'normal',
+            'daily_offer_id' => null,
             'product_name_snapshot' => $product->name,
             'variant_name_snapshot' => $variant->variant_name,
             'sku_snapshot' => $variant->sku,

@@ -5,7 +5,9 @@ namespace Tests\Feature\Admin;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\DailyOffer;
+use App\Models\DeliverySlot;
 use App\Models\Inventory;
+use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -53,11 +55,13 @@ class DailyOfferManagementTest extends TestCase
     public function test_admin_can_create_daily_offer(): void
     {
         $variant = $this->variant();
+        $this->stock($variant);
 
         $response = $this->actingAs($this->admin)->post(route('admin.daily-offers.store'), [
             'product_variant_id' => $variant->id,
             'title' => 'Banana Robusta Deal',
             'offer_price' => 30,
+            'allocated_quantity' => 5,
             'starts_at' => now()->subHour()->format('Y-m-d H:i:s'),
             'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
             'is_active' => 1,
@@ -81,6 +85,7 @@ class DailyOfferManagementTest extends TestCase
     public function test_admin_can_update_deactivate_and_delete_daily_offer(): void
     {
         $variant = $this->variant();
+        $this->stock($variant);
         $offer = DailyOffer::factory()->create([
             'product_variant_id' => $variant->id,
             'offer_price' => 35,
@@ -91,6 +96,7 @@ class DailyOfferManagementTest extends TestCase
                 'product_variant_id' => $variant->id,
                 'title' => 'Updated Deal',
                 'offer_price' => 28,
+                'allocated_quantity' => 5,
                 'is_active' => 0,
                 'display_order' => 4,
             ])
@@ -130,6 +136,7 @@ class DailyOfferManagementTest extends TestCase
             ->post(route('admin.daily-offers.store'), [
                 'product_variant_id' => $variant->id,
                 'offer_price' => 101,
+                'allocated_quantity' => 5,
                 'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
                 'ends_at' => now()->subDay()->format('Y-m-d H:i:s'),
                 'is_active' => 1,
@@ -142,6 +149,7 @@ class DailyOfferManagementTest extends TestCase
             ->post(route('admin.daily-offers.store'), [
                 'product_variant_id' => $variant->id,
                 'offer_price' => 101,
+                'allocated_quantity' => 5,
                 'is_active' => 1,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
@@ -162,6 +170,7 @@ class DailyOfferManagementTest extends TestCase
             ->post(route('admin.daily-offers.store'), [
                 'product_variant_id' => $variant->id,
                 'offer_price' => 30,
+                'allocated_quantity' => 5,
                 'is_active' => 1,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
@@ -171,6 +180,7 @@ class DailyOfferManagementTest extends TestCase
     public function test_non_overlapping_offer_for_same_variant_is_allowed(): void
     {
         $variant = $this->variant();
+        $this->stock($variant, 20);
 
         DailyOffer::factory()->create([
             'product_variant_id' => $variant->id,
@@ -183,6 +193,7 @@ class DailyOfferManagementTest extends TestCase
             ->post(route('admin.daily-offers.store'), [
                 'product_variant_id' => $variant->id,
                 'offer_price' => 30,
+                'allocated_quantity' => 5,
                 'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
                 'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
                 'is_active' => 1,
@@ -190,6 +201,25 @@ class DailyOfferManagementTest extends TestCase
             ->assertRedirect(route('admin.daily-offers.index'));
 
         $this->assertSame(2, DailyOffer::query()->where('product_variant_id', $variant->id)->count());
+    }
+
+    public function test_daily_offer_allocation_cannot_exceed_unallocated_stock(): void
+    {
+        $variant = $this->variant();
+        $this->stock($variant, 3);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.daily-offers.create'))
+            ->post(route('admin.daily-offers.store'), [
+                'product_variant_id' => $variant->id,
+                'offer_price' => 30,
+                'allocated_quantity' => 4,
+                'starts_at' => now()->subMinute()->format('Y-m-d H:i:s'),
+                'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
+                'is_active' => 1,
+            ])
+            ->assertRedirect(route('admin.daily-offers.create'))
+            ->assertSessionHasErrors('daily_offer');
     }
 
     public function test_current_active_daily_offers_appear_on_homepage(): void
@@ -534,7 +564,59 @@ class DailyOfferManagementTest extends TestCase
             ->assertSessionHasErrors('checkout');
     }
 
-    public function test_cart_refresh_converts_expired_offer_snapshot_to_normal_price(): void
+    public function test_daily_offer_checkout_persists_sale_source(): void
+    {
+        $variant = $this->variant(['selling_price' => 35]);
+        $inventory = $this->stock($variant);
+        $initialQuantityOnHand = (float) $inventory->quantity_on_hand;
+        DeliverySlot::factory()->create([
+            'name' => '9-11 AM',
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'display_label' => '9 AM - 11 AM',
+            'status' => true,
+        ]);
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 30,
+            'allocated_quantity' => 5,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->assertTrue($variant->product->status);
+        $this->assertTrue($variant->status);
+        $this->assertGreaterThanOrEqual(1, $inventory->available_quantity);
+        $this->assertSame(5.0, (float) $offer->allocated_quantity);
+        $this->assertGreaterThan(0, $offer->availableOfferQuantity());
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1, 'daily_offer_id' => $offer->id]);
+        $cartItem = CartItem::query()->firstOrFail();
+        $this->assertSame('daily_offer', $cartItem->sale_type);
+        $this->assertSame($offer->id, $cartItem->daily_offer_id);
+        $this->assertTrue($cartItem->cart->expires_at->isFuture());
+
+        $response = $this->post(route('checkout.place'), $this->checkoutPayload());
+        $response->assertSessionHasNoErrors();
+        $order = Order::query()->firstOrFail();
+        $response->assertRedirect(route('checkout.success', $order->order_number));
+
+        $item = OrderItem::query()->firstOrFail();
+        $this->assertSame('daily_offer', $item->sale_type);
+        $this->assertSame($offer->id, $item->daily_offer_id);
+        $this->assertSame('30.00', $item->unit_price);
+        $this->assertSame((string) $item->id, (string) $order->items()->firstOrFail()->id);
+
+        $inventory->refresh();
+        $this->assertSame($initialQuantityOnHand - 1, (float) $inventory->quantity_on_hand);
+        $this->assertSame(1, InventoryMovement::query()
+            ->where('inventory_id', $inventory->id)
+            ->where('movement_type', 'sale')
+            ->where('quantity', 1)
+            ->count());
+    }
+
+    public function test_cart_refresh_does_not_silently_reprice_expired_offer_snapshot(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));
         $variant = $this->variant(['selling_price' => 35]);
@@ -550,13 +632,14 @@ class DailyOfferManagementTest extends TestCase
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1, 'daily_offer_id' => $offer->id]);
         Carbon::setTestNow(Carbon::parse('2026-07-07 17:14:00', config('app.timezone')));
 
-        $this->get(route('cart.show'))->assertOk()->assertSee('Rs. 35.00');
-        $this->assertSame('35.00', (string) CartItem::query()->firstOrFail()->unit_price);
+        $this->get(route('cart.show'))->assertOk()->assertSee('Rs. 30.00');
+        $this->assertSame('30.00', (string) CartItem::query()->firstOrFail()->unit_price);
     }
 
     public function test_historical_order_price_remains_unchanged_after_offer_edit(): void
     {
         $variant = $this->variant(['selling_price' => 35]);
+        $this->stock($variant, 20);
         $offer = DailyOffer::factory()->create([
             'product_variant_id' => $variant->id,
             'offer_price' => 30,
@@ -574,6 +657,8 @@ class DailyOfferManagementTest extends TestCase
             'order_id' => $order->id,
             'product_variant_id' => $variant->id,
             'product_id' => $variant->product_id,
+            'sale_type' => 'daily_offer',
+            'daily_offer_id' => $offer->id,
             'product_name_snapshot' => $variant->product->name,
             'variant_name_snapshot' => $variant->variant_name,
             'sku_snapshot' => $variant->sku,
@@ -592,6 +677,7 @@ class DailyOfferManagementTest extends TestCase
         $this->actingAs($this->admin)->patch(route('admin.daily-offers.update', $offer), [
             'product_variant_id' => $variant->id,
             'offer_price' => 25,
+            'allocated_quantity' => 10,
             'starts_at' => now()->subMinute()->format('Y-m-d H:i:s'),
             'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
             'is_active' => 1,
@@ -600,6 +686,8 @@ class DailyOfferManagementTest extends TestCase
         $item->refresh();
         $this->assertSame((string) $originalUnitPrice, (string) $item->unit_price);
         $this->assertSame($originalLineTotal, $item->line_total);
+        $this->assertSame('daily_offer', $item->sale_type);
+        $this->assertSame($offer->id, $item->daily_offer_id);
         $this->assertSame('30.00', $order->fresh()->subtotal);
     }
 

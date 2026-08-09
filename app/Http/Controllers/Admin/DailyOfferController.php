@@ -51,7 +51,7 @@ class DailyOfferController extends Controller
 
     public function show(DailyOffer $dailyOffer)
     {
-        $dailyOffer->load(['productVariant.product', 'productVariant.inventories']);
+        $dailyOffer->load(['cartItems.cart', 'orderItems', 'productVariant.product', 'productVariant.inventories']);
 
         return view('admin.daily-offers.show', compact('dailyOffer'));
     }

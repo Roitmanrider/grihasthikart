@@ -16,7 +16,7 @@ interface CartRepositoryInterface extends RepositoryInterface
 
     public function findItem(int $id): CartItem;
 
-    public function findItemInCart(Cart $cart, int $productVariantId): ?CartItem;
+    public function findItemInCart(Cart $cart, int $productVariantId, string $saleType = 'normal', ?int $dailyOfferId = null): ?CartItem;
 
     public function updateItem(CartItem $item, array $data): CartItem;
 

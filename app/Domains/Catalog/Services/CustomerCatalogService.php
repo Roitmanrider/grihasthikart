@@ -66,7 +66,7 @@ class CustomerCatalogService
                 'images' => fn ($query) => $query->active(),
                 'primaryImage',
                 'defaultVariant.primaryImage',
-                'variants' => fn ($query) => $query->active()->with(['attributeValues.attribute', 'images' => fn ($query) => $query->active(), 'primaryImage']),
+                'variants' => fn ($query) => $query->active()->with(['attributeValues.attribute', 'inventories', 'dailyOffers.cartItems.cart', 'dailyOffers.orderItems', 'images' => fn ($query) => $query->active(), 'primaryImage']),
             ])
             ->firstOrFail();
     }
@@ -148,7 +148,7 @@ class CustomerCatalogService
         return Product::query()
             ->active()
             ->whereHas('defaultVariant', fn ($query) => $query->active())
-            ->with(['brand', 'categories.parent', 'defaultVariant.primaryImage', 'primaryImage']);
+            ->with(['brand', 'categories.parent', 'variants.inventories', 'variants.dailyOffers.cartItems.cart', 'variants.dailyOffers.orderItems', 'defaultVariant.primaryImage', 'primaryImage']);
     }
 
     private function homepageCategorySections()

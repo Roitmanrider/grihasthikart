@@ -4,6 +4,7 @@ namespace App\Domains\Catalog\Services;
 
 use App\Domains\Catalog\Contracts\DailyOfferRepositoryInterface;
 use App\Models\DailyOffer;
+use App\Models\Inventory;
 use App\Models\ProductVariant;
 use InvalidArgumentException;
 
@@ -69,6 +70,24 @@ class DailyOfferService
             throw new InvalidArgumentException('Daily offer price must be lower than the normal selling price.');
         }
 
+        $allocatedQuantity = (float) ($data['allocated_quantity'] ?? 0);
+
+        if ($allocatedQuantity <= 0) {
+            throw new InvalidArgumentException('Daily offer allocation must be greater than zero.');
+        }
+
+        if ($ignoreId !== null) {
+            $existing = DailyOffer::query()->find($ignoreId);
+
+            if ($existing && $allocatedQuantity < $existing->soldQuantity()) {
+                throw new InvalidArgumentException('Allocated quantity cannot be less than quantity already sold.');
+            }
+        }
+
+        if ($allocatedQuantity > $this->availableUnallocatedQuantity($variant->id, $ignoreId)) {
+            throw new InvalidArgumentException('Allocated quantity cannot exceed available unallocated stock.');
+        }
+
         if (($data['starts_at'] ?? null) && ($data['ends_at'] ?? null) && $data['ends_at'] <= $data['starts_at']) {
             throw new InvalidArgumentException('Daily offer end date must be after the start date.');
         }
@@ -85,9 +104,29 @@ class DailyOfferService
         $data['ends_at'] = $data['ends_at'] ?? null;
         $data['is_active'] = (bool) ($data['is_active'] ?? false);
         $data['display_order'] = $data['display_order'] ?? 0;
+        $data['allocated_quantity'] = $data['allocated_quantity'] ?? 0;
         $data['max_quantity_per_order'] = $data['max_quantity_per_order'] ?? null;
         $data['badge_text'] = $data['badge_text'] ?? null;
 
         return $data;
+    }
+
+    private function availableUnallocatedQuantity(int $productVariantId, ?int $ignoreOfferId = null): float
+    {
+        $physicalAvailable = (float) Inventory::query()
+            ->active()
+            ->where('product_variant_id', $productVariantId)
+            ->get()
+            ->sum('available_quantity');
+
+        $activeAllocated = DailyOffer::query()
+            ->active()
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now(config('app.timezone'))))
+            ->where('product_variant_id', $productVariantId)
+            ->when($ignoreOfferId !== null, fn ($query) => $query->whereKeyNot($ignoreOfferId))
+            ->get()
+            ->sum(fn (DailyOffer $offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));
+
+        return max(0, $physicalAvailable - $activeAllocated);
     }
 }

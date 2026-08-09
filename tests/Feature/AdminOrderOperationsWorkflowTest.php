@@ -99,7 +99,10 @@ class AdminOrderOperationsWorkflowTest extends TestCase
 
         $this->actingAs($this->admin)
             ->from(route('admin.orders.show', $order))
-            ->patch(route('admin.orders.update-status', $order), ['order_status' => 'cancelled_by_admin'])
+            ->patch(route('admin.orders.update-status', $order), [
+                'order_status' => 'cancelled_by_admin',
+                'admin_notes' => 'Cancellation test',
+            ])
             ->assertRedirect(route('admin.orders.show', $order))
             ->assertSessionHasErrors('order');
 

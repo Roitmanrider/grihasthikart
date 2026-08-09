@@ -13,6 +13,8 @@ class CartItem extends Model
     protected $fillable = [
         'cart_id',
         'product_variant_id',
+        'sale_type',
+        'daily_offer_id',
         'quantity',
         'unit_price',
         'mrp',
@@ -40,6 +42,11 @@ class CartItem extends Model
     public function productVariant()
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function dailyOffer()
+    {
+        return $this->belongsTo(DailyOffer::class);
     }
 
     public function getLineTotalAttribute(): float

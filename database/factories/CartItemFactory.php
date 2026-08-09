@@ -21,6 +21,8 @@ class CartItemFactory extends Factory
         return [
             'cart_id' => Cart::factory(),
             'product_variant_id' => $variant->id,
+            'sale_type' => 'normal',
+            'daily_offer_id' => null,
             'quantity' => 1,
             'unit_price' => $variant->selling_price,
             'mrp' => $variant->mrp,

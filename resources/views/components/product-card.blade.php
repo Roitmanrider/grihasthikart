@@ -1,10 +1,23 @@
 @php
     $variant = $product->defaultVariant;
+    $variantOffers = $product->variants
+        ->flatMap->dailyOffers
+        ->filter(fn ($offer) => $offer->lifecycleState() === 'Active' && $offer->availableOfferQuantity() > 0)
+        ->values();
+    $defaultOffer = $variantOffers->firstWhere('product_variant_id', $variant?->id);
+    $offeredVariantNames = $product->variants
+        ->whereIn('id', $variantOffers->pluck('product_variant_id')->all())
+        ->pluck('variant_name')
+        ->filter()
+        ->values();
     $mediaResolver = app(\App\Services\MediaResolver::class);
     $imageUrl = $mediaResolver->productImageUrl($product, $variant);
-    $sellingPrice = $variant?->selling_price;
+    $sellingPrice = $defaultOffer?->offer_price ?? $variant?->selling_price;
+    $normalPrice = $variant?->selling_price;
     $mrp = $variant?->mrp;
-    $discountPercent = ($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null;
+    $discountPercent = $defaultOffer
+        ? $defaultOffer->discountPercentage()
+        : (($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null);
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
     $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
     $isWishlisted = $variant && in_array((int) $variant->id, $wishlistedVariantIds, true);
@@ -13,7 +26,14 @@
 
 <article class="gk-product-card">
 
-    @if ($discountPercent)
+    @if ($defaultOffer)
+        <div class="gk-discount-badge">Daily Offer<br>{{ $variant?->variant_name }}</div>
+    @elseif ($variantOffers->isNotEmpty())
+        <div class="gk-discount-badge">
+            Daily Offer<br>
+            {{ $offeredVariantNames->count() <= 2 ? $offeredVariantNames->implode(', ') : $offeredVariantNames->count().' Variants' }}
+        </div>
+    @elseif ($discountPercent)
         <div class="gk-discount-badge">{{ $discountPercent }}%<br>OFF</div>
     @endif
 
@@ -45,6 +65,10 @@
             @if ($product->is_new_arrival)
                 <span>New</span>
             @endif
+
+            @if ($defaultOffer)
+                <span>Daily Offer</span>
+            @endif
         </div>
 
         <div class="gk-product-brand">{{ $product->brand?->name ?? 'GrihasthiKart' }}</div>
@@ -59,7 +83,9 @@
 
         <div class="gk-product-price">
             @if ($sellingPrice)
-                @if ($mrp && $mrp > $sellingPrice)
+                @if ($defaultOffer && $normalPrice > $sellingPrice)
+                    <span class="gk-mrp">Rs. {{ number_format((float) $normalPrice, 0) }}</span>
+                @elseif ($mrp && $mrp > $sellingPrice)
                     <span class="gk-mrp">Rs. {{ number_format((float) $mrp, 0) }}</span>
                 @endif
 
@@ -69,6 +95,18 @@
                 <span class="text-muted small">Price coming soon</span>
             @endif
         </div>
+        @if ($defaultOffer)
+            <div class="small text-success mb-2">
+                {{ $defaultOffer->remainingTimeLabel() }} ·
+                @if ($defaultOffer->availableOfferQuantity() > 10)
+                    Limited Daily Offer Stock
+                @elseif ($defaultOffer->availableOfferQuantity() > 3)
+                    Only {{ number_format($defaultOffer->availableOfferQuantity(), 0) }} offer units left
+                @else
+                    Only {{ number_format($defaultOffer->availableOfferQuantity(), 0) }} left at this price
+                @endif
+            </div>
+        @endif
 
         <div class="gk-product-actions">
             @if ($variant && $variant->status)
@@ -76,6 +114,9 @@
                     <form method="POST" action="{{ route('cart.items.store') }}" class="flex-grow-1">
                         @csrf
                         <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                        @if ($defaultOffer)
+                            <input type="hidden" name="daily_offer_id" value="{{ $defaultOffer->id }}">
+                        @endif
                         <input type="hidden" name="quantity" value="1">
                         <button class="btn btn-sm w-100" type="submit">Add to Cart</button>
                     </form>
@@ -119,7 +160,9 @@
                         <div class="small text-muted mb-1">{{ $product->brand?->name ?? 'GrihasthiKart' }}</div>
                         <div class="fw-semibold mb-2">{{ $variant?->variant_name }}</div>
                         <div class="mb-3">
-                            @if ($mrp && $mrp > $sellingPrice)
+                            @if ($defaultOffer && $normalPrice > $sellingPrice)
+                                <span class="text-muted text-decoration-line-through me-2">Rs. {{ number_format((float) $normalPrice, 0) }}</span>
+                            @elseif ($mrp && $mrp > $sellingPrice)
                                 <span class="text-muted text-decoration-line-through me-2">Rs. {{ number_format((float) $mrp, 0) }}</span>
                             @endif
                             @if ($sellingPrice)
@@ -133,6 +176,9 @@
                             <form method="POST" action="{{ route('cart.items.store') }}" class="d-flex gap-2">
                                 @csrf
                                 <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                                @if ($defaultOffer)
+                                    <input type="hidden" name="daily_offer_id" value="{{ $defaultOffer->id }}">
+                                @endif
                                 <input type="number" name="quantity" value="1" min="1" step="1" class="form-control form-control-sm" style="max-width: 88px;">
                                 <button class="btn btn-success btn-sm" type="submit">Add to Cart</button>
                             </form>

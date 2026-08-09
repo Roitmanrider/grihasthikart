@@ -22,6 +22,7 @@ class StoreDailyOfferRequest extends FormRequest
             'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'title' => ['nullable', 'string', 'max:255'],
             'offer_price' => ['required', 'numeric', 'min:0'],
+            'allocated_quantity' => ['required', 'numeric', 'gt:0'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'is_active' => ['nullable', 'boolean'],

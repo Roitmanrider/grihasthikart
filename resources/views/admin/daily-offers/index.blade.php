@@ -71,6 +71,7 @@
                         <th>Normal Price</th>
                         <th>Offer Price</th>
                         <th>Discount</th>
+                        <th>Allocation</th>
                         <th>Schedule</th>
                         <th>Lifecycle</th>
                         <th>Status</th>
@@ -103,6 +104,12 @@
                             <td>
                                 <div>Rs. {{ number_format($offer->discountAmount(), 2) }}</div>
                                 <div class="small text-muted">{{ number_format($offer->discountPercentage(), 2) }}%</div>
+                            </td>
+                            <td>
+                                <div class="small">Allocated: {{ number_format((float) $offer->allocated_quantity, 0) }}</div>
+                                <div class="small">Sold: {{ number_format($offer->soldQuantity(), 0) }}</div>
+                                <div class="small">Reserved: {{ number_format($offer->reservedQuantity(), 0) }}</div>
+                                <div class="small text-success">Available: {{ number_format($offer->availableOfferQuantity(), 0) }}</div>
                             </td>
                             <td>
                                 <div class="small">Start: {{ $offer->starts_at?->timezone(config('app.timezone'))->format('d M Y, h:i A') ?: 'Anytime' }}</div>
@@ -140,7 +147,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-5">No daily offers found.</td>
+                            <td colspan="11" class="text-center text-muted py-5">No daily offers found.</td>
                         </tr>
                     @endforelse
                 </tbody>

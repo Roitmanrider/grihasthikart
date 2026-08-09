@@ -318,6 +318,8 @@ class OrderService
                 'order_id' => $order->id,
                 'product_variant_id' => $item->product_variant_id,
                 'product_id' => $productId,
+                'sale_type' => $item->sale_type,
+                'daily_offer_id' => $item->daily_offer_id,
                 'product_name_snapshot' => $item->product_name_snapshot,
                 'variant_name_snapshot' => $item->variant_name_snapshot,
                 'sku_snapshot' => $item->sku_snapshot,

@@ -52,6 +52,14 @@
                     <div class="fw-semibold">{{ number_format($availableStock, 0) }}</div>
                 </div>
                 <div class="col-md-3">
+                    <div class="small text-muted">Allocated / Sold / Reserved</div>
+                    <div class="fw-semibold">{{ number_format((float) $dailyOffer->allocated_quantity, 0) }} / {{ number_format($dailyOffer->soldQuantity(), 0) }} / {{ number_format($dailyOffer->reservedQuantity(), 0) }}</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="small text-muted">Available Offer Quantity</div>
+                    <div class="fw-semibold">{{ number_format($dailyOffer->availableOfferQuantity(), 0) }}</div>
+                </div>
+                <div class="col-md-3">
                     <div class="small text-muted">Lifecycle</div>
                     <span class="badge {{ $dailyOffer->lifecycleBadgeClass() }}">{{ $dailyOffer->lifecycleState() }}</span>
                 </div>
