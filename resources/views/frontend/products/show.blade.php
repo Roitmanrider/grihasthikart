@@ -4,7 +4,7 @@
 @section('description', $product->meta_description ?: $product->short_description)
 
 @php
-    $defaultVariant = $product->defaultVariant;
+    $defaultVariant = $product->variants->firstWhere('id', $product->default_variant_id) ?? $product->variants->first();
     $galleryImages = $product->images->merge($product->variants->flatMap->images)->unique('id')->values();
     $mediaResolver = app(\App\Services\MediaResolver::class);
     $primaryImage = $mediaResolver->productImageUrl($product, $defaultVariant);
@@ -90,6 +90,7 @@
                                     $variantImage = $variant->primaryImage?->path ?? $product->primaryImage?->path;
                                     $offer = $eligibleOffers->get($variant->id);
                                     $displayPrice = $offer?->offer_price ?? $variant->selling_price;
+                                    $availableStock = $variant->inventories->sum('available_quantity');
                                 @endphp
                                 <option value="{{ $variant->id }}"
                                         data-price="{{ number_format((float) $displayPrice, 2) }}"
@@ -98,8 +99,11 @@
                                         data-sku="{{ $variant->sku }}"
                                         data-barcode="{{ $variant->barcode }}"
                                         data-weight="{{ $variant->weight }} {{ $variant->unit }}"
+                                        data-stock="{{ number_format((float) $availableStock, 0) }}"
+                                        data-max-quantity="{{ $product->maximum_order_quantity ?: '' }}"
                                         data-image="{{ $variantImage ? $mediaResolver->url($variantImage) : '' }}"
                                         data-daily-offer-id="{{ $offer?->id }}"
+                                        data-sale-type="{{ $offer ? 'daily_offer' : 'normal' }}"
                                         data-offer-label="{{ $offer ? 'DAILY OFFER' : '' }}"
                                         data-offer-info="{{ $offer ? $offer->remainingTimeLabel().' · '.($offer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($offer->availableOfferQuantity(), 0).' left at this price') : '' }}"
                                         @selected($defaultVariant?->id === $variant->id)>
@@ -125,6 +129,8 @@
                             <dd class="col-sm-8" id="variantBarcode">{{ $defaultVariant?->barcode ?: 'Not available' }}</dd>
                             <dt class="col-sm-4">Weight</dt>
                             <dd class="col-sm-8" id="variantWeight">{{ trim($defaultVariant?->weight.' '.$defaultVariant?->unit) }}</dd>
+                            <dt class="col-sm-4">Stock</dt>
+                            <dd class="col-sm-8" id="variantStock">{{ number_format((float) $defaultVariant?->inventories?->sum('available_quantity'), 0) }}</dd>
                         </dl>
                     </div>
 
@@ -134,7 +140,7 @@
                         <input type="hidden" name="daily_offer_id" id="cartDailyOfferId" value="{{ $defaultOffer?->id }}">
                         <div class="col-sm-4">
                             <label class="form-label" for="cartQuantity">Quantity</label>
-                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="1" step="1">
+                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="1" step="1" max="{{ $product->maximum_order_quantity ?: '' }}">
                         </div>
                         <div class="col-sm-8">
                             <button class="btn btn-success btn-lg" type="submit">Add to Cart</button>
@@ -197,6 +203,7 @@
                 document.getElementById('variantSku').textContent = option.dataset.sku || '';
                 document.getElementById('variantBarcode').textContent = option.dataset.barcode || 'Not available';
                 document.getElementById('variantWeight').textContent = option.dataset.weight || 'Not available';
+                document.getElementById('variantStock').textContent = option.dataset.stock || '0';
 
                 if (image && option.dataset.image) {
                     image.setAttribute('src', option.dataset.image);
@@ -204,6 +211,7 @@
 
                 document.getElementById('cartVariantId').value = option.value;
                 document.getElementById('cartDailyOfferId').value = option.dataset.dailyOfferId || '';
+                document.getElementById('cartQuantity').max = option.dataset.maxQuantity || '';
                 document.getElementById('variantOfferInfo').textContent = option.dataset.offerInfo || '';
                 document.getElementById('variantOfferInfo').classList.toggle('d-none', !option.dataset.dailyOfferId);
                 document.getElementById('variantOfferBadge').classList.toggle('d-none', !option.dataset.dailyOfferId);

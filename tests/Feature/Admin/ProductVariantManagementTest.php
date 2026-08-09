@@ -6,6 +6,7 @@ use App\Domains\Catalog\Contracts\ProductVariantRepositoryInterface;
 use App\Domains\Catalog\Services\ProductVariantService;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -286,6 +287,38 @@ class ProductVariantManagementTest extends TestCase
         ])->assertRedirect(route('admin.products.variants.index', $product));
 
         $this->assertSame(0, ProductVariant::onlyTrashed()->count());
+    }
+
+    public function test_used_variant_cannot_be_deleted_and_returns_admin_error(): void
+    {
+        $product = Product::factory()->create();
+        $default = ProductVariant::factory()->default()->create(['product_id' => $product->id, 'attribute_signature' => 'default']);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'attribute_signature' => 'used']);
+        $product->forceFill(['default_variant_id' => $default->id])->save();
+        OrderItem::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.products.variants.index', $product))
+            ->delete(route('admin.products.variants.destroy', [$product, $variant]))
+            ->assertRedirect(route('admin.products.variants.index', $product))
+            ->assertSessionHasErrors('variant');
+
+        $this->assertNotSoftDeleted('product_variants', ['id' => $variant->id]);
+    }
+
+    public function test_deleting_already_deleted_variant_redirects_to_admin_list(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->inactive()->create(['product_id' => $product->id]);
+        $variant->delete();
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.products.variants.destroy', [$product, $variant->id]))
+            ->assertRedirect(route('admin.products.variants.index', [$product, 'trashed' => 'with']))
+            ->assertSessionHas('success');
     }
 
     public function test_variant_routes_require_authentication_and_authorization_middleware(): void

@@ -59,7 +59,7 @@ class CustomerCatalogService
         return Product::query()
             ->active()
             ->where('slug', $slug)
-            ->whereHas('defaultVariant', fn ($query) => $query->active())
+            ->whereHas('variants', fn ($query) => $query->active())
             ->with([
                 'brand',
                 'categories',
@@ -147,8 +147,14 @@ class CustomerCatalogService
     {
         return Product::query()
             ->active()
-            ->whereHas('defaultVariant', fn ($query) => $query->active())
-            ->with(['brand', 'categories.parent', 'variants.inventories', 'variants.dailyOffers.cartItems.cart', 'variants.dailyOffers.orderItems', 'defaultVariant.primaryImage', 'primaryImage']);
+            ->whereHas('variants', fn ($query) => $query->active())
+            ->with([
+                'brand',
+                'categories.parent',
+                'variants' => fn ($query) => $query->active()->with(['inventories', 'dailyOffers.cartItems.cart', 'dailyOffers.orderItems', 'primaryImage']),
+                'defaultVariant.primaryImage',
+                'primaryImage',
+            ]);
     }
 
     private function homepageCategorySections()

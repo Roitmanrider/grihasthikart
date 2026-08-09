@@ -26,6 +26,11 @@ class ProductVariantService
         return $this->repository->forProduct($product->id, $filters, $perPage);
     }
 
+    public function findWithTrashed(int $id): ProductVariant
+    {
+        return $this->repository->findWithTrashed($id);
+    }
+
     public function create(Product $product, array $data)
     {
         return $this->persist(function (array $preparedData, array $attributePayload) use ($product) {
@@ -286,7 +291,7 @@ class ProductVariantService
     private function ensureVariantsCanBeDeleted(array $ids): void
     {
         if ($this->repository->idsInUse($ids) !== []) {
-            throw new InvalidArgumentException('Product variants linked to transactional records cannot be deleted.');
+            throw new InvalidArgumentException('This variant has transaction/history references and cannot be deleted. Mark it inactive instead.');
         }
 
         if ($this->repository->idsBlockingDefaultDelete($ids) !== []) {

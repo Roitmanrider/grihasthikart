@@ -17,6 +17,15 @@ class BrandedErrorPageTest extends TestCase
             ->assertSee('Continue Shopping');
     }
 
+    public function test_invalid_admin_route_returns_admin_404_page(): void
+    {
+        $this->get('/admin/missing-admin-page')
+            ->assertNotFound()
+            ->assertSee('Page Not Found')
+            ->assertSee('Admin Dashboard')
+            ->assertDontSee('Continue Shopping');
+    }
+
     public function test_env_file_is_not_exposed(): void
     {
         $this->get('/.env')

@@ -103,10 +103,17 @@ class ProductVariantController extends Controller
             ->with('success', 'Product variant updated successfully.');
     }
 
-    public function destroy(Product $product, ProductVariant $productVariant)
+    public function destroy(Product $product, int $productVariant)
     {
         Gate::authorize('manage-product-variants');
+        $productVariant = $this->productVariantService->findWithTrashed($productVariant);
         $this->ensureVariantBelongsToProduct($product, $productVariant);
+
+        if ($productVariant->trashed()) {
+            return redirect()
+                ->route('admin.products.variants.index', [$product, 'trashed' => 'with'])
+                ->with('success', 'Product variant is already deleted.');
+        }
 
         try {
             $this->productVariantService->delete($productVariant);

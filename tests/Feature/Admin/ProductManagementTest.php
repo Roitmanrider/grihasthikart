@@ -6,7 +6,9 @@ use App\Domains\Catalog\Contracts\ProductRepositoryInterface;
 use App\Domains\Catalog\Services\ProductService;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\SlugService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -162,6 +164,49 @@ class ProductManagementTest extends TestCase
             ->assertRedirect(route('admin.products.index', ['trashed' => 'with']));
 
         $this->assertNotSoftDeleted('products', ['id' => $product->id]);
+    }
+
+    public function test_unused_product_with_unused_variants_can_be_soft_deleted(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->inactive()->create(['product_id' => $product->id]);
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.products.destroy', $product))
+            ->assertRedirect(route('admin.products.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSoftDeleted('products', ['id' => $product->id]);
+        $this->assertSoftDeleted('product_variants', ['id' => $variant->id]);
+    }
+
+    public function test_product_with_transaction_history_cannot_be_deleted(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        OrderItem::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.products.index'))
+            ->delete(route('admin.products.destroy', $product))
+            ->assertRedirect(route('admin.products.index'))
+            ->assertSessionHasErrors('product');
+
+        $this->assertNotSoftDeleted('products', ['id' => $product->id]);
+    }
+
+    public function test_deleting_already_deleted_product_redirects_to_admin_index(): void
+    {
+        $product = Product::factory()->create();
+        $product->delete();
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.products.destroy', $product->id))
+            ->assertRedirect(route('admin.products.index', ['trashed' => 'with']))
+            ->assertSessionHas('success');
     }
 
     public function test_admin_can_bulk_update_status_delete_and_restore_products(): void

@@ -109,9 +109,16 @@ class ProductController extends Controller
             ->with('success', 'Product updated successfully.');
     }
 
-    public function destroy(Product $product)
+    public function destroy(int $product)
     {
         Gate::authorize('manage-products');
+        $product = $this->productService->findWithTrashed($product);
+
+        if ($product->trashed()) {
+            return redirect()
+                ->route('admin.products.index', ['trashed' => 'with'])
+                ->with('success', 'Product is already deleted.');
+        }
 
         try {
             $this->productService->delete($product);

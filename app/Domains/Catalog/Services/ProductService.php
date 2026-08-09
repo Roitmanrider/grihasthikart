@@ -27,6 +27,11 @@ class ProductService
         return $this->repository->activeProducts();
     }
 
+    public function findWithTrashed(int $id): Product
+    {
+        return $this->repository->findWithTrashed($id);
+    }
+
     public function featuredProducts()
     {
         return $this->repository->featuredProducts();
@@ -66,7 +71,11 @@ class ProductService
     {
         $this->ensureProductsCanBeDeleted([$product->id]);
 
-        return $this->repository->delete($product);
+        return DB::transaction(function () use ($product) {
+            $product->variants()->delete();
+
+            return $this->repository->delete($product);
+        });
     }
 
     public function restore(int $id)
@@ -86,7 +95,13 @@ class ProductService
     {
         $this->ensureProductsCanBeDeleted($ids);
 
-        return $this->repository->bulkDelete($ids);
+        return DB::transaction(function () use ($ids) {
+            Product::query()
+                ->whereIn('id', $ids)
+                ->each(fn (Product $product) => $product->variants()->delete());
+
+            return $this->repository->bulkDelete($ids);
+        });
     }
 
     public function bulkUpdateStatus(array $ids, bool $status): int
@@ -180,7 +195,7 @@ class ProductService
     private function ensureProductsCanBeDeleted(array $ids): void
     {
         if ($this->repository->idsInUse($ids) !== []) {
-            throw new InvalidArgumentException('Products linked to transactional records cannot be deleted.');
+            throw new InvalidArgumentException('This product has transaction/history references and cannot be deleted. Mark it inactive instead.');
         }
     }
 

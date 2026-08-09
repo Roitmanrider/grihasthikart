@@ -195,7 +195,7 @@
                                         <button class="btn btn-sm btn-outline-success">Restore</button>
                                     </form>
                                 @else
-                                    <form method="POST" action="{{ route('admin.products.destroy', $product) }}" class="d-inline" onsubmit="return confirm('Delete this product?')">
+                                    <form method="POST" action="{{ route('admin.products.destroy', $product) }}" class="d-inline" onsubmit="return confirm('Delete this product? Products with transaction/history references cannot be deleted. Mark it inactive instead.')">
                                         @csrf
                                         @method('DELETE')
                                         <button class="btn btn-sm btn-outline-danger">Delete</button>

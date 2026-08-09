@@ -1,11 +1,12 @@
 @php
-    $variant = $product->defaultVariant;
-    $variantOffers = $product->variants
+    $variants = $product->variants->where('status', true)->values();
+    $variant = $variants->firstWhere('id', $product->default_variant_id) ?? $variants->first();
+    $variantOffers = $variants
         ->flatMap->dailyOffers
         ->filter(fn ($offer) => $offer->lifecycleState() === 'Active' && $offer->availableOfferQuantity() > 0)
         ->values();
     $defaultOffer = $variantOffers->firstWhere('product_variant_id', $variant?->id);
-    $offeredVariantNames = $product->variants
+    $offeredVariantNames = $variants
         ->whereIn('id', $variantOffers->pluck('product_variant_id')->all())
         ->pluck('variant_name')
         ->filter()
@@ -22,6 +23,7 @@
     $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
     $isWishlisted = $variant && in_array((int) $variant->id, $wishlistedVariantIds, true);
     $quickViewId = 'quickViewProduct'.$product->id;
+    $quickViewSelectorId = $quickViewId.'VariantSelector';
 @endphp
 
 <article class="gk-product-card">
@@ -79,7 +81,12 @@
             </button>
         </h3>
 
-        <div class="gk-product-variant">{{ $variant?->variant_name }}</div>
+        <div class="gk-product-variant">
+            {{ $variant?->variant_name }}
+            @if ($variants->count() > 1)
+                <span class="text-muted">| {{ $variants->count() }} variants available</span>
+            @endif
+        </div>
 
         <div class="gk-product-price">
             @if ($sellingPrice)
@@ -158,16 +165,51 @@
                     </div>
                     <div class="col-sm-7">
                         <div class="small text-muted mb-1">{{ $product->brand?->name ?? 'GrihasthiKart' }}</div>
-                        <div class="fw-semibold mb-2">{{ $variant?->variant_name }}</div>
-                        <div class="mb-3">
+                        @if ($variants->count() > 1)
+                            <label class="form-label small fw-semibold" for="{{ $quickViewSelectorId }}">Choose variant</label>
+                            <select id="{{ $quickViewSelectorId }}" class="form-select form-select-sm gk-quick-variant-selector mb-2" data-modal-id="{{ $quickViewId }}">
+                                @foreach ($variants as $optionVariant)
+                                    @php
+                                        $optionOffer = $variantOffers->firstWhere('product_variant_id', $optionVariant->id);
+                                        $optionImage = $optionVariant->primaryImage?->path ?? $product->primaryImage?->path;
+                                        $optionPrice = $optionOffer?->offer_price ?? $optionVariant->selling_price;
+                                        $optionStock = $optionVariant->inventories->sum('available_quantity');
+                                    @endphp
+                                    <option value="{{ $optionVariant->id }}"
+                                            data-name="{{ $optionVariant->variant_name }}"
+                                            data-price="{{ number_format((float) $optionPrice, 0) }}"
+                                            data-normal-price="{{ number_format((float) $optionVariant->selling_price, 0) }}"
+                                            data-mrp="{{ number_format((float) $optionVariant->mrp, 0) }}"
+                                            data-sku="{{ $optionVariant->sku }}"
+                                            data-image="{{ $optionImage ? $mediaResolver->url($optionImage) : '' }}"
+                                            data-stock="{{ number_format((float) $optionStock, 0) }}"
+                                            data-max-quantity="{{ $product->maximum_order_quantity ?: '' }}"
+                                            data-daily-offer-id="{{ $optionOffer?->id }}"
+                                            data-sale-type="{{ $optionOffer ? 'daily_offer' : 'normal' }}"
+                                            @selected($variant?->id === $optionVariant->id)>
+                                        {{ $optionVariant->variant_name }}{{ $optionOffer ? ' - Daily Offer' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
+                        <div class="fw-semibold mb-2" data-quick-variant-name>{{ $variant?->variant_name }}</div>
+                        <div class="mb-2">
                             @if ($defaultOffer && $normalPrice > $sellingPrice)
-                                <span class="text-muted text-decoration-line-through me-2">Rs. {{ number_format((float) $normalPrice, 0) }}</span>
+                                <span class="text-muted text-decoration-line-through me-2" data-quick-normal-price>Rs. {{ number_format((float) $normalPrice, 0) }}</span>
                             @elseif ($mrp && $mrp > $sellingPrice)
-                                <span class="text-muted text-decoration-line-through me-2">Rs. {{ number_format((float) $mrp, 0) }}</span>
+                                <span class="text-muted text-decoration-line-through me-2" data-quick-normal-price>Rs. {{ number_format((float) $mrp, 0) }}</span>
+                            @else
+                                <span class="text-muted text-decoration-line-through me-2 d-none" data-quick-normal-price></span>
                             @endif
                             @if ($sellingPrice)
-                                <span class="fw-bold text-success">Rs. {{ number_format((float) $sellingPrice, 0) }}</span>
+                                <span class="fw-bold text-success" data-quick-price>Rs. {{ number_format((float) $sellingPrice, 0) }}</span>
                             @endif
+                        </div>
+                        <div class="small text-muted mb-3">
+                            SKU: <span data-quick-sku>{{ $variant?->sku }}</span>
+                            <span class="mx-1">|</span>
+                            Stock: <span data-quick-stock>{{ number_format((float) $variant?->inventories?->sum('available_quantity'), 0) }}</span>
+                            <span class="badge text-bg-success ms-1 {{ $defaultOffer ? '' : 'd-none' }}" data-quick-offer-badge>Daily Offer</span>
                         </div>
                         @if ($product->short_description)
                             <p class="small text-muted">{{ $product->short_description }}</p>
@@ -175,11 +217,13 @@
                         @if ($variant && $variant->status)
                             <form method="POST" action="{{ route('cart.items.store') }}" class="d-flex gap-2">
                                 @csrf
-                                <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                                <input type="hidden" name="product_variant_id" value="{{ $variant->id }}" data-quick-variant-id>
                                 @if ($defaultOffer)
-                                    <input type="hidden" name="daily_offer_id" value="{{ $defaultOffer->id }}">
+                                    <input type="hidden" name="daily_offer_id" value="{{ $defaultOffer->id }}" data-quick-daily-offer-id>
+                                @else
+                                    <input type="hidden" name="daily_offer_id" value="" data-quick-daily-offer-id>
                                 @endif
-                                <input type="number" name="quantity" value="1" min="1" step="1" class="form-control form-control-sm" style="max-width: 88px;">
+                                <input type="number" name="quantity" value="1" min="1" step="1" max="{{ $product->maximum_order_quantity ?: '' }}" class="form-control form-control-sm" style="max-width: 88px;" data-quick-quantity>
                                 <button class="btn btn-success btn-sm" type="submit">Add to Cart</button>
                             </form>
                         @endif
@@ -189,3 +233,73 @@
         </div>
     </div>
 </div>
+
+@once
+    @push('scripts')
+        <script>
+            document.addEventListener('change', (event) => {
+                if (!event.target.matches('.gk-quick-variant-selector')) {
+                    return;
+                }
+
+                const selector = event.target;
+                const option = selector.selectedOptions[0];
+                const modal = document.getElementById(selector.dataset.modalId);
+
+                if (!modal || !option) {
+                    return;
+                }
+
+                const setText = (selector, value) => {
+                    const element = modal.querySelector(selector);
+
+                    if (element) {
+                        element.textContent = value;
+                    }
+                };
+                const setValue = (selector, value) => {
+                    const element = modal.querySelector(selector);
+
+                    if (element) {
+                        element.value = value;
+                    }
+                };
+
+                setText('[data-quick-variant-name]', option.dataset.name || '');
+                setText('[data-quick-price]', 'Rs. ' + (option.dataset.price || ''));
+                setText('[data-quick-sku]', option.dataset.sku || '');
+                setText('[data-quick-stock]', option.dataset.stock || '0');
+                setValue('[data-quick-variant-id]', option.value);
+                setValue('[data-quick-daily-offer-id]', option.dataset.dailyOfferId || '');
+
+                const quantity = modal.querySelector('[data-quick-quantity]');
+
+                if (quantity) {
+                    quantity.max = option.dataset.maxQuantity || '';
+                }
+
+                const normalPrice = modal.querySelector('[data-quick-normal-price]');
+                const showComparePrice = option.dataset.dailyOfferId || Number(option.dataset.mrp) > Number(option.dataset.price);
+
+                if (normalPrice) {
+                    normalPrice.textContent = option.dataset.dailyOfferId
+                        ? 'Rs. ' + (option.dataset.normalPrice || '')
+                        : 'Rs. ' + (option.dataset.mrp || '');
+                    normalPrice.classList.toggle('d-none', !showComparePrice);
+                }
+
+                const badge = modal.querySelector('[data-quick-offer-badge]');
+
+                if (badge) {
+                    badge.classList.toggle('d-none', !option.dataset.dailyOfferId);
+                }
+
+                const image = modal.querySelector('img');
+
+                if (image && option.dataset.image) {
+                    image.setAttribute('src', option.dataset.image);
+                }
+            });
+        </script>
+    @endpush
+@endonce

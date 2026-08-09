@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\DailyOffer;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -142,17 +143,104 @@ class CustomerCatalogTest extends TestCase
         $response->assertDontSee('Hidden Salt');
     }
 
-    public function test_product_without_active_default_variant_is_hidden(): void
+    public function test_product_without_active_default_variant_uses_active_sibling(): void
     {
         $visible = $this->catalogProduct(['name' => 'Visible Sugar', 'slug' => 'visible-sugar']);
-        $hidden = $this->catalogProduct(['name' => 'Hidden Sugar', 'slug' => 'hidden-sugar']);
-        $hidden->defaultVariant->update(['status' => false]);
+        $product = $this->catalogProduct(['name' => 'Sibling Sugar', 'slug' => 'sibling-sugar']);
+        $product->defaultVariant->update(['status' => false]);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'variant_name' => '2kg',
+            'attribute_signature' => '2kg',
+            'sku' => 'GK-SUGAR-2KG',
+            'selling_price' => 180,
+            'mrp' => 200,
+            'status' => true,
+        ]);
 
         $response = $this->get(route('products.index'));
 
         $response->assertOk();
         $response->assertSee($visible->name);
-        $response->assertDontSee($hidden->name);
+        $response->assertSee($product->name);
+        $response->assertSee('2kg');
+    }
+
+    public function test_product_listing_quick_view_exposes_all_active_variants(): void
+    {
+        $product = $this->catalogProduct(['name' => 'Basmati Rice', 'slug' => 'basmati-rice'], [
+            'variant_name' => '1kg',
+            'sku' => 'GK-BASMATI-1KG',
+        ]);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'variant_name' => '5kg',
+            'attribute_signature' => '5kg',
+            'sku' => 'GK-BASMATI-5KG',
+            'status' => true,
+        ]);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'variant_name' => '10kg',
+            'attribute_signature' => '10kg',
+            'sku' => 'GK-BASMATI-10KG',
+            'status' => true,
+        ]);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'variant_name' => '25kg',
+            'attribute_signature' => '25kg',
+            'sku' => 'GK-BASMATI-25KG',
+            'status' => false,
+        ]);
+
+        $response = $this->get(route('products.index'));
+
+        $response->assertOk()
+            ->assertSee('3 variants available')
+            ->assertSee('GK-BASMATI-1KG')
+            ->assertSee('GK-BASMATI-5KG')
+            ->assertSee('GK-BASMATI-10KG')
+            ->assertDontSee('GK-BASMATI-25KG');
+    }
+
+    public function test_daily_offer_on_one_variant_does_not_hide_normal_siblings(): void
+    {
+        $product = $this->catalogProduct(['name' => 'Offer Rice', 'slug' => 'offer-rice'], [
+            'variant_name' => '1kg',
+            'sku' => 'GK-OFFER-RICE-1KG',
+        ]);
+        $offerVariant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'variant_name' => '5kg',
+            'attribute_signature' => '5kg',
+            'sku' => 'GK-OFFER-RICE-5KG',
+            'selling_price' => 550,
+            'mrp' => 600,
+            'status' => true,
+        ]);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'variant_name' => '10kg',
+            'attribute_signature' => '10kg',
+            'sku' => 'GK-OFFER-RICE-10KG',
+            'status' => true,
+        ]);
+        DailyOffer::factory()->create([
+            'product_variant_id' => $offerVariant->id,
+            'offer_price' => 500,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $response = $this->get(route('products.show', $product->slug));
+
+        $response->assertOk()
+            ->assertSee('GK-OFFER-RICE-1KG')
+            ->assertSee('GK-OFFER-RICE-5KG')
+            ->assertSee('GK-OFFER-RICE-10KG')
+            ->assertSee('DAILY OFFER');
     }
 
     public function test_no_transactional_customer_routes_are_created(): void

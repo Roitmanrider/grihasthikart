@@ -126,7 +126,14 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return $this->model
             ->newQuery()
             ->whereIn('id', $ids)
-            ->whereHas('variants', fn ($query) => $query->withTrashed())
+            ->whereHas('variants', fn ($query) => $query
+                ->withTrashed()
+                ->where(fn ($query) => $query
+                    ->whereHas('orderItems')
+                    ->orWhereHas('purchaseEntryItems')
+                    ->orWhereHas('inventories', fn ($query) => $query->withTrashed())
+                    ->orWhereHas('inventoryMovements')
+                    ->orWhereHas('dailyOffers', fn ($query) => $query->withTrashed())))
             ->pluck('id')
             ->all();
     }
