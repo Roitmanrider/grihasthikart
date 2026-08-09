@@ -46,61 +46,119 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-                                @if ($approvedAddresses->isNotEmpty())
+                                @if ($customer)
                                     <div class="col-12">
-                                        <div class="alert alert-light border">
-                                            <div class="fw-semibold mb-2">Saved approved addresses</div>
-                                            @foreach ($approvedAddresses as $address)
-                                                <div class="small text-muted">
-                                                    {{ $address->label ?: 'Address' }}: {{ $address->address_line1 }}, {{ $address->city }} - {{ $address->pincode }}
+                                        @if ($approvedAddresses->isNotEmpty())
+                                            <label class="form-label d-block">Delivery Address</label>
+                                            @if ($approvedAddresses->count() > 1)
+                                                <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Approved delivery addresses">
+                                                    @foreach ($approvedAddresses as $address)
+                                                        <input type="radio"
+                                                               class="btn-check js-address-choice"
+                                                               name="customer_address_id"
+                                                               id="customerAddress{{ $address->id }}"
+                                                               value="{{ $address->id }}"
+                                                               data-recipient="{{ $address->recipient_name }}"
+                                                               data-mobile="{{ $address->mobile }}"
+                                                               data-line1="{{ $address->address_line1 }}"
+                                                               data-line2="{{ $address->address_line2 }}"
+                                                               data-city="{{ $address->city }}"
+                                                               data-state="{{ $address->state }}"
+                                                               data-pincode="{{ $address->pincode }}"
+                                                               data-landmark="{{ $address->landmark }}"
+                                                               autocomplete="off"
+                                                               @checked((int) old('customer_address_id', $preferredAddress?->id) === (int) $address->id)>
+                                                        <label class="btn btn-outline-success rounded-pill px-3" for="customerAddress{{ $address->id }}">
+                                                            {{ $address->label ?: 'Address' }}
+                                                        </label>
+                                                    @endforeach
                                                 </div>
-                                            @endforeach
-                                        </div>
+                                            @else
+                                                <input type="hidden" name="customer_address_id" value="{{ $preferredAddress->id }}">
+                                                <div class="mb-3">
+                                                    <span class="badge text-bg-success rounded-pill px-3 py-2">{{ $preferredAddress->label ?: 'Address' }}</span>
+                                                </div>
+                                            @endif
+
+                                            <div class="border rounded bg-light p-3" id="selectedAddressDisplay">
+                                                <div class="fw-semibold" data-address-display="recipient">{{ $preferredAddress->recipient_name }}</div>
+                                                <div data-address-display="line1">{{ $preferredAddress->address_line1 }}</div>
+                                                <div class="text-muted small" data-address-display="line2">{{ $preferredAddress->address_line2 }}</div>
+                                                <div class="text-muted small">
+                                                    <span data-address-display="city">{{ $preferredAddress->city }}</span>,
+                                                    <span data-address-display="state">{{ $preferredAddress->state }}</span>
+                                                    -
+                                                    <span data-address-display="pincode">{{ $preferredAddress->pincode }}</span>
+                                                </div>
+                                                <div class="text-muted small" data-address-display="landmark">{{ $preferredAddress->landmark }}</div>
+                                                <div class="text-muted small">Phone: <span data-address-display="mobile">{{ $preferredAddress->mobile }}</span></div>
+                                            </div>
+                                        @else
+                                            <div class="alert alert-warning mb-0">
+                                                No approved delivery address is available. Please add an address in
+                                                <a href="{{ route('customer.addresses.index') }}" class="alert-link">My Addresses</a>
+                                                and wait for admin approval before checkout.
+                                            </div>
+                                        @endif
                                     </div>
                                 @endif
 
-                                <div class="col-12">
-                                    <label class="form-label">Address Line 1</label>
-                                    <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1', $preferredAddress?->address_line1) }}" class="form-control @error('delivery_address_line1') is-invalid @enderror" required>
-                                    @error('delivery_address_line1')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Address Line 2</label>
-                                    <input type="text" name="delivery_address_line2" value="{{ old('delivery_address_line2', $preferredAddress?->address_line2) }}" class="form-control @error('delivery_address_line2') is-invalid @enderror">
-                                    @error('delivery_address_line2')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">City</label>
-                                    <input type="text" name="delivery_city" value="{{ old('delivery_city', $preferredAddress?->city) }}" class="form-control @error('delivery_city') is-invalid @enderror" required>
-                                    @error('delivery_city')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">State</label>
-                                    <input type="text" name="delivery_state" value="{{ old('delivery_state', $preferredAddress?->state) }}" class="form-control @error('delivery_state') is-invalid @enderror" required>
-                                    @error('delivery_state')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Pincode</label>
-                                    <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode', $preferredAddress?->pincode) }}" class="form-control @error('delivery_pincode') is-invalid @enderror" required>
-                                    @error('delivery_pincode')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Landmark</label>
-                                    <input type="text" name="delivery_landmark" value="{{ old('delivery_landmark', $preferredAddress?->landmark) }}" class="form-control @error('delivery_landmark') is-invalid @enderror">
-                                    @error('delivery_landmark')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                @if ($customer)
+                                    <input type="hidden" name="delivery_address_line1" value="{{ old('delivery_address_line1', $preferredAddress?->address_line1) }}">
+                                    <input type="hidden" name="delivery_address_line2" value="{{ old('delivery_address_line2', $preferredAddress?->address_line2) }}">
+                                    <input type="hidden" name="delivery_city" value="{{ old('delivery_city', $preferredAddress?->city) }}">
+                                    <input type="hidden" name="delivery_state" value="{{ old('delivery_state', $preferredAddress?->state) }}">
+                                    <input type="hidden" name="delivery_pincode" value="{{ old('delivery_pincode', $preferredAddress?->pincode) }}">
+                                    <input type="hidden" name="delivery_landmark" value="{{ old('delivery_landmark', $preferredAddress?->landmark) }}">
+                                    @foreach (['delivery_address_line1', 'delivery_city', 'delivery_state', 'delivery_pincode'] as $field)
+                                        @error($field)
+                                            <div class="col-12 text-danger small">{{ $message }}</div>
+                                        @enderror
+                                    @endforeach
+                                @else
+                                    <div class="col-12">
+                                        <label class="form-label">Address Line 1</label>
+                                        <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1') }}" class="form-control @error('delivery_address_line1') is-invalid @enderror" required>
+                                        @error('delivery_address_line1')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Address Line 2</label>
+                                        <input type="text" name="delivery_address_line2" value="{{ old('delivery_address_line2') }}" class="form-control @error('delivery_address_line2') is-invalid @enderror">
+                                        @error('delivery_address_line2')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">City</label>
+                                        <input type="text" name="delivery_city" value="{{ old('delivery_city') }}" class="form-control @error('delivery_city') is-invalid @enderror" required>
+                                        @error('delivery_city')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">State</label>
+                                        <input type="text" name="delivery_state" value="{{ old('delivery_state') }}" class="form-control @error('delivery_state') is-invalid @enderror" required>
+                                        @error('delivery_state')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Pincode</label>
+                                        <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode') }}" class="form-control @error('delivery_pincode') is-invalid @enderror" required>
+                                        @error('delivery_pincode')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Landmark</label>
+                                        <input type="text" name="delivery_landmark" value="{{ old('delivery_landmark') }}" class="form-control @error('delivery_landmark') is-invalid @enderror">
+                                        @error('delivery_landmark')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                @endif
                                 <div class="col-md-6">
                                     <label class="form-label">Delivery Date</label>
                                     <input type="date" id="deliveryDate" name="delivery_date" value="{{ old('delivery_date', $selectedDeliveryDate) }}" min="{{ $minimumDeliveryDate }}" class="form-control @error('delivery_date') is-invalid @enderror">
@@ -167,7 +225,7 @@
                                     @endif
                                 </div>
                                 <div class="col-12">
-                                    <button class="btn btn-success btn-lg" type="submit" @disabled(empty($enabledPaymentMethods))>Place Order</button>
+                                    <button class="btn btn-success btn-lg" type="submit" @disabled(empty($enabledPaymentMethods) || ($customer && $approvedAddresses->isEmpty()))>Place Order</button>
                                 </div>
                             </form>
                         </div>
@@ -218,6 +276,60 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const addressChoices = document.querySelectorAll('.js-address-choice');
+
+            function updateSelectedAddress(choice) {
+                if (!choice) {
+                    return;
+                }
+
+                const fields = {
+                    delivery_address_line1: choice.dataset.line1 || '',
+                    delivery_address_line2: choice.dataset.line2 || '',
+                    delivery_city: choice.dataset.city || '',
+                    delivery_state: choice.dataset.state || '',
+                    delivery_pincode: choice.dataset.pincode || '',
+                    delivery_landmark: choice.dataset.landmark || '',
+                };
+
+                Object.entries(fields).forEach(([name, value]) => {
+                    const input = document.querySelector(`input[name="${name}"]`);
+                    if (input) {
+                        input.value = value;
+                    }
+                });
+
+                const displayValues = {
+                    recipient: choice.dataset.recipient || '',
+                    mobile: choice.dataset.mobile || '',
+                    line1: choice.dataset.line1 || '',
+                    line2: choice.dataset.line2 || '',
+                    city: choice.dataset.city || '',
+                    state: choice.dataset.state || '',
+                    pincode: choice.dataset.pincode || '',
+                    landmark: choice.dataset.landmark || '',
+                };
+
+                Object.entries(displayValues).forEach(([key, value]) => {
+                    const target = document.querySelector(`[data-address-display="${key}"]`);
+                    if (target) {
+                        target.textContent = value;
+                    }
+                });
+            }
+
+            addressChoices.forEach((choice) => {
+                choice.addEventListener('change', () => updateSelectedAddress(choice));
+            });
+
+            updateSelectedAddress(document.querySelector('.js-address-choice:checked'));
+        });
+    </script>
+@endpush
 
 @if (in_array('razorpay', $enabledPaymentMethods, true))
 @push('scripts')

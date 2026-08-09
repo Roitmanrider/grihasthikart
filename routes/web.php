@@ -82,6 +82,7 @@ Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name
 Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
 Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
 Route::patch('/account/notifications/read-all', [CustomerNotificationController::class, 'readAll'])->name('customer.notifications.read-all');
+Route::get('/account/notifications/{notification}/open', [CustomerNotificationController::class, 'open'])->name('customer.notifications.open');
 Route::patch('/account/notifications/{notification}/read', [CustomerNotificationController::class, 'read'])->name('customer.notifications.read');
 Route::middleware('customer.auth')->group(function () {
     Route::get('/account/returns', [CustomerReturnController::class, 'index'])->name('customer.returns.index');

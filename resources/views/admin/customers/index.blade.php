@@ -16,6 +16,7 @@
         <div class="col-md-4"><label class="form-label">Search</label><input name="search" value="{{ request('search') }}" class="form-control" placeholder="Name, mobile, email"></div>
         <div class="col-md-2"><label class="form-label">Status</label><select name="status" class="form-select"><option value="">All</option><option value="1" @selected(request('status')==='1')>Active</option><option value="0" @selected(request('status')==='0')>Inactive</option></select></div>
         <div class="col-md-2"><label class="form-label">Premium</label><select name="is_premium" class="form-select"><option value="">All</option><option value="1" @selected(request('is_premium')==='1')>Premium</option><option value="0" @selected(request('is_premium')==='0')>Regular</option></select></div>
+        <div class="col-md-2"><label class="form-label">Pending Addresses</label><select name="pending_addresses" class="form-select"><option value="">All</option><option value="1" @selected(request('pending_addresses')==='1')>Pending only</option></select></div>
         <div class="col-md-2"><label class="form-label">Deleted</label><select name="trashed" class="form-select"><option value="">Without deleted</option><option value="with" @selected(request('trashed')==='with')>With deleted</option><option value="only" @selected(request('trashed')==='only')>Deleted only</option></select></div>
         <div class="col-md-2 d-flex align-items-end"><button class="btn btn-outline-success w-100">Filter</button></div>
     </form>

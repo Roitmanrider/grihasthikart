@@ -12,6 +12,8 @@ use App\Http\Requests\CreateRazorpayOrderRequest;
 use App\Http\Requests\FailRazorpayPaymentRequest;
 use App\Http\Requests\PlaceOrderRequest;
 use App\Http\Requests\VerifyRazorpayPaymentRequest;
+use App\Models\Customer;
+use App\Models\CustomerAddress;
 use InvalidArgumentException;
 
 class CheckoutController extends Controller
@@ -50,6 +52,9 @@ class CheckoutController extends Controller
 
             if ($customer) {
                 $data['customer_id'] = $customer->id;
+                $data = $this->withApprovedAddressSnapshot($data, $customer);
+            } else {
+                $this->ensureGuestAddressIsComplete($data);
             }
 
             if (($data['payment_method'] ?? null) === 'razorpay') {
@@ -89,6 +94,9 @@ class CheckoutController extends Controller
 
             if ($customer) {
                 $data['customer_id'] = $customer->id;
+                $data = $this->withApprovedAddressSnapshot($data, $customer);
+            } else {
+                $this->ensureGuestAddressIsComplete($data);
             }
 
             $checkout = $this->orderService->createRazorpayOrderFromCart(
@@ -154,5 +162,43 @@ class CheckoutController extends Controller
         }
 
         return response()->json(['message' => 'Online payment was not completed. Your cart is still available.']);
+    }
+
+    private function withApprovedAddressSnapshot(array $data, Customer $customer): array
+    {
+        $addressId = $data['customer_address_id'] ?? null;
+
+        if (! $addressId) {
+            throw new InvalidArgumentException('Please select an approved delivery address before checkout.');
+        }
+
+        $address = CustomerAddress::query()
+            ->whereKey($addressId)
+            ->where('customer_id', $customer->id)
+            ->where('status', true)
+            ->where('is_approved', true)
+            ->first();
+
+        if (! $address) {
+            throw new InvalidArgumentException('The selected delivery address is not approved for checkout.');
+        }
+
+        $data['delivery_address_line1'] = $address->address_line1;
+        $data['delivery_address_line2'] = $address->address_line2;
+        $data['delivery_city'] = $address->city;
+        $data['delivery_state'] = $address->state;
+        $data['delivery_pincode'] = $address->pincode;
+        $data['delivery_landmark'] = $address->landmark;
+
+        return $data;
+    }
+
+    private function ensureGuestAddressIsComplete(array $data): void
+    {
+        foreach (['delivery_address_line1', 'delivery_city', 'delivery_state', 'delivery_pincode'] as $field) {
+            if (blank($data[$field] ?? null)) {
+                throw new InvalidArgumentException('Please enter a complete delivery address.');
+            }
+        }
     }
 }

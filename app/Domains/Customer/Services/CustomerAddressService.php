@@ -2,6 +2,7 @@
 
 namespace App\Domains\Customer\Services;
 
+use App\Domains\Notification\Services\NotificationService;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use Illuminate\Support\Facades\DB;
@@ -9,6 +10,8 @@ use InvalidArgumentException;
 
 class CustomerAddressService
 {
+    public function __construct(private readonly NotificationService $notificationService) {}
+
     public function create(Customer $customer, array $data): CustomerAddress
     {
         return DB::transaction(function () use ($customer, $data) {
@@ -62,7 +65,12 @@ class CustomerAddressService
 
     public function approve(CustomerAddress $address, bool $approved): CustomerAddress
     {
+        $wasApproved = (bool) $address->is_approved;
         $address->update(['is_approved' => $approved]);
+
+        if ($wasApproved !== $approved) {
+            $this->notificationService->notifyCustomerAddressApprovalChanged($address->fresh('customer'), $approved);
+        }
 
         return $address;
     }

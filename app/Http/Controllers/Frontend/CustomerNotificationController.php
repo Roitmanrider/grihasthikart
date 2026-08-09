@@ -16,12 +16,33 @@ class CustomerNotificationController extends Controller
     public function index()
     {
         $customer = $this->requireCustomer();
+
+        Notification::query()
+            ->forCustomer($customer)
+            ->unread()
+            ->update(['read_at' => now()]);
+
         $notifications = Notification::query()
             ->forCustomer($customer)
             ->latest()
-            ->paginate(20);
+            ->paginate(10);
 
         return view('frontend.customer.notifications.index', compact('customer', 'notifications'));
+    }
+
+    public function open(Notification $notification)
+    {
+        $customer = $this->requireCustomer();
+
+        abort_unless(
+            $notification->audience === Notification::AUDIENCE_CUSTOMER
+            && (int) $notification->customer_id === (int) $customer->id,
+            404
+        );
+
+        $notification->markAsRead();
+
+        return redirect()->to($notification->action_url ?: route('customer.notifications.index'));
     }
 
     public function read(Notification $notification)

@@ -79,6 +79,12 @@ class CustomerRepository extends BaseRepository implements CustomerRepositoryInt
             }
         }
 
+        if (($filters['pending_addresses'] ?? null) === '1') {
+            $query->whereHas('addresses', fn ($query) => $query
+                ->where('status', true)
+                ->where('is_approved', false));
+        }
+
         $sort = $filters['sort'] ?? 'created_at';
         $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 

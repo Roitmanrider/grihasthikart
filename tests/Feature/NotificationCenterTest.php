@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domains\Notification\Services\NotificationService;
 use App\Models\BusinessSetting;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
@@ -143,6 +144,8 @@ class NotificationCenterTest extends TestCase
             ->get(route('customer.notifications.index'))
             ->assertOk()
             ->assertSee('Customer alert');
+
+        $this->assertSame(0, $service->customerUnreadCount($customer));
     }
 
     public function test_mark_one_notification_as_read(): void
@@ -197,6 +200,87 @@ class NotificationCenterTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->patch(route('customer.notifications.read', $notification))
             ->assertNotFound();
+    }
+
+    public function test_customer_notifications_retain_latest_twenty_one_and_paginate_ten(): void
+    {
+        $customer = Customer::factory()->create();
+        $service = app(NotificationService::class);
+
+        for ($i = 1; $i <= 22; $i++) {
+            $this->travelTo(now()->addSeconds($i));
+            $address = CustomerAddress::factory()->create([
+                'customer_id' => $customer->id,
+                'label' => 'Address '.$i,
+            ]);
+
+            $service->notifyCustomerAddressApprovalChanged($address, true);
+        }
+        $this->travelBack();
+
+        $this->assertSame(21, Notification::query()->forCustomer($customer)->count());
+        $this->assertDatabaseMissing('notifications', [
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'message' => 'Your Address 1 delivery address has been approved.',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.notifications.index'))
+            ->assertOk()
+            ->assertSee('Your Address 22 delivery address has been approved.')
+            ->assertDontSee('Your Address 11 delivery address has been approved.');
+    }
+
+    public function test_opening_customer_notification_page_marks_customer_notifications_read_only(): void
+    {
+        $customer = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        Notification::query()->create([
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'type' => 'test.customer',
+            'title' => 'Customer alert',
+        ]);
+        $otherNotification = Notification::query()->create([
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $other->id,
+            'type' => 'test.other',
+            'title' => 'Other alert',
+        ]);
+        $adminNotification = Notification::query()->create([
+            'audience' => Notification::AUDIENCE_ADMIN,
+            'type' => 'test.admin',
+            'title' => 'Admin alert',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.notifications.index'))
+            ->assertOk()
+            ->assertSee('Read')
+            ->assertSee('text-bg-secondary', false);
+
+        $this->assertSame(0, Notification::query()->forCustomer($customer)->unread()->count());
+        $this->assertNull($otherNotification->fresh()->read_at);
+        $this->assertNull($adminNotification->fresh()->read_at);
+    }
+
+    public function test_opening_actionable_notification_marks_it_read_before_redirect(): void
+    {
+        $customer = Customer::factory()->create();
+        $notification = Notification::query()->create([
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'type' => 'test.customer',
+            'title' => 'Customer alert',
+            'action_url' => route('customer.dashboard'),
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.notifications.open', $notification))
+            ->assertRedirect(route('customer.dashboard'));
+
+        $this->assertNotNull($notification->fresh()->read_at);
     }
 
     public function test_guest_blocked_from_notification_centers(): void

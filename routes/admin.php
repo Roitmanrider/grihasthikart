@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\ProductImageController;
 use App\Http\Controllers\Admin\ProductImportController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Models\CashbackRedemptionRequest;
+use App\Models\CustomerAddress;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\Payment;
@@ -59,6 +60,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->count(),
             'pendingPayments' => Payment::query()->whereIn('payment_status', ['pending', 'awaiting_verification'])->count(),
             'pendingCashbackRedemptions' => CashbackRedemptionRequest::query()->where('status', 'pending')->count(),
+            'pendingAddressCount' => CustomerAddress::query()
+                ->whereHas('customer')
+                ->where('status', true)
+                ->where('is_approved', false)
+                ->count(),
+            'pendingAddresses' => CustomerAddress::query()
+                ->with('customer')
+                ->whereHas('customer')
+                ->where('status', true)
+                ->where('is_approved', false)
+                ->latest()
+                ->limit(5)
+                ->get(),
         ]);
     })->middleware(['auth', 'can:manage-admin'])->name('dashboard');
 

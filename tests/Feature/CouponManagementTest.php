@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\DeliverySlot;
 use App\Models\Inventory;
 use App\Models\Order;
@@ -184,11 +185,14 @@ class CouponManagementTest extends TestCase
     public function test_coupon_works_with_logged_in_customer(): void
     {
         $customer = Customer::factory()->create(['mobile' => '9876543210']);
+        $address = CustomerAddress::factory()->create(['customer_id' => $customer->id, 'is_approved' => true]);
         $this->withSession(['customer_id' => $customer->id])->cartWithItem();
         Coupon::factory()->create(['code' => 'CUSTOMER50', 'customer_id' => $customer->id, 'discount_value' => 50]);
 
         $this->withSession(['customer_id' => $customer->id])->post(route('cart.coupon.apply'), ['code' => 'CUSTOMER50'])->assertSessionHasNoErrors();
-        $this->withSession(['customer_id' => $customer->id])->post(route('checkout.place'), $this->checkoutPayload())->assertRedirect();
+        $this->withSession(['customer_id' => $customer->id])->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'customer_address_id' => $address->id,
+        ]))->assertRedirect();
 
         $this->assertDatabaseHas('coupon_usages', ['customer_id' => $customer->id, 'code_snapshot' => 'CUSTOMER50']);
     }

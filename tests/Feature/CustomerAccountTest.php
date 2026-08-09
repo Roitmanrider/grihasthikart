@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\CustomerLoginOtp;
 use App\Models\Inventory;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -123,19 +124,20 @@ class CustomerAccountTest extends TestCase
             ->get(route('customer.addresses.index'))
             ->assertOk()
             ->assertSee('Default Address')
+            ->assertSee('badge text-bg-success rounded-pill px-3 py-2', false)
             ->assertSee('Set Default');
     }
 
     public function test_checkout_prefills_default_approved_address(): void
     {
         $customer = Customer::factory()->create(['name' => 'Rohit Kumar', 'mobile' => '9876543210']);
-        CustomerAddress::factory()->create([
+        $nonDefaultAddress = CustomerAddress::factory()->create([
             'customer_id' => $customer->id,
             'address_line1' => 'Non Default Address',
             'is_default' => false,
             'is_approved' => true,
         ]);
-        CustomerAddress::factory()->create([
+        $defaultAddress = CustomerAddress::factory()->create([
             'customer_id' => $customer->id,
             'address_line1' => '42 Default Street',
             'address_line2' => 'Near Park',
@@ -154,12 +156,147 @@ class CustomerAccountTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('checkout.show'))
             ->assertOk()
+            ->assertSee('Delivery Address')
+            ->assertSee('customer_address_id', false)
+            ->assertSee('value="'.$nonDefaultAddress->id.'"', false)
+            ->assertSee('data-line1="Non Default Address"', false)
+            ->assertSee('id="customerAddress'.$defaultAddress->id.'"', false)
+            ->assertSee('value="'.$defaultAddress->id.'"', false)
+            ->assertSee('data-line1="42 Default Street"', false)
+            ->assertSee('checked', false)
             ->assertSee('value="42 Default Street"', false)
             ->assertSee('value="Near Park"', false)
             ->assertSee('value="Patna"', false)
             ->assertSee('value="Bihar"', false)
             ->assertSee('value="800001"', false)
             ->assertSee('value="Clock Tower"', false);
+    }
+
+    public function test_checkout_shows_only_approved_address_chips_and_excludes_unapproved_addresses(): void
+    {
+        $customer = Customer::factory()->create();
+        $approved = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Home',
+            'address_line1' => 'Approved Street',
+            'is_default' => true,
+            'is_approved' => true,
+        ]);
+        CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Pending',
+            'address_line1' => 'Pending Street',
+            'is_approved' => false,
+        ]);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('Home')
+            ->assertSee('value="'.$approved->id.'"', false)
+            ->assertSee('Approved Street')
+            ->assertDontSee('Pending Street');
+    }
+
+    public function test_checkout_with_one_approved_address_shows_current_address_without_selector_chips(): void
+    {
+        $customer = Customer::factory()->create();
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Office',
+            'address_line1' => 'Single Approved Street',
+            'is_approved' => true,
+        ]);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('Office')
+            ->assertSee('Single Approved Street')
+            ->assertSee('name="customer_address_id" value="'.$address->id.'"', false)
+            ->assertDontSee('btn-check js-address-choice', false);
+    }
+
+    public function test_logged_in_checkout_uses_approved_address_snapshot_and_ignores_forged_text(): void
+    {
+        $customer = Customer::factory()->create(['mobile' => '9876543210']);
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'address_line1' => 'Approved Checkout Street',
+            'city' => 'Patna',
+            'state' => 'Bihar',
+            'pincode' => '800001',
+            'landmark' => 'Approved Landmark',
+            'is_approved' => true,
+            'status' => true,
+        ]);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+                'customer_address_id' => $address->id,
+                'delivery_address_line1' => 'Forged Street',
+                'delivery_city' => 'Forged City',
+            ]))
+            ->assertRedirect();
+
+        $order = Order::query()->firstOrFail();
+        $this->assertSame('Approved Checkout Street', $order->delivery_address_line1);
+        $this->assertSame('Patna', $order->delivery_city);
+        $this->assertSame('Approved Landmark', $order->delivery_landmark);
+    }
+
+    public function test_logged_in_checkout_rejects_foreign_unapproved_and_missing_approved_addresses(): void
+    {
+        $customer = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        $foreignAddress = CustomerAddress::factory()->create(['customer_id' => $other->id, 'is_approved' => true]);
+        $unapprovedAddress = CustomerAddress::factory()->create(['customer_id' => $customer->id, 'is_approved' => false]);
+
+        [, $variant] = $this->purchasableVariant();
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('checkout.place'), array_merge($this->checkoutPayload(), ['customer_address_id' => $foreignAddress->id]))
+            ->assertSessionHasErrors('checkout');
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('checkout.place'), array_merge($this->checkoutPayload(), ['customer_address_id' => $unapprovedAddress->id]))
+            ->assertSessionHasErrors('checkout');
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('checkout.place'), $this->checkoutPayload())
+            ->assertSessionHasErrors('checkout');
+
+        $this->assertSame(0, Order::query()->count());
+    }
+
+    public function test_customer_without_approved_address_sees_checkout_block_message(): void
+    {
+        $customer = Customer::factory()->create();
+        CustomerAddress::factory()->create(['customer_id' => $customer->id, 'is_approved' => false]);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('No approved delivery address is available')
+            ->assertSee('My Addresses');
     }
 
     public function test_customer_order_history_shows_only_own_orders_and_checkout_sets_customer_id(): void
@@ -174,8 +311,11 @@ class CustomerAccountTest extends TestCase
             ->assertDontSee('GKOTHER');
 
         [, $variant] = $this->purchasableVariant();
+        $address = CustomerAddress::factory()->create(['customer_id' => $customer->id, 'is_approved' => true]);
         $this->withSession(['customer_id' => $customer->id])->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
-        $this->withSession(['customer_id' => $customer->id])->post(route('checkout.place'), $this->checkoutPayload())
+        $this->withSession(['customer_id' => $customer->id])->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+            'customer_address_id' => $address->id,
+        ]))
             ->assertRedirect();
 
         $this->assertDatabaseHas('orders', ['customer_id' => $customer->id]);
@@ -241,6 +381,74 @@ class CustomerAccountTest extends TestCase
         $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
         $this->assertNotContains('cashback', $uris);
         $this->assertNotContains('coupons', $uris);
+    }
+
+    public function test_admin_address_approval_shows_full_address_and_notifies_customer(): void
+    {
+        $customer = Customer::factory()->create(['name' => 'Rohit Kumar', 'mobile' => '9876543210']);
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Home',
+            'recipient_name' => 'Rohit Delivery',
+            'mobile' => '9000000000',
+            'address_line1' => 'House 12',
+            'address_line2' => 'Near Market',
+            'city' => 'Patna',
+            'state' => 'Bihar',
+            'pincode' => '800001',
+            'landmark' => 'Clock Tower',
+            'is_approved' => false,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.customers.show', $customer))
+            ->assertOk()
+            ->assertSee('Home')
+            ->assertSee('Rohit Delivery')
+            ->assertSee('House 12')
+            ->assertSee('Near Market')
+            ->assertSee('Clock Tower')
+            ->assertSee('Patna, Bihar - 800001')
+            ->assertSee('9000000000');
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.customers.addresses.approve', [$customer, $address]))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', [
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'type' => 'address.approved',
+            'message' => 'Your Home delivery address has been approved.',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.customers.addresses.approve', [$customer, $address->fresh()]))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', [
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'type' => 'address.unapproved',
+            'message' => 'Your Home delivery address is no longer approved for delivery.',
+        ]);
+    }
+
+    public function test_unchanged_address_approval_status_does_not_duplicate_notification(): void
+    {
+        $customer = Customer::factory()->create();
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Home',
+            'is_approved' => true,
+        ]);
+
+        app(\App\Domains\Customer\Services\CustomerAddressService::class)->approve($address, true);
+
+        $this->assertSame(0, Notification::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', 'address.approved')
+            ->count());
     }
 
     private function addressPayload(array $overrides = []): array

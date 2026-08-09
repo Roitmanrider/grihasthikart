@@ -6,6 +6,7 @@ use App\Domains\Order\Services\OrderStatusService;
 use App\Models\CashbackRedemptionRequest;
 use App\Models\ContactMessage;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
@@ -26,6 +27,24 @@ class NotificationService
     public function customerUnreadCount(Customer $customer): int
     {
         return Notification::query()->forCustomer($customer)->unread()->count();
+    }
+
+    public function notifyCustomerAddressApprovalChanged(CustomerAddress $address, bool $approved): void
+    {
+        $label = $address->label ?: 'delivery';
+        $message = $approved
+            ? 'Your '.$label.' delivery address has been approved.'
+            : 'Your '.$label.' delivery address is no longer approved for delivery.';
+
+        $this->customer(
+            $address->customer,
+            $approved ? 'address.approved' : 'address.unapproved',
+            $approved ? 'Address approved' : 'Address approval removed',
+            $message,
+            route('customer.addresses.index'),
+            $address,
+            ['address_id' => $address->id, 'approved' => $approved]
+        );
     }
 
     public function notifyAdminNewOrder(Order $order): void
@@ -240,7 +259,7 @@ class NotificationService
 
     private function create(string $audience, ?Customer $customer, string $type, string $title, ?string $message, ?string $actionUrl, ?object $notifiable, array $data): Notification
     {
-        return Notification::query()->create([
+        $notification = Notification::query()->create([
             'notifiable_type' => $notifiable ? $notifiable::class : null,
             'notifiable_id' => $notifiable?->id,
             'audience' => $audience,
@@ -251,5 +270,25 @@ class NotificationService
             'action_url' => $actionUrl,
             'data' => $data ?: null,
         ]);
+
+        if ($audience === Notification::AUDIENCE_CUSTOMER && $customer) {
+            $this->pruneCustomerNotifications($customer);
+        }
+
+        return $notification;
+    }
+
+    private function pruneCustomerNotifications(Customer $customer): void
+    {
+        $idsToKeep = Notification::query()
+            ->forCustomer($customer)
+            ->latest()
+            ->limit(21)
+            ->pluck('id');
+
+        Notification::query()
+            ->forCustomer($customer)
+            ->whereNotIn('id', $idsToKeep)
+            ->delete();
     }
 }

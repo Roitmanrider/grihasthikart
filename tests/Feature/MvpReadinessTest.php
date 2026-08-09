@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CashbackRedemptionRequest;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\Payment;
@@ -47,6 +48,15 @@ class MvpReadinessTest extends TestCase
         Order::factory()->create(['order_status' => 'placed']);
         Payment::factory()->create(['payment_status' => 'pending']);
         CashbackRedemptionRequest::factory()->create(['status' => 'pending']);
+        $customer = Customer::factory()->create(['name' => 'Pending Address Customer', 'mobile' => '9876543210']);
+        CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Home',
+            'address_line1' => 'Pending Approval Street',
+            'city' => 'Patna',
+            'pincode' => '800001',
+            'is_approved' => false,
+        ]);
         $variant = ProductVariant::factory()->create();
         Inventory::factory()->create([
             'product_variant_id' => $variant->id,
@@ -61,7 +71,11 @@ class MvpReadinessTest extends TestCase
             ->assertSee('Admin Dashboard')
             ->assertSee('Pending Orders')
             ->assertSee('Low Stock Items')
-            ->assertSee('Cashback Requests');
+            ->assertSee('Cashback Requests')
+            ->assertSee('Addresses Pending Approval')
+            ->assertSee('Pending Address Customer')
+            ->assertSee('Pending Approval Street')
+            ->assertSee('View All Pending Addresses');
     }
 
     public function test_key_admin_navigation_routes_load_for_admin(): void

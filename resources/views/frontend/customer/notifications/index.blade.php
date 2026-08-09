@@ -30,11 +30,11 @@
                                 <div class="small text-muted mt-2">{{ $notification->created_at->diffForHumans() }}</div>
                             </div>
                             <div class="d-flex flex-wrap align-items-start gap-2">
-                                <span class="badge {{ $notification->read_at ? 'text-bg-light' : 'text-bg-success' }}">
+                                <span class="badge {{ $notification->read_at ? 'text-bg-secondary' : 'text-bg-success' }} rounded-pill px-3 py-2 lh-sm">
                                     {{ $notification->read_at ? 'Read' : 'Unread' }}
                                 </span>
                                 @if ($notification->action_url)
-                                    <a class="btn btn-sm btn-outline-secondary" href="{{ $notification->action_url }}">Open</a>
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ route('customer.notifications.open', $notification) }}">Open</a>
                                 @endif
                                 @unless ($notification->read_at)
                                     <form method="POST" action="{{ route('customer.notifications.read', $notification) }}">

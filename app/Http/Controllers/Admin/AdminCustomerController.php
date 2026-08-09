@@ -24,7 +24,7 @@ class AdminCustomerController extends Controller
     public function index(Request $request)
     {
         $customers = $this->customerService->paginate(
-            $request->only(['search', 'status', 'is_premium', 'cashback_enabled', 'trashed', 'sort', 'direction']),
+            $request->only(['search', 'status', 'is_premium', 'cashback_enabled', 'pending_addresses', 'trashed', 'sort', 'direction']),
             (int) $request->input('per_page', 20)
         );
 
