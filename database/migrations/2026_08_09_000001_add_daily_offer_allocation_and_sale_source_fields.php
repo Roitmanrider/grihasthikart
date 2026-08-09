@@ -16,13 +16,14 @@ return new class extends Migration
             $table->dropUnique(['cart_id', 'product_variant_id']);
             $table->string('sale_type', 30)->default('normal')->after('product_variant_id');
             $table->foreignId('daily_offer_id')->nullable()->after('sale_type')->constrained('daily_offers')->nullOnDelete();
-            $table->unique(['cart_id', 'product_variant_id', 'sale_type', 'daily_offer_id'], 'cart_items_cart_variant_sale_type_offer_unique');
+            $table->unsignedBigInteger('daily_offer_identity')->virtualAs('COALESCE(daily_offer_id, 0)')->after('daily_offer_id');
+            $table->unique(['cart_id', 'product_variant_id', 'sale_type', 'daily_offer_identity'], 'cart_items_cart_variant_sale_type_offer_identity_unique');
             $table->index(['sale_type', 'daily_offer_id']);
         });
 
         Schema::table('order_items', function (Blueprint $table) {
             $table->string('sale_type', 30)->default('normal')->after('product_id');
-            $table->foreignId('daily_offer_id')->nullable()->after('sale_type')->constrained('daily_offers')->nullOnDelete();
+            $table->foreignId('daily_offer_id')->nullable()->after('sale_type')->constrained('daily_offers')->restrictOnDelete();
             $table->index(['sale_type', 'daily_offer_id']);
         });
     }
@@ -36,8 +37,9 @@ return new class extends Migration
         });
 
         Schema::table('cart_items', function (Blueprint $table) {
-            $table->dropUnique('cart_items_cart_variant_sale_type_offer_unique');
+            $table->dropUnique('cart_items_cart_variant_sale_type_offer_identity_unique');
             $table->dropIndex(['sale_type', 'daily_offer_id']);
+            $table->dropColumn('daily_offer_identity');
             $table->dropConstrainedForeignId('daily_offer_id');
             $table->dropColumn('sale_type');
             $table->unique(['cart_id', 'product_variant_id']);
