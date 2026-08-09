@@ -203,6 +203,53 @@ class CartManagementTest extends TestCase
         $this->assertSame(80.0, $summary['subtotal']);
     }
 
+    public function test_daily_offer_effective_quantity_uses_product_max_before_offer_max(): void
+    {
+        [, $variant] = $this->purchasableVariant(
+            productOverrides: ['maximum_order_quantity' => 2],
+            variantOverrides: ['selling_price' => 120, 'mrp' => 150],
+            inventoryOverrides: ['quantity_on_hand' => 20]
+        );
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'allocated_quantity' => 10,
+            'max_quantity_per_order' => 5,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 3,
+            'daily_offer_id' => $offer->id,
+        ])->assertSessionHasErrors(['cart' => 'Quantity is limited to 2 per order for this product.']);
+    }
+
+    public function test_available_inventory_lower_than_configured_max_is_effective_limit(): void
+    {
+        [, $variant] = $this->purchasableVariant(
+            productOverrides: ['maximum_order_quantity' => 5],
+            inventoryOverrides: ['quantity_on_hand' => 2]
+        );
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 3,
+        ])->assertSessionHasErrors(['cart' => 'Quantity is limited to 2 per order for this product.']);
+    }
+
+    public function test_zero_stock_variant_cannot_be_added_even_with_forged_request(): void
+    {
+        [, $variant] = $this->purchasableVariant(inventoryOverrides: ['quantity_on_hand' => 0]);
+
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ])->assertSessionHasErrors(['cart' => 'This variant is out of stock.']);
+    }
+
     public function test_existing_normal_cart_item_is_not_converted_when_daily_offer_starts_later(): void
     {
         [, $variant] = $this->purchasableVariant(variantOverrides: [

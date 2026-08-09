@@ -11,8 +11,9 @@
     $currentCustomer = app(\App\Domains\Customer\Services\CustomerAuthService::class)->currentCustomer(request()->session());
     $wishlistedVariantIds = app(\App\Domains\Wishlist\Services\WishlistService::class)->activeVariantIdsForCustomer($currentCustomer);
     $isDefaultWishlisted = $defaultVariant && in_array((int) $defaultVariant->id, $wishlistedVariantIds, true);
+    $defaultStock = (float) ($defaultVariant?->inventories?->sum('available_quantity') ?? 0);
     $eligibleOffers = $product->variants
-        ->flatMap->dailyOffers
+        ->flatMap(fn ($variant) => $variant->inventories->sum('available_quantity') > 0 ? $variant->dailyOffers : collect())
         ->filter(fn ($offer) => $offer->lifecycleState() === 'Active' && $offer->availableOfferQuantity() > 0)
         ->keyBy('product_variant_id');
     $defaultOffer = $defaultVariant ? $eligibleOffers->get($defaultVariant->id) : null;
@@ -91,6 +92,9 @@
                                     $offer = $eligibleOffers->get($variant->id);
                                     $displayPrice = $offer?->offer_price ?? $variant->selling_price;
                                     $availableStock = $variant->inventories->sum('available_quantity');
+                                    $offerInfo = $offer
+                                        ? number_format($offer->discountPercentage(), 0).'% OFF - '.$offer->remainingTimeLabel().' - '.($offer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($offer->availableOfferQuantity(), 0).' left at this price')
+                                        : '';
                                 @endphp
                                 <option value="{{ $variant->id }}"
                                         data-price="{{ number_format((float) $displayPrice, 2) }}"
@@ -99,15 +103,15 @@
                                         data-sku="{{ $variant->sku }}"
                                         data-barcode="{{ $variant->barcode }}"
                                         data-weight="{{ $variant->weight }} {{ $variant->unit }}"
-                                        data-stock="{{ number_format((float) $availableStock, 0) }}"
+                                        data-stock="{{ (float) $availableStock }}"
                                         data-max-quantity="{{ $product->maximum_order_quantity ?: '' }}"
                                         data-image="{{ $variantImage ? $mediaResolver->url($variantImage) : '' }}"
                                         data-daily-offer-id="{{ $offer?->id }}"
                                         data-sale-type="{{ $offer ? 'daily_offer' : 'normal' }}"
                                         data-offer-label="{{ $offer ? 'DAILY OFFER' : '' }}"
-                                        data-offer-info="{{ $offer ? $offer->remainingTimeLabel().' · '.($offer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($offer->availableOfferQuantity(), 0).' left at this price') : '' }}"
+                                        data-offer-info="{{ $offerInfo }}"
                                         @selected($defaultVariant?->id === $variant->id)>
-                                    {{ $variant->variant_name }}{{ $offer ? '    DAILY OFFER' : '' }}
+                                    {{ $variant->variant_name }}{{ $offer ? '    DAILY OFFER '.number_format($offer->discountPercentage(), 0).'% OFF' : '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -120,7 +124,9 @@
                             </span>
                             <span id="variantMrpWrap" class="{{ $defaultOffer ? 'd-none' : '' }}">MRP Rs. <span id="variantMrp">{{ number_format((float) $defaultVariant?->mrp, 2) }}</span></span>
                         </div>
-                        <div id="variantOfferInfo" class="small text-success mb-3 {{ $defaultOffer ? '' : 'd-none' }}">{{ $defaultOffer ? $defaultOffer->remainingTimeLabel().' · '.($defaultOffer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($defaultOffer->availableOfferQuantity(), 0).' left at this price') : '' }}</div>
+                        <div id="variantOfferInfo" class="small text-success mb-3 {{ $defaultOffer ? '' : 'd-none' }}">{{ $defaultOffer ? number_format($defaultOffer->discountPercentage(), 0).'% OFF - '.$defaultOffer->remainingTimeLabel().' - '.($defaultOffer->availableOfferQuantity() > 10 ? 'Limited Daily Offer Stock' : 'Only '.number_format($defaultOffer->availableOfferQuantity(), 0).' left at this price') : '' }}</div>
+
+                        <div id="variantOutOfStock" class="small text-danger mb-3 {{ $defaultStock <= 0 ? '' : 'd-none' }}">Out of Stock</div>
 
                         <dl class="row small mb-0">
                             <dt class="col-sm-4">SKU</dt>
@@ -140,10 +146,10 @@
                         <input type="hidden" name="daily_offer_id" id="cartDailyOfferId" value="{{ $defaultOffer?->id }}">
                         <div class="col-sm-4">
                             <label class="form-label" for="cartQuantity">Quantity</label>
-                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="1" step="1" max="{{ $product->maximum_order_quantity ?: '' }}">
+                            <input class="form-control" type="number" id="cartQuantity" name="quantity" value="1" min="1" step="1" max="{{ $product->maximum_order_quantity ?: '' }}" @disabled($defaultStock <= 0)>
                         </div>
                         <div class="col-sm-8">
-                            <button class="btn btn-success btn-lg" type="submit">Add to Cart</button>
+                            <button class="btn btn-success btn-lg" id="cartAddButton" type="submit" @disabled($defaultStock <= 0)>{{ $defaultStock > 0 ? 'Add to Cart' : 'Out of Stock' }}</button>
                         </div>
                     </form>
 
@@ -212,6 +218,11 @@
                 document.getElementById('cartVariantId').value = option.value;
                 document.getElementById('cartDailyOfferId').value = option.dataset.dailyOfferId || '';
                 document.getElementById('cartQuantity').max = option.dataset.maxQuantity || '';
+                const inStock = Number(option.dataset.stock || 0) > 0;
+                document.getElementById('cartQuantity').disabled = !inStock;
+                document.getElementById('cartAddButton').disabled = !inStock;
+                document.getElementById('cartAddButton').textContent = inStock ? 'Add to Cart' : 'Out of Stock';
+                document.getElementById('variantOutOfStock').classList.toggle('d-none', inStock);
                 document.getElementById('variantOfferInfo').textContent = option.dataset.offerInfo || '';
                 document.getElementById('variantOfferInfo').classList.toggle('d-none', !option.dataset.dailyOfferId);
                 document.getElementById('variantOfferBadge').classList.toggle('d-none', !option.dataset.dailyOfferId);

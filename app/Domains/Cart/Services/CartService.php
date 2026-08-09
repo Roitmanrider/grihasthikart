@@ -72,11 +72,7 @@ class CartService
                 : 0;
             $targetQuantity = $quantity + $existingQuantity;
 
-            $this->validateDailyOfferQuantity($dailyOffer, $targetQuantity);
-            $this->validateProductQuantityLimit($variant, $targetQuantity);
-            $dailyOffer
-                ? $this->validateDailyOfferAvailability($dailyOffer, $quantity, $existingQuantity)
-                : $this->validateNormalStockAvailability($variant->id, $targetQuantity);
+            $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $targetQuantity, $existingQuantity);
 
             if ($existingItem) {
                 if ($existingItem->trashed()) {
@@ -109,11 +105,7 @@ class CartService
                 ? $this->currentDailyOfferForVariant($cartItem->product_variant_id, $cartItem->daily_offer_id)
                 : null;
 
-            $this->validateDailyOfferQuantity($dailyOffer, $quantity);
-            $this->validateProductQuantityLimit($variant, $quantity);
-            $dailyOffer
-                ? $this->validateDailyOfferAvailability($dailyOffer, max(0, $quantity - (float) $cartItem->quantity), (float) $cartItem->quantity)
-                : $this->validateNormalStockAvailability($cartItem->product_variant_id, $quantity);
+            $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $quantity, (float) $cartItem->quantity);
 
             return $this->repository->updateItem($cartItem, ['quantity' => $quantity]);
         });
@@ -294,36 +286,49 @@ class CartService
         }
     }
 
-    private function validateDailyOfferQuantity(?DailyOffer $dailyOffer, float $quantity): void
+    private function validateEffectiveQuantityLimit(?ProductVariant $variant, ?DailyOffer $dailyOffer, float $targetQuantity, float $existingQuantity = 0): void
     {
-        if ($dailyOffer?->max_quantity_per_order && $quantity > $dailyOffer->max_quantity_per_order) {
-            throw new InvalidArgumentException('Daily offer quantity is limited to '.$dailyOffer->max_quantity_per_order.' per order.');
+        if (! $variant) {
+            throw new InvalidArgumentException('This product variant is not available.');
+        }
+
+        $effectiveMax = $this->effectiveMaximumQuantity($variant, $dailyOffer, $existingQuantity);
+
+        if ($effectiveMax <= 0) {
+            throw new InvalidArgumentException('This variant is out of stock.');
+        }
+
+        if ($targetQuantity > $effectiveMax) {
+            throw new InvalidArgumentException('Quantity is limited to '.(int) floor($effectiveMax).' per order for this product.');
         }
     }
 
-    private function validateProductQuantityLimit(?ProductVariant $variant, float $quantity): void
+    private function effectiveMaximumQuantity(ProductVariant $variant, ?DailyOffer $dailyOffer, float $existingQuantity = 0): float
     {
-        $maximumOrderQuantity = $variant?->product?->maximum_order_quantity;
+        $limits = [];
+        $maximumOrderQuantity = $variant->product?->maximum_order_quantity;
 
-        if ($maximumOrderQuantity !== null && $quantity > (int) $maximumOrderQuantity) {
-            throw new InvalidArgumentException('Quantity is limited to '.$maximumOrderQuantity.' per order for this product.');
+        if ($maximumOrderQuantity !== null) {
+            $limits[] = (float) $maximumOrderQuantity;
         }
+
+        if ($dailyOffer) {
+            if ($dailyOffer->max_quantity_per_order) {
+                $limits[] = (float) $dailyOffer->max_quantity_per_order;
+            }
+
+            $limits[] = $existingQuantity + $dailyOffer->availableOfferQuantity();
+            $limits[] = $this->inventoryService->getAvailableQuantity($variant->id);
+
+            return max(0, min($limits));
+        }
+
+        $limits[] = $this->normalSellableQuantity($variant->id);
+
+        return max(0, min($limits));
     }
 
-    private function validateDailyOfferAvailability(DailyOffer $dailyOffer, float $newQuantity, float $existingQuantity = 0): void
-    {
-        if ($newQuantity <= 0) {
-            return;
-        }
-
-        if ($dailyOffer->availableOfferQuantity() < $newQuantity) {
-            throw new InvalidArgumentException('Requested quantity exceeds available Daily Offer stock.');
-        }
-
-        $this->validateSufficientStock($dailyOffer->product_variant_id, $newQuantity + $existingQuantity);
-    }
-
-    private function validateNormalStockAvailability(int $productVariantId, float $quantity): void
+    private function normalSellableQuantity(int $productVariantId): float
     {
         $allocatedRemaining = DailyOffer::query()
             ->active()
@@ -333,8 +338,6 @@ class CartService
             ->get()
             ->sum(fn (DailyOffer $offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));
 
-        if (($this->inventoryService->getAvailableQuantity($productVariantId) - $allocatedRemaining) < $quantity) {
-            throw new InvalidArgumentException('Requested quantity exceeds available stock.');
-        }
+        return max(0, $this->inventoryService->getAvailableQuantity($productVariantId) - $allocatedRemaining);
     }
 }

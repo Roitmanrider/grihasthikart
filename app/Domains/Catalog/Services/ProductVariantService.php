@@ -4,14 +4,18 @@ namespace App\Domains\Catalog\Services;
 
 use App\Domains\Catalog\Contracts\ProductVariantRepositoryInterface;
 use App\Models\AttributeValue;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockLocation;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class ProductVariantService
 {
+    private ?string $lastInventoryWarning = null;
+
     public function __construct(
         private readonly ProductVariantRepositoryInterface $repository
     ) {}
@@ -31,8 +35,15 @@ class ProductVariantService
         return $this->repository->findWithTrashed($id);
     }
 
+    public function lastInventoryWarning(): ?string
+    {
+        return $this->lastInventoryWarning;
+    }
+
     public function create(Product $product, array $data)
     {
+        $this->lastInventoryWarning = null;
+
         return $this->persist(function (array $preparedData, array $attributePayload) use ($product) {
             return DB::transaction(function () use ($product, $preparedData, $attributePayload) {
                 if ($preparedData['is_default']) {
@@ -43,6 +54,7 @@ class ProductVariantService
                 $variant = $this->repository->create($preparedData);
                 $this->repository->syncAttributeValues($variant, $attributePayload);
                 $this->syncProductDefaultVariant($variant);
+                $this->ensureDefaultInventoryRecord($variant);
 
                 return $variant;
             });
@@ -358,6 +370,34 @@ class ProductVariantService
 
         $this->repository->clearDefaultForProduct($variant->product_id, $variant->id);
         $this->syncProductDefaultVariant($variant);
+    }
+
+    private function ensureDefaultInventoryRecord(ProductVariant $variant): void
+    {
+        $location = StockLocation::query()
+            ->active()
+            ->where('is_default', true)
+            ->orderBy('display_order')
+            ->first();
+
+        if (! $location) {
+            $this->lastInventoryWarning = 'Inventory was not initialized because no active default stock location is configured.';
+
+            return;
+        }
+
+        Inventory::query()->firstOrCreate(
+            [
+                'product_variant_id' => $variant->id,
+                'stock_location_id' => $location->id,
+            ],
+            [
+                'quantity_on_hand' => 0,
+                'reserved_quantity' => 0,
+                'damaged_quantity' => 0,
+                'status' => true,
+            ]
+        );
     }
 
     private function isUniqueConstraintViolation(QueryException $exception): bool

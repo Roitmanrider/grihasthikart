@@ -131,7 +131,12 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
                 ->where(fn ($query) => $query
                     ->whereHas('orderItems')
                     ->orWhereHas('purchaseEntryItems')
-                    ->orWhereHas('inventories', fn ($query) => $query->withTrashed())
+                    ->orWhereHas('inventories', fn ($query) => $query
+                        ->withTrashed()
+                        ->where(fn ($query) => $query
+                            ->where('quantity_on_hand', '>', 0)
+                            ->orWhere('reserved_quantity', '>', 0)
+                            ->orWhere('damaged_quantity', '>', 0)))
                     ->orWhereHas('inventoryMovements')
                     ->orWhereHas('dailyOffers', fn ($query) => $query->withTrashed())))
             ->pluck('id')

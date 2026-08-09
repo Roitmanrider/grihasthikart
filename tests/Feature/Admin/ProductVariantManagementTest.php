@@ -6,9 +6,12 @@ use App\Domains\Catalog\Contracts\ProductVariantRepositoryInterface;
 use App\Domains\Catalog\Services\ProductVariantService;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use App\Models\Inventory;
+use App\Models\InventoryMovement;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockLocation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -66,6 +69,47 @@ class ProductVariantManagementTest extends TestCase
         ]);
     }
 
+    public function test_creating_variant_initializes_zero_stock_inventory_at_default_location(): void
+    {
+        [$product, $attribute, $value] = $this->variantContext();
+        $location = StockLocation::factory()->default()->create();
+
+        $this->actingAs($this->admin)->post(route('admin.products.variants.store', $product), [
+            'sku' => 'GK-ZERO-STOCK',
+            'variant_name' => 'Zero Stock',
+            'attribute_values' => [$attribute->id => $value->id],
+            'mrp' => 75,
+            'selling_price' => 68,
+            'status' => 1,
+        ])->assertRedirect(route('admin.products.variants.index', $product));
+
+        $variant = ProductVariant::query()->where('sku', 'GK-ZERO-STOCK')->firstOrFail();
+        $inventory = Inventory::query()
+            ->where('product_variant_id', $variant->id)
+            ->where('stock_location_id', $location->id)
+            ->firstOrFail();
+
+        $this->assertSame('0.000', $inventory->quantity_on_hand);
+        $this->assertSame('0.000', $inventory->reserved_quantity);
+        $this->assertSame(0, InventoryMovement::query()->where('product_variant_id', $variant->id)->count());
+    }
+
+    public function test_variant_create_warns_when_default_stock_location_is_missing(): void
+    {
+        [$product] = $this->variantContext();
+
+        $this->actingAs($this->admin)->post(route('admin.products.variants.store', $product), [
+            'sku' => 'GK-NO-LOCATION',
+            'variant_name' => 'No Location',
+            'mrp' => 75,
+            'selling_price' => 68,
+            'status' => 1,
+        ])->assertRedirect(route('admin.products.variants.index', $product))
+            ->assertSessionHas('warning');
+
+        $this->assertSame(0, Inventory::query()->count());
+    }
+
     public function test_sku_and_barcode_must_be_unique_when_barcode_is_present(): void
     {
         $product = Product::factory()->create();
@@ -118,6 +162,41 @@ class ProductVariantManagementTest extends TestCase
             ])
             ->assertRedirect(route('admin.products.variants.create', $product))
             ->assertSessionHasErrors('variant');
+    }
+
+    public function test_variant_active_toggle_off_and_on_persists(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'sku' => 'GK-TOGGLE',
+            'variant_name' => 'Toggle',
+            'mrp' => 100,
+            'selling_price' => 90,
+            'status' => true,
+        ]);
+
+        $this->actingAs($this->admin)->put(route('admin.products.variants.update', [$product, $variant]), [
+            'sku' => 'GK-TOGGLE',
+            'variant_name' => 'Toggle',
+            'mrp' => 100,
+            'selling_price' => 90,
+            'status' => 0,
+            'is_default' => 0,
+        ])->assertRedirect(route('admin.products.variants.index', $product));
+
+        $this->assertFalse($variant->fresh()->status);
+
+        $this->actingAs($this->admin)->put(route('admin.products.variants.update', [$product, $variant]), [
+            'sku' => 'GK-TOGGLE',
+            'variant_name' => 'Toggle',
+            'mrp' => 100,
+            'selling_price' => 90,
+            'status' => 1,
+            'is_default' => 0,
+        ])->assertRedirect(route('admin.products.variants.index', $product));
+
+        $this->assertTrue($variant->fresh()->status);
     }
 
     public function test_inactive_attribute_and_value_are_rejected_for_active_variants(): void

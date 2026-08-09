@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\DailyOffer;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -219,6 +220,13 @@ class CustomerCatalogTest extends TestCase
             'mrp' => 600,
             'status' => true,
         ]);
+        Inventory::factory()->create([
+            'product_variant_id' => $offerVariant->id,
+            'quantity_on_hand' => 10,
+            'reserved_quantity' => 0,
+            'damaged_quantity' => 0,
+            'status' => true,
+        ]);
         ProductVariant::factory()->create([
             'product_id' => $product->id,
             'variant_name' => '10kg',
@@ -240,7 +248,9 @@ class CustomerCatalogTest extends TestCase
             ->assertSee('GK-OFFER-RICE-1KG')
             ->assertSee('GK-OFFER-RICE-5KG')
             ->assertSee('GK-OFFER-RICE-10KG')
-            ->assertSee('DAILY OFFER');
+            ->assertSee('DAILY OFFER')
+            ->assertSee('9% OFF')
+            ->assertSee('Only 10 left at this price');
     }
 
     public function test_no_transactional_customer_routes_are_created(): void
@@ -281,6 +291,14 @@ class CustomerCatalogTest extends TestCase
         ProductImage::factory()->primary()->create([
             'product_id' => $product->id,
             'product_variant_id' => null,
+            'status' => true,
+        ]);
+
+        Inventory::factory()->create([
+            'product_variant_id' => $variant->id,
+            'quantity_on_hand' => 10,
+            'reserved_quantity' => 0,
+            'damaged_quantity' => 0,
             'status' => true,
         ]);
 

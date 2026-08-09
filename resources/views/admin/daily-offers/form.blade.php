@@ -10,7 +10,9 @@
                     ->sum(fn ($offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));
                 $unallocatedStock = max(0, $physicalAvailable - $activeAllocated);
             @endphp
-            <option value="{{ $variant->id }}" @selected((int) old('product_variant_id', $dailyOffer->product_variant_id ?? 0) === $variant->id)>
+            <option value="{{ $variant->id }}"
+                    data-product-max="{{ $variant->product?->maximum_order_quantity ?: '' }}"
+                    @selected((int) old('product_variant_id', $dailyOffer->product_variant_id ?? 0) === $variant->id)>
                 {{ $variant->product?->name }} - {{ $variant->variant_name }} - {{ $variant->sku }} - Rs. {{ number_format((float) $variant->selling_price, 2) }} - Stock {{ number_format($physicalAvailable, 0) }} - Active Allocation {{ number_format($activeAllocated, 0) }} - Unallocated {{ number_format($unallocatedStock, 0) }}
             </option>
         @endforeach
@@ -51,12 +53,35 @@
 <div class="col-md-2">
     <label class="form-label">Max Qty / Order</label>
     <input type="number" min="1" name="max_quantity_per_order" value="{{ old('max_quantity_per_order', $dailyOffer->max_quantity_per_order ?? '') }}" class="form-control">
+    <div class="form-text" id="dailyOfferProductMaxHint"></div>
+    @error('max_quantity_per_order') <div class="text-danger small">{{ $message }}</div> @enderror
 </div>
 
 <div class="col-md-2">
     <label class="form-label">Display Order</label>
     <input type="number" min="0" name="display_order" value="{{ old('display_order', $dailyOffer->display_order ?? 0) }}" class="form-control">
 </div>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const selector = document.querySelector('select[name="product_variant_id"]');
+            const hint = document.getElementById('dailyOfferProductMaxHint');
+
+            if (!selector || !hint) {
+                return;
+            }
+
+            const updateHint = () => {
+                const max = selector.selectedOptions[0]?.dataset.productMax || '';
+                hint.textContent = max ? 'Maximum allowed for this variant: ' + max : '';
+            };
+
+            selector.addEventListener('change', updateHint);
+            updateHint();
+        });
+    </script>
+@endpush
 
 <div class="col-12">
     <div class="form-check">

@@ -13,4 +13,17 @@
             overlay.hidden = false;
         }
     });
+
+    window.addEventListener('pageshow', function () {
+        const overlay = document.querySelector('[data-loading-overlay]');
+
+        if (overlay) {
+            overlay.hidden = true;
+        }
+
+        document.querySelectorAll('button[disabled][data-loading-disabled="true"]').forEach((button) => {
+            button.disabled = false;
+            delete button.dataset.loadingDisabled;
+        });
+    });
 </script>

@@ -45,6 +45,13 @@ class StoreDailyOfferRequest extends FormRequest
                 $validator->errors()->add('offer_price', 'Daily offer price must be lower than the normal selling price.');
             }
 
+            $productMax = $variant->product?->maximum_order_quantity;
+            $offerMax = $this->input('max_quantity_per_order');
+
+            if ($productMax !== null && $offerMax !== null && $offerMax !== '' && (int) $offerMax > (int) $productMax) {
+                $validator->errors()->add('max_quantity_per_order', 'Daily Offer maximum quantity cannot exceed the product maximum of '.$productMax.'.');
+            }
+
             if (! $this->boolean('is_active', true)) {
                 return;
             }

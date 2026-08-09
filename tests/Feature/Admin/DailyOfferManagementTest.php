@@ -222,6 +222,27 @@ class DailyOfferManagementTest extends TestCase
             ->assertSessionHasErrors('daily_offer');
     }
 
+    public function test_daily_offer_max_quantity_cannot_exceed_product_maximum(): void
+    {
+        $variant = $this->variant(['selling_price' => 35]);
+        $variant->product->update(['maximum_order_quantity' => 2]);
+        $this->stock($variant, 10);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.daily-offers.create'))
+            ->post(route('admin.daily-offers.store'), [
+                'product_variant_id' => $variant->id,
+                'offer_price' => 30,
+                'allocated_quantity' => 5,
+                'max_quantity_per_order' => 5,
+                'starts_at' => now()->subMinute()->format('Y-m-d H:i:s'),
+                'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
+                'is_active' => 1,
+            ])
+            ->assertRedirect(route('admin.daily-offers.create'))
+            ->assertSessionHasErrors(['max_quantity_per_order' => 'Daily Offer maximum quantity cannot exceed the product maximum of 2.']);
+    }
+
     public function test_current_active_daily_offers_appear_on_homepage(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-07 17:12:00', config('app.timezone')));

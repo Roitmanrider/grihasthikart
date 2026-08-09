@@ -52,9 +52,15 @@ class ProductVariantController extends Controller
                 ->withErrors(['variant' => $exception->getMessage()]);
         }
 
-        return redirect()
+        $redirect = redirect()
             ->route('admin.products.variants.index', $product)
             ->with('success', 'Product variant created successfully.');
+
+        if ($this->productVariantService->lastInventoryWarning()) {
+            $redirect->with('warning', $this->productVariantService->lastInventoryWarning());
+        }
+
+        return $redirect;
     }
 
     public function show(Product $product, ProductVariant $productVariant)

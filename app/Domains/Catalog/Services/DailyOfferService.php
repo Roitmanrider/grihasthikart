@@ -76,6 +76,13 @@ class DailyOfferService
             throw new InvalidArgumentException('Daily offer allocation must be greater than zero.');
         }
 
+        $productMax = $variant->product?->maximum_order_quantity;
+        $offerMax = $data['max_quantity_per_order'] ?? null;
+
+        if ($productMax !== null && $offerMax !== null && $offerMax !== '' && (int) $offerMax > (int) $productMax) {
+            throw new InvalidArgumentException('Daily Offer maximum quantity cannot exceed the product maximum of '.$productMax.'.');
+        }
+
         if ($ignoreId !== null) {
             $existing = DailyOffer::query()->find($ignoreId);
 

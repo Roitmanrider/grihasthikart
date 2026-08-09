@@ -2,7 +2,7 @@
     $variants = $product->variants->where('status', true)->values();
     $variant = $variants->firstWhere('id', $product->default_variant_id) ?? $variants->first();
     $variantOffers = $variants
-        ->flatMap->dailyOffers
+        ->flatMap(fn ($variant) => $variant->inventories->sum('available_quantity') > 0 ? $variant->dailyOffers : collect())
         ->filter(fn ($offer) => $offer->lifecycleState() === 'Active' && $offer->availableOfferQuantity() > 0)
         ->values();
     $defaultOffer = $variantOffers->firstWhere('product_variant_id', $variant?->id);
@@ -16,6 +16,8 @@
     $sellingPrice = $defaultOffer?->offer_price ?? $variant?->selling_price;
     $normalPrice = $variant?->selling_price;
     $mrp = $variant?->mrp;
+    $variantStock = (float) ($variant?->inventories?->sum('available_quantity') ?? 0);
+    $variantPurchasable = $variant && $variantStock > 0;
     $discountPercent = $defaultOffer
         ? $defaultOffer->discountPercentage()
         : (($mrp && $sellingPrice && $mrp > $sellingPrice) ? round((($mrp - $sellingPrice) / $mrp) * 100) : null);
@@ -24,6 +26,7 @@
     $isWishlisted = $variant && in_array((int) $variant->id, $wishlistedVariantIds, true);
     $quickViewId = 'quickViewProduct'.$product->id;
     $quickViewSelectorId = $quickViewId.'VariantSelector';
+    $variantSelectorId = 'variantSelectorProduct'.$product->id;
 @endphp
 
 <article class="gk-product-card">
@@ -114,19 +117,28 @@
                 @endif
             </div>
         @endif
+        @if ($variant && $variantStock <= 0)
+            <div class="small text-danger mb-2">Out of Stock</div>
+        @endif
 
         <div class="gk-product-actions">
             @if ($variant && $variant->status)
                 <div class="d-flex gap-2">
-                    <form method="POST" action="{{ route('cart.items.store') }}" class="flex-grow-1">
-                        @csrf
-                        <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
-                        @if ($defaultOffer)
-                            <input type="hidden" name="daily_offer_id" value="{{ $defaultOffer->id }}">
-                        @endif
-                        <input type="hidden" name="quantity" value="1">
-                        <button class="btn btn-sm w-100" type="submit">Add to Cart</button>
-                    </form>
+                    @if ($variants->count() > 1)
+                        <button class="btn btn-sm w-100 flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $variantSelectorId }}" aria-expanded="false" aria-controls="{{ $variantSelectorId }}">
+                            Choose Variant
+                        </button>
+                    @else
+                        <form method="POST" action="{{ route('cart.items.store') }}" class="flex-grow-1">
+                            @csrf
+                            <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
+                            @if ($defaultOffer)
+                                <input type="hidden" name="daily_offer_id" value="{{ $defaultOffer->id }}">
+                            @endif
+                            <input type="hidden" name="quantity" value="1">
+                            <button class="btn btn-sm w-100" type="submit" @disabled(! $variantPurchasable)>{{ $variantPurchasable ? 'Add to Cart' : 'Out of Stock' }}</button>
+                        </form>
+                    @endif
 
                     <form method="POST" action="{{ route('wishlist.items.store') }}">
                         @csrf
@@ -136,6 +148,47 @@
                         </button>
                     </form>
                 </div>
+                @if ($variants->count() > 1)
+                    <div class="collapse mt-2" id="{{ $variantSelectorId }}">
+                        <div class="border rounded p-2 bg-white">
+                            @foreach ($variants as $selectorVariant)
+                                @php
+                                    $selectorOffer = $variantOffers->firstWhere('product_variant_id', $selectorVariant->id);
+                                    $selectorPrice = $selectorOffer?->offer_price ?? $selectorVariant->selling_price;
+                                    $selectorStock = (float) $selectorVariant->inventories->sum('available_quantity');
+                                    $selectorDiscount = $selectorOffer ? $selectorOffer->discountPercentage() : null;
+                                @endphp
+                                <div class="d-flex align-items-center justify-content-between gap-2 py-2 border-bottom">
+                                    <div class="small">
+                                        <div class="fw-semibold">{{ $selectorVariant->variant_name }}</div>
+                                        <div>
+                                            @if ($selectorOffer)
+                                                <span class="text-muted text-decoration-line-through">Rs. {{ number_format((float) $selectorVariant->selling_price, 0) }}</span>
+                                            @elseif ($selectorVariant->mrp > $selectorPrice)
+                                                <span class="text-muted text-decoration-line-through">Rs. {{ number_format((float) $selectorVariant->mrp, 0) }}</span>
+                                            @endif
+                                            <span class="fw-semibold text-success">Rs. {{ number_format((float) $selectorPrice, 0) }}</span>
+                                        </div>
+                                        @if ($selectorOffer)
+                                            <div class="text-success">Daily Offer{{ $selectorDiscount ? ' · '.number_format($selectorDiscount, 0).'% OFF' : '' }}</div>
+                                            <div class="text-muted">{{ $selectorOffer->remainingTimeLabel() }}</div>
+                                        @endif
+                                        @if ($selectorStock <= 0)
+                                            <div class="text-danger">Out of Stock</div>
+                                        @endif
+                                    </div>
+                                    <form method="POST" action="{{ route('cart.items.store') }}">
+                                        @csrf
+                                        <input type="hidden" name="product_variant_id" value="{{ $selectorVariant->id }}">
+                                        <input type="hidden" name="daily_offer_id" value="{{ $selectorOffer?->id }}">
+                                        <input type="hidden" name="quantity" value="1">
+                                        <button class="btn btn-sm btn-success" type="submit" @disabled($selectorStock <= 0)>Add</button>
+                                    </form>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             @else
                 <button class="btn btn-sm w-100" type="button" disabled>Unavailable</button>
             @endif
@@ -174,6 +227,13 @@
                                         $optionImage = $optionVariant->primaryImage?->path ?? $product->primaryImage?->path;
                                         $optionPrice = $optionOffer?->offer_price ?? $optionVariant->selling_price;
                                         $optionStock = $optionVariant->inventories->sum('available_quantity');
+                                        $optionAvailability = $optionOffer
+                                            ? ($optionOffer->availableOfferQuantity() > 10
+                                                ? 'Limited Daily Offer Stock'
+                                                : ($optionOffer->availableOfferQuantity() > 3
+                                                    ? 'Only '.number_format($optionOffer->availableOfferQuantity(), 0).' offer units left'
+                                                    : 'Only '.number_format($optionOffer->availableOfferQuantity(), 0).' left at this price'))
+                                            : '';
                                     @endphp
                                     <option value="{{ $optionVariant->id }}"
                                             data-name="{{ $optionVariant->variant_name }}"
@@ -182,10 +242,13 @@
                                             data-mrp="{{ number_format((float) $optionVariant->mrp, 0) }}"
                                             data-sku="{{ $optionVariant->sku }}"
                                             data-image="{{ $optionImage ? $mediaResolver->url($optionImage) : '' }}"
-                                            data-stock="{{ number_format((float) $optionStock, 0) }}"
+                                            data-stock="{{ (float) $optionStock }}"
                                             data-max-quantity="{{ $product->maximum_order_quantity ?: '' }}"
                                             data-daily-offer-id="{{ $optionOffer?->id }}"
                                             data-sale-type="{{ $optionOffer ? 'daily_offer' : 'normal' }}"
+                                            data-offer-discount="{{ $optionOffer ? number_format($optionOffer->discountPercentage(), 0) : '' }}"
+                                            data-offer-countdown="{{ $optionOffer?->remainingTimeLabel() }}"
+                                            data-offer-availability="{{ $optionAvailability }}"
                                             @selected($variant?->id === $optionVariant->id)>
                                         {{ $optionVariant->variant_name }}{{ $optionOffer ? ' - Daily Offer' : '' }}
                                     </option>
@@ -211,6 +274,18 @@
                             Stock: <span data-quick-stock>{{ number_format((float) $variant?->inventories?->sum('available_quantity'), 0) }}</span>
                             <span class="badge text-bg-success ms-1 {{ $defaultOffer ? '' : 'd-none' }}" data-quick-offer-badge>Daily Offer</span>
                         </div>
+                        <div class="small text-success mb-3 {{ $defaultOffer ? '' : 'd-none' }}" data-quick-offer-details>
+                            @if ($defaultOffer)
+                                {{ number_format($defaultOffer->discountPercentage(), 0) }}% OFF · {{ $defaultOffer->remainingTimeLabel() }} ·
+                                @if ($defaultOffer->availableOfferQuantity() > 10)
+                                    Limited Daily Offer Stock
+                                @elseif ($defaultOffer->availableOfferQuantity() > 3)
+                                    Only {{ number_format($defaultOffer->availableOfferQuantity(), 0) }} offer units left
+                                @else
+                                    Only {{ number_format($defaultOffer->availableOfferQuantity(), 0) }} left at this price
+                                @endif
+                            @endif
+                        </div>
                         @if ($product->short_description)
                             <p class="small text-muted">{{ $product->short_description }}</p>
                         @endif
@@ -223,8 +298,8 @@
                                 @else
                                     <input type="hidden" name="daily_offer_id" value="" data-quick-daily-offer-id>
                                 @endif
-                                <input type="number" name="quantity" value="1" min="1" step="1" max="{{ $product->maximum_order_quantity ?: '' }}" class="form-control form-control-sm" style="max-width: 88px;" data-quick-quantity>
-                                <button class="btn btn-success btn-sm" type="submit">Add to Cart</button>
+                                <input type="number" name="quantity" value="1" min="1" step="1" max="{{ $product->maximum_order_quantity ?: '' }}" class="form-control form-control-sm" style="max-width: 88px;" data-quick-quantity @disabled(! $variantPurchasable)>
+                                <button class="btn btn-success btn-sm" type="submit" data-quick-add @disabled(! $variantPurchasable)>{{ $variantPurchasable ? 'Add to Cart' : 'Out of Stock' }}</button>
                             </form>
                         @endif
                     </div>
@@ -279,7 +354,9 @@
                 }
 
                 const normalPrice = modal.querySelector('[data-quick-normal-price]');
-                const showComparePrice = option.dataset.dailyOfferId || Number(option.dataset.mrp) > Number(option.dataset.price);
+                const numericMrp = Number((option.dataset.mrp || '0').replace(/,/g, ''));
+                const numericPrice = Number((option.dataset.price || '0').replace(/,/g, ''));
+                const showComparePrice = option.dataset.dailyOfferId || numericMrp > numericPrice;
 
                 if (normalPrice) {
                     normalPrice.textContent = option.dataset.dailyOfferId
@@ -292,6 +369,30 @@
 
                 if (badge) {
                     badge.classList.toggle('d-none', !option.dataset.dailyOfferId);
+                }
+
+                const offerDetails = modal.querySelector('[data-quick-offer-details]');
+
+                if (offerDetails) {
+                    const details = [
+                        option.dataset.offerDiscount ? option.dataset.offerDiscount + '% OFF' : '',
+                        option.dataset.offerCountdown || '',
+                        option.dataset.offerAvailability || '',
+                    ].filter(Boolean).join(' · ');
+                    offerDetails.textContent = details;
+                    offerDetails.classList.toggle('d-none', !option.dataset.dailyOfferId);
+                }
+
+                const inStock = Number(option.dataset.stock || 0) > 0;
+                const addButton = modal.querySelector('[data-quick-add]');
+
+                if (addButton) {
+                    addButton.disabled = !inStock;
+                    addButton.textContent = inStock ? 'Add to Cart' : 'Out of Stock';
+                }
+
+                if (quantity) {
+                    quantity.disabled = !inStock;
                 }
 
                 const image = modal.querySelector('img');

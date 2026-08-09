@@ -151,6 +151,34 @@ class ProductManagementTest extends TestCase
         $this->assertSame([$newCategory->id], $product->categories()->pluck('categories.id')->all());
     }
 
+    public function test_product_active_toggle_off_and_on_persists(): void
+    {
+        $category = Category::factory()->create(['name' => 'Toggle Category']);
+        $product = Product::factory()->create(['name' => 'Toggle Product', 'slug' => 'toggle-product', 'status' => true]);
+        $product->categories()->sync([$category->id => ['is_primary' => true, 'display_order' => 0]]);
+
+        $payload = [
+            'category_ids' => [$category->id],
+            'primary_category_id' => $category->id,
+            'name' => 'Toggle Product',
+            'minimum_order_quantity' => 1,
+            'returnable' => 1,
+            'cod_available' => 1,
+        ];
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.products.update', $product), array_merge($payload, ['status' => 0]))
+            ->assertRedirect(route('admin.products.index'));
+
+        $this->assertFalse($product->fresh()->status);
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.products.update', $product), array_merge($payload, ['status' => 1]))
+            ->assertRedirect(route('admin.products.index'));
+
+        $this->assertTrue($product->fresh()->status);
+    }
+
     public function test_admin_can_soft_delete_and_restore_product(): void
     {
         $product = Product::factory()->create();
