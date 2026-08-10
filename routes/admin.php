@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AdminReturnController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
 use App\Http\Controllers\Admin\AdminStockAdjustmentController;
 use App\Http\Controllers\Admin\AdminStockVerificationController;
+use App\Http\Controllers\Admin\AdminStorefrontSeoSettingController;
 use App\Http\Controllers\Admin\AdminSupplierController;
 use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
@@ -444,6 +445,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.checkout.edit');
         Route::put('settings/checkout', [AdminBusinessSettingController::class, 'update'])
             ->name('settings.checkout.update');
+        Route::get('settings/storefront-seo', [AdminStorefrontSeoSettingController::class, 'edit'])
+            ->name('settings.storefront-seo.edit');
+        Route::put('settings/storefront-seo', [AdminStorefrontSeoSettingController::class, 'update'])
+            ->name('settings.storefront-seo.update');
         Route::get('settings/business', [AdminBusinessContactSettingController::class, 'edit'])
             ->name('settings.business.edit');
         Route::patch('settings/business', [AdminBusinessContactSettingController::class, 'update'])

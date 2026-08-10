@@ -53,6 +53,15 @@ class BusinessSettingService
         ];
     }
 
+    public function storefrontSettings(): array
+    {
+        return [
+            'access_mode' => $this->get('storefront.access_mode', 'PUBLIC_BROWSE_MEMBERS_BUY'),
+            'homepage_public_in_members_only' => filter_var($this->get('storefront.homepage_public_in_members_only', true), FILTER_VALIDATE_BOOLEAN),
+            'allow_guest_checkout' => filter_var($this->get('storefront.allow_guest_checkout', false), FILTER_VALIDATE_BOOLEAN),
+        ];
+    }
+
     public function customerInvoiceEnabled(): bool
     {
         return (bool) $this->get('order.customer_invoice_enabled', true);
@@ -126,6 +135,30 @@ class BusinessSettingService
 
             $this->set('checkout.'.$key, $value);
         }
+    }
+
+    public function updateStorefrontSettings(array $data): void
+    {
+        $this->set('storefront.access_mode', $data['access_mode'])
+            ->update([
+                'value_type' => 'string',
+                'label' => 'Storefront Access Mode',
+                'display_order' => 1,
+            ]);
+
+        $this->set('storefront.homepage_public_in_members_only', (bool) $data['homepage_public_in_members_only'])
+            ->update([
+                'value_type' => 'boolean',
+                'label' => 'Homepage Public in Members-Only Mode',
+                'display_order' => 2,
+            ]);
+
+        $this->set('storefront.allow_guest_checkout', (bool) $data['allow_guest_checkout'])
+            ->update([
+                'value_type' => 'boolean',
+                'label' => 'Allow Guest Checkout',
+                'display_order' => 3,
+            ]);
     }
 
     public function updatePaymentSettings(array $data): void

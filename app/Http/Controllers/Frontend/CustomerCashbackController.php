@@ -21,6 +21,7 @@ class CustomerCashbackController extends Controller
     public function index()
     {
         $customer = $this->authService->requireCustomer(request()->session());
+        $this->ensureCashbackEnabled($customer);
         $rule = $this->cashbackService->defaultRule();
         $balance = $this->cashbackService->balance($customer);
         $pendingAmount = $this->cashbackService->pendingAmount($customer);
@@ -39,6 +40,7 @@ class CustomerCashbackController extends Controller
     public function redeem(RequestCashbackRedemptionRequest $request)
     {
         $customer = $this->authService->requireCustomer($request->session());
+        $this->ensureCashbackEnabled($customer);
 
         try {
             $this->redemptionService->request(
@@ -51,5 +53,14 @@ class CustomerCashbackController extends Controller
         }
 
         return back()->with('success', 'Cashback redemption request submitted.');
+    }
+
+    private function ensureCashbackEnabled($customer): void
+    {
+        if (! $customer->cashback_enabled) {
+            abort(redirect()
+                ->route('customer.dashboard')
+                ->withErrors(['cashback' => 'Cashback Points are not enabled for your account.']));
+        }
     }
 }

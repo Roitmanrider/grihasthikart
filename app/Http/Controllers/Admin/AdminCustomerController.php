@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
 use App\Domains\Customer\Services\CustomerAddressService;
+use App\Domains\Customer\Services\CustomerSessionService;
 use App\Domains\Customer\Services\CustomerService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerRequest;
@@ -18,7 +19,8 @@ class AdminCustomerController extends Controller
     public function __construct(
         private readonly CustomerService $customerService,
         private readonly CustomerRepositoryInterface $customerRepository,
-        private readonly CustomerAddressService $addressService
+        private readonly CustomerAddressService $addressService,
+        private readonly CustomerSessionService $customerSessionService
     ) {}
 
     public function index(Request $request)
@@ -81,7 +83,12 @@ class AdminCustomerController extends Controller
     public function status(Customer $customer)
     {
         Gate::authorize('manage-customers');
-        $customer->update(['status' => ! $customer->status]);
+        $newStatus = ! $customer->status;
+        $customer->update(['status' => $newStatus]);
+
+        if (! $newStatus) {
+            $this->customerSessionService->revokeAllForCustomer($customer);
+        }
 
         return back()->with('success', 'Customer status updated successfully.');
     }

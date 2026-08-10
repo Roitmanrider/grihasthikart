@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureCustomerAuthenticated;
+use App\Http\Middleware\EnsureStorefrontAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/admin/login');
         $middleware->alias([
             'customer.auth' => EnsureCustomerAuthenticated::class,
+            'storefront.access' => EnsureStorefrontAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

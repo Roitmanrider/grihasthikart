@@ -8,9 +8,7 @@ use App\Http\Requests\UpdateBusinessSettingRequest;
 
 class AdminBusinessSettingController extends Controller
 {
-    public function __construct(
-        private readonly BusinessSettingService $settingService
-    ) {}
+    public function __construct(private readonly BusinessSettingService $settingService) {}
 
     public function edit()
     {

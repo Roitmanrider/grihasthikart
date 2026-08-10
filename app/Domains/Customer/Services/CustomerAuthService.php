@@ -10,21 +10,27 @@ use App\Models\CustomerLoginOtp;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 use InvalidArgumentException;
 
 class CustomerAuthService
 {
     public function __construct(
         private readonly CustomerRepositoryInterface $customers,
-        private readonly CartService $cartService
+        private readonly CartService $cartService,
+        private readonly CustomerSessionService $customerSessionService
     ) {}
 
     public function requestOtp(string $mobile): string
     {
         $customer = $this->customers->findByMobile($mobile);
 
-        if (! $customer || ! $customer->status || $customer->trashed()) {
-            throw new InvalidArgumentException('No active customer account found for this mobile number.');
+        if (! $customer) {
+            throw new InvalidArgumentException('Your mobile number is not registered with GrihasthiKart.');
+        }
+
+        if (! $customer->status || $customer->trashed()) {
+            throw new InvalidArgumentException('Your account is currently inactive. Please contact GrihasthiKart support.');
         }
 
         $otp = app()->environment('production') ? (string) random_int(100000, 999999) : '123456';
@@ -39,9 +45,9 @@ class CustomerAuthService
         return $otp;
     }
 
-    public function verifyOtp(Store $session, string $mobile, string $otp): Customer
+    public function verifyOtp(Store $session, string $mobile, string $otp, ?Request $request = null): Customer
     {
-        return DB::transaction(function () use ($session, $mobile, $otp) {
+        return DB::transaction(function () use ($session, $mobile, $otp, $request) {
             $record = CustomerLoginOtp::query()
                 ->where('mobile', $mobile)
                 ->whereNull('verified_at')
@@ -65,8 +71,15 @@ class CustomerAuthService
 
             $record->update(['verified_at' => now()]);
             $customer = $record->customer;
+
+            if (! $customer || ! $customer->status || $customer->trashed()) {
+                throw new InvalidArgumentException('Your account is currently inactive. Please contact GrihasthiKart support.');
+            }
+
+            $session->regenerate();
             $customer->update(['last_login_at' => now()]);
             $session->put('customer_id', $customer->id);
+            $this->customerSessionService->start($customer, $session, $request);
             $this->attachSessionCartToCustomer($session, $customer);
 
             return $customer;
@@ -77,15 +90,57 @@ class CustomerAuthService
     {
         $id = $session->get('customer_id');
 
-        return $id ? Customer::query()->find($id) : null;
+        if (! $id) {
+            return null;
+        }
+
+        $customer = Customer::query()->find($id);
+
+        if (! $customer || ! $customer->status || $customer->trashed()) {
+            $this->logout($session);
+
+            return null;
+        }
+
+        if (! $session->get(CustomerSessionService::SESSION_TOKEN_KEY)) {
+            $this->customerSessionService->start($customer, $session);
+        }
+
+        if (! $this->customerSessionService->validate($session)) {
+            $this->logout($session);
+
+            return null;
+        }
+
+        return $customer;
     }
 
     public function requireCustomer(Store $session): Customer
     {
-        $customer = $this->currentCustomer($session);
+        $id = $session->get('customer_id');
+
+        if (! $id) {
+            throw new InvalidArgumentException('Please login to continue.');
+        }
+
+        $customer = Customer::query()->find($id);
 
         if (! $customer) {
             throw new InvalidArgumentException('Please login to continue.');
+        }
+
+        if (! $customer->status || $customer->trashed()) {
+            $this->logout($session);
+            throw new InvalidArgumentException('Your account is currently inactive. Please contact GrihasthiKart support.');
+        }
+
+        if (! $session->get(CustomerSessionService::SESSION_TOKEN_KEY)) {
+            $this->customerSessionService->start($customer, $session);
+        }
+
+        if (! $this->customerSessionService->validate($session)) {
+            $this->logout($session);
+            throw new InvalidArgumentException('For your security, please log in again.');
         }
 
         return $customer;
@@ -93,6 +148,7 @@ class CustomerAuthService
 
     public function logout(Store $session): void
     {
+        $this->customerSessionService->revokeCurrent($session);
         $session->forget('customer_id');
     }
 

@@ -77,6 +77,11 @@ class Customer extends Model
         return $this->hasMany(Notification::class)->latest();
     }
 
+    public function sessions()
+    {
+        return $this->hasMany(CustomerSession::class);
+    }
+
     public function returnRequests()
     {
         return $this->hasMany(ReturnRequest::class)->latest();

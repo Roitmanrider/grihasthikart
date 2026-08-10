@@ -26,14 +26,14 @@
                                 data-csrf-token="{{ csrf_token() }}">
                                 @csrf
                                 <div class="col-md-6">
-                                    <label class="form-label">Name</label>
+                                    <label class="form-label">Full Name *</label>
                                     <input type="text" name="customer_name" value="{{ old('customer_name', $customer?->name) }}" class="form-control @error('customer_name') is-invalid @enderror" required>
                                     @error('customer_name')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Mobile</label>
+                                    <label class="form-label">Mobile Number *</label>
                                     <input type="text" name="customer_mobile" value="{{ old('customer_mobile', $customer?->mobile) }}" class="form-control @error('customer_mobile') is-invalid @enderror" required>
                                     @error('customer_mobile')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -117,7 +117,7 @@
                                     @endforeach
                                 @else
                                     <div class="col-12">
-                                        <label class="form-label">Address Line 1</label>
+                                        <label class="form-label">Address Line 1 *</label>
                                         <input type="text" name="delivery_address_line1" value="{{ old('delivery_address_line1') }}" class="form-control @error('delivery_address_line1') is-invalid @enderror" required>
                                         @error('delivery_address_line1')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -131,21 +131,21 @@
                                         @enderror
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">City</label>
+                                        <label class="form-label">City *</label>
                                         <input type="text" name="delivery_city" value="{{ old('delivery_city') }}" class="form-control @error('delivery_city') is-invalid @enderror" required>
                                         @error('delivery_city')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">State</label>
+                                        <label class="form-label">State *</label>
                                         <input type="text" name="delivery_state" value="{{ old('delivery_state') }}" class="form-control @error('delivery_state') is-invalid @enderror" required>
                                         @error('delivery_state')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">Pincode</label>
+                                        <label class="form-label">PIN Code *</label>
                                         <input type="text" name="delivery_pincode" value="{{ old('delivery_pincode') }}" class="form-control @error('delivery_pincode') is-invalid @enderror" required>
                                         @error('delivery_pincode')
                                             <div class="invalid-feedback">{{ $message }}</div>

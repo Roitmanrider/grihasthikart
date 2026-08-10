@@ -22,8 +22,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
 
-Route::get('/', CatalogHomeController::class)->name('home');
-Route::get('/daily-offers', [DailyOfferCatalogController::class, 'index'])->name('daily-offers.index');
+Route::get('/', CatalogHomeController::class)->middleware('storefront.access:home')->name('home');
+Route::get('/daily-offers', [DailyOfferCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('daily-offers.index');
 
 Route::get('/about-us', [ContentPageController::class, 'page'])
     ->defaults('page', 'about-us')
@@ -50,28 +50,30 @@ Route::get('/customer-support', [ContentPageController::class, 'page'])
     ->defaults('page', 'customer-support')
     ->name('pages.support');
 
-Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
-Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
-Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
-Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
-Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
-Route::post('/cart/coupon/apply', [CouponController::class, 'apply'])->name('cart.coupon.apply');
-Route::delete('/cart/coupon/remove', [CouponController::class, 'remove'])->name('cart.coupon.remove');
+Route::middleware('storefront.access:transactional')->group(function () {
+    Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
+    Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
+    Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
+    Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
+    Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+    Route::post('/cart/coupon/apply', [CouponController::class, 'apply'])->name('cart.coupon.apply');
+    Route::delete('/cart/coupon/remove', [CouponController::class, 'remove'])->name('cart.coupon.remove');
 
-Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
-Route::post('/wishlist/items', [WishlistController::class, 'store'])->name('wishlist.items.store');
-Route::post('/wishlist/items/{wishlistItem}/move-to-cart', [WishlistController::class, 'moveToCart'])
-    ->name('wishlist.items.move-to-cart')
-    ->missing(fn () => back()->withErrors(['wishlist' => 'Wishlist item is no longer available.']));
-Route::delete('/wishlist/items/{wishlistItem}', [WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/items', [WishlistController::class, 'store'])->name('wishlist.items.store');
+    Route::post('/wishlist/items/{wishlistItem}/move-to-cart', [WishlistController::class, 'moveToCart'])
+        ->name('wishlist.items.move-to-cart')
+        ->missing(fn () => back()->withErrors(['wishlist' => 'Wishlist item is no longer available.']));
+    Route::delete('/wishlist/items/{wishlistItem}', [WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
 
-Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
-Route::post('/checkout', [CheckoutController::class, 'place'])->name('checkout.place');
-Route::post('/checkout/razorpay/order', [CheckoutController::class, 'createRazorpayOrder'])->name('checkout.razorpay.order');
-Route::post('/checkout/razorpay/verify', [CheckoutController::class, 'verifyRazorpayPayment'])->name('checkout.razorpay.verify');
-Route::post('/checkout/razorpay/failure', [CheckoutController::class, 'failRazorpayPayment'])->name('checkout.razorpay.failure');
-Route::get('/orders/success/{orderNumber}', [CheckoutController::class, 'success'])->name('checkout.success');
-Route::post('/orders/{orderNumber}/payment-proof', [PaymentController::class, 'uploadProof'])->name('orders.payment-proof.store');
+    Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+    Route::post('/checkout', [CheckoutController::class, 'place'])->name('checkout.place');
+    Route::post('/checkout/razorpay/order', [CheckoutController::class, 'createRazorpayOrder'])->name('checkout.razorpay.order');
+    Route::post('/checkout/razorpay/verify', [CheckoutController::class, 'verifyRazorpayPayment'])->name('checkout.razorpay.verify');
+    Route::post('/checkout/razorpay/failure', [CheckoutController::class, 'failRazorpayPayment'])->name('checkout.razorpay.failure');
+    Route::get('/orders/success/{orderNumber}', [CheckoutController::class, 'success'])->name('checkout.success');
+    Route::post('/orders/{orderNumber}/payment-proof', [PaymentController::class, 'uploadProof'])->name('orders.payment-proof.store');
+});
 
 Route::get('/customer/login', [CustomerAuthController::class, 'login'])->name('customer.login');
 Route::post('/customer/login', [CustomerAuthController::class, 'requestOtp'])->name('customer.login.request');
@@ -79,35 +81,35 @@ Route::get('/customer/verify', [CustomerAuthController::class, 'verifyForm'])->n
 Route::post('/customer/verify', [CustomerAuthController::class, 'verify'])->name('customer.otp.verify');
 Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name('customer.logout');
 
-Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
-Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
-Route::patch('/account/notifications/read-all', [CustomerNotificationController::class, 'readAll'])->name('customer.notifications.read-all');
-Route::get('/account/notifications/{notification}/open', [CustomerNotificationController::class, 'open'])->name('customer.notifications.open');
-Route::patch('/account/notifications/{notification}/read', [CustomerNotificationController::class, 'read'])->name('customer.notifications.read');
 Route::middleware('customer.auth')->group(function () {
+    Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
+    Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
+    Route::patch('/account/notifications/read-all', [CustomerNotificationController::class, 'readAll'])->name('customer.notifications.read-all');
+    Route::get('/account/notifications/{notification}/open', [CustomerNotificationController::class, 'open'])->name('customer.notifications.open');
+    Route::patch('/account/notifications/{notification}/read', [CustomerNotificationController::class, 'read'])->name('customer.notifications.read');
     Route::get('/account/returns', [CustomerReturnController::class, 'index'])->name('customer.returns.index');
     Route::get('/account/returns/create/{order}', [CustomerReturnController::class, 'create'])->name('customer.returns.create');
     Route::post('/account/returns', [CustomerReturnController::class, 'store'])->name('customer.returns.store');
     Route::get('/account/returns/{returnRequest}', [CustomerReturnController::class, 'show'])->name('customer.returns.show');
+    Route::get('/account/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders.index');
+    Route::get('/account/orders/{order}/invoice', [CustomerOrderDocumentController::class, 'invoice'])->name('customer.orders.invoice');
+    Route::patch('/account/orders/{orderNumber}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');
+    Route::get('/account/orders/{orderNumber}', [CustomerDashboardController::class, 'orderShow'])->name('customer.orders.show');
+    Route::get('/account/cashback', [CustomerCashbackController::class, 'index'])->name('customer.cashback.index');
+    Route::post('/account/cashback/redeem', [CustomerCashbackController::class, 'redeem'])->name('customer.cashback.redeem');
+    Route::get('/account/addresses', [CustomerAddressController::class, 'index'])->name('customer.addresses.index');
+    Route::post('/account/addresses', [CustomerAddressController::class, 'store'])->name('customer.addresses.store');
+    Route::get('/account/addresses/{address}/edit', [CustomerAddressController::class, 'edit'])->name('customer.addresses.edit');
+    Route::patch('/account/addresses/{address}', [CustomerAddressController::class, 'update'])->name('customer.addresses.update');
+    Route::delete('/account/addresses/{address}', [CustomerAddressController::class, 'destroy'])->name('customer.addresses.destroy');
+    Route::patch('/account/addresses/{address}/default', [CustomerAddressController::class, 'setDefault'])->name('customer.addresses.default');
 });
-Route::get('/account/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders.index');
-Route::get('/account/orders/{order}/invoice', [CustomerOrderDocumentController::class, 'invoice'])->name('customer.orders.invoice');
-Route::patch('/account/orders/{orderNumber}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');
-Route::get('/account/orders/{orderNumber}', [CustomerDashboardController::class, 'orderShow'])->name('customer.orders.show');
-Route::get('/account/cashback', [CustomerCashbackController::class, 'index'])->name('customer.cashback.index');
-Route::post('/account/cashback/redeem', [CustomerCashbackController::class, 'redeem'])->name('customer.cashback.redeem');
-Route::get('/account/addresses', [CustomerAddressController::class, 'index'])->name('customer.addresses.index');
-Route::post('/account/addresses', [CustomerAddressController::class, 'store'])->name('customer.addresses.store');
-Route::get('/account/addresses/{address}/edit', [CustomerAddressController::class, 'edit'])->name('customer.addresses.edit');
-Route::patch('/account/addresses/{address}', [CustomerAddressController::class, 'update'])->name('customer.addresses.update');
-Route::delete('/account/addresses/{address}', [CustomerAddressController::class, 'destroy'])->name('customer.addresses.destroy');
-Route::patch('/account/addresses/{address}/default', [CustomerAddressController::class, 'setDefault'])->name('customer.addresses.default');
 
-Route::get('/products', [ProductCatalogController::class, 'index'])->name('products.index');
-Route::get('/products/{slug}', [ProductCatalogController::class, 'show'])->name('products.show');
+Route::get('/products', [ProductCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('products.index');
+Route::get('/products/{slug}', [ProductCatalogController::class, 'show'])->middleware('storefront.access:catalog')->name('products.show');
 
-Route::get('/categories', [CategoryCatalogController::class, 'index'])->name('categories.index');
-Route::get('/categories/{slug}', [CategoryCatalogController::class, 'show'])->name('categories.show');
+Route::get('/categories', [CategoryCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('categories.index');
+Route::get('/categories/{slug}', [CategoryCatalogController::class, 'show'])->middleware('storefront.access:catalog')->name('categories.show');
 
-Route::get('/brands', [BrandCatalogController::class, 'index'])->name('brands.index');
-Route::get('/brands/{slug}', [BrandCatalogController::class, 'show'])->name('brands.show');
+Route::get('/brands', [BrandCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('brands.index');
+Route::get('/brands/{slug}', [BrandCatalogController::class, 'show'])->middleware('storefront.access:catalog')->name('brands.show');

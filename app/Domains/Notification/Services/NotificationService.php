@@ -47,6 +47,19 @@ class NotificationService
         );
     }
 
+    public function notifyCustomerNewDeviceSignedIn(Customer $customer): void
+    {
+        $this->customer(
+            $customer,
+            'customer.session_replaced',
+            'New device sign-in',
+            'Your account was signed in on a new device. An older session was signed out.',
+            route('customer.dashboard'),
+            $customer,
+            ['customer_id' => $customer->id]
+        );
+    }
+
     public function notifyAdminNewOrder(Order $order): void
     {
         $this->admin(

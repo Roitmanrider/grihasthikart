@@ -13,6 +13,10 @@
     <meta name="description"
           content="@yield('description','Fresh Grocery Delivered')">
 
+    @if (app(\App\Domains\Storefront\Services\StorefrontAccessService::class)->shouldNoindex(request()))
+        <meta name="robots" content="noindex, nofollow">
+    @endif
+
     <link rel="icon"
           href="{{ asset('assets/images/logos/favicon.png') }}">
 

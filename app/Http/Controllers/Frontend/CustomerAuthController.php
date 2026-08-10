@@ -24,6 +24,10 @@ class CustomerAuthController extends Controller
         try {
             $otp = $this->authService->requestOtp($request->validated('mobile'));
         } catch (InvalidArgumentException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage(), 'errors' => ['mobile' => [$exception->getMessage()]]], 422);
+            }
+
             return back()->withInput()->withErrors(['mobile' => $exception->getMessage()]);
         }
 
@@ -42,9 +46,17 @@ class CustomerAuthController extends Controller
         $data = $request->validated();
 
         try {
-            $this->authService->verifyOtp($request->session(), $data['mobile'], $data['otp']);
+            $this->authService->verifyOtp($request->session(), $data['mobile'], $data['otp'], $request);
         } catch (InvalidArgumentException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage(), 'errors' => ['otp' => [$exception->getMessage()]]], 422);
+            }
+
             return back()->withInput()->withErrors(['otp' => $exception->getMessage()]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['redirect_url' => route('customer.dashboard')]);
         }
 
         return redirect()->intended(route('customer.dashboard'))->with('success', 'Logged in successfully.');

@@ -129,6 +129,11 @@
             Checkout Settings
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.settings.storefront-seo.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.settings.storefront-seo.edit') }}">
+            Storefront & SEO
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.settings.business.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.settings.business.edit') }}">
             Business Contact

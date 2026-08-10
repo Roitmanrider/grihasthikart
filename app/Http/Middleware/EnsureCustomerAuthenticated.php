@@ -15,8 +15,10 @@ class EnsureCustomerAuthenticated
     {
         try {
             $this->authService->requireCustomer($request->session());
-        } catch (InvalidArgumentException) {
-            return redirect()->route('customer.login');
+        } catch (InvalidArgumentException $exception) {
+            return redirect()
+                ->route('customer.login')
+                ->withErrors(['customer' => $exception->getMessage()]);
         }
 
         return $next($request);
