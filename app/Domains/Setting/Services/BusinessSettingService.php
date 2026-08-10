@@ -45,6 +45,8 @@ class BusinessSettingService
             'today_delivery_cutoff_time' => $this->get('checkout.today_delivery_cutoff_time', '14:00'),
             'custom_delivery_date_enabled' => (bool) $this->get('checkout.custom_delivery_date_enabled', true),
             'max_delivery_days_ahead' => (int) $this->get('checkout.max_delivery_days_ahead', 7),
+            'cart_hold_minutes' => (int) $this->get('checkout.cart_hold_minutes', 120),
+            'cart_reminder_minutes' => (int) $this->get('checkout.cart_reminder_minutes', 30),
             'default_state' => $this->get('checkout.default_state'),
             'default_city' => $this->get('checkout.default_city'),
             'store_contact_mobile' => $this->get('checkout.store_contact_mobile'),

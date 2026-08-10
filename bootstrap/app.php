@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\ProcessPendingOrders;
 use App\Http\Middleware\EnsureCustomerAuthenticated;
 use App\Http\Middleware\EnsureStorefrontAccess;
 use Illuminate\Foundation\Application;
@@ -25,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         },
     )
+    ->withCommands([
+        ProcessPendingOrders::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
         $middleware->alias([

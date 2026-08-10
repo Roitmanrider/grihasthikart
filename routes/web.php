@@ -52,6 +52,7 @@ Route::get('/customer-support', [ContentPageController::class, 'page'])
 
 Route::middleware('storefront.access:transactional')->group(function () {
     Route::get('/cart', [CartController::class, 'show'])->name('cart.show');
+    Route::get('/cart/status', [CartController::class, 'status'])->name('cart.status');
     Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
     Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');

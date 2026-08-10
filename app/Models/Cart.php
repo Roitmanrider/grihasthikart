@@ -18,11 +18,13 @@ class Cart extends Model
         'coupon_discount_amount',
         'status',
         'expires_at',
+        'revision',
     ];
 
     protected $casts = [
         'coupon_discount_amount' => 'decimal:2',
         'expires_at' => 'datetime',
+        'revision' => 'integer',
     ];
 
     public function items()
@@ -33,6 +35,21 @@ class Cart extends Model
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function pendingOrders()
+    {
+        return $this->hasMany(PendingOrder::class);
+    }
+
+    public function activePendingOrder()
+    {
+        return $this->hasOne(PendingOrder::class)->where('status', PendingOrder::STATUS_ACTIVE);
     }
 
     public function scopeActive($query)

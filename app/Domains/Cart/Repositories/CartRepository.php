@@ -23,10 +23,28 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
             ->first();
     }
 
+    public function activeCartForCustomer(int $customerId): ?Cart
+    {
+        return $this->model
+            ->newQuery()
+            ->active()
+            ->where('customer_id', $customerId)
+            ->first();
+    }
+
     public function createCartForSession(string $sessionId): Cart
     {
         return $this->model->newQuery()->create([
             'session_id' => $sessionId,
+            'status' => 'active',
+        ]);
+    }
+
+    public function createCartForCustomer(int $customerId, string $sessionId): Cart
+    {
+        return $this->model->newQuery()->create([
+            'session_id' => $sessionId,
+            'customer_id' => $customerId,
             'status' => 'active',
         ]);
     }

@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOrderDocumentController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
+use App\Http\Controllers\Admin\AdminPendingOrderController;
 use App\Http\Controllers\Admin\AdminPurchaseController;
 use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\AdminReturnController;
@@ -333,6 +334,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('orders', [AdminOrderController::class, 'index'])
             ->name('orders.index');
+        Route::get('pending-orders', [AdminPendingOrderController::class, 'index'])
+            ->name('pending-orders.index');
+        Route::get('pending-orders/{pendingOrder}', [AdminPendingOrderController::class, 'show'])
+            ->name('pending-orders.show');
         Route::get('orders/{order}/invoice', [AdminOrderDocumentController::class, 'invoice'])
             ->name('orders.invoice');
         Route::get('orders/{order}/picking-slip', [AdminOrderDocumentController::class, 'pickingSlip'])

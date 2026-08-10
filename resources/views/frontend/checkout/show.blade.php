@@ -4,8 +4,12 @@
 @section('description', 'Place your GrihasthiKart order.')
 
 @section('content')
-    <section class="py-5">
+    <section class="py-5 js-cart-sync" data-cart-revision="{{ $cart->revision }}" data-cart-status-url="{{ route('cart.status') }}">
         <div class="container">
+            <div id="cartRemoteUpdateBanner" class="alert alert-info d-none">Your cart was updated from another device.</div>
+            @if ($cart_expired ?? false)
+                <div class="alert alert-warning">Your cart expired because it was not ordered within the allowed time.</div>
+            @endif
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="h3 mb-1">Checkout</h1>
@@ -16,6 +20,12 @@
 
             <div class="row g-4">
                 <div class="col-lg-7">
+                    @if ($pending_order)
+                        <div class="alert alert-light border d-flex flex-wrap justify-content-between gap-2">
+                            <span>Pending Ref: <strong>{{ $pending_order->reference }}</strong></span>
+                            <span>Cart reserved until {{ $pending_order->expires_at->format('d M Y, h:i A') }}</span>
+                        </div>
+                    @endif
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white fw-semibold">Delivery Details</div>
                         <div class="card-body">
@@ -275,6 +285,35 @@
             </div>
         </div>
     </section>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const root = document.querySelector('.js-cart-sync');
+        if (! root) return;
+
+        const banner = document.getElementById('cartRemoteUpdateBanner');
+        if (sessionStorage.getItem('cartRemoteUpdated') === '1') {
+            sessionStorage.removeItem('cartRemoteUpdated');
+            banner?.classList.remove('d-none');
+        }
+
+        let currentRevision = Number(root.dataset.cartRevision || 0);
+        let pendingReload = false;
+        const check = async () => {
+            if (pendingReload || document.hidden) return;
+            const response = await fetch(root.dataset.cartStatusUrl, { headers: { 'Accept': 'application/json' } });
+            if (! response.ok) return;
+            const status = await response.json();
+            if (Number(status.revision || 0) !== currentRevision) {
+                pendingReload = true;
+                sessionStorage.setItem('cartRemoteUpdated', '1');
+                window.location.reload();
+            }
+        };
+
+        window.addEventListener('focus', check);
+        setInterval(check, 15000);
+    });
+    </script>
 @endsection
 
 @push('scripts')

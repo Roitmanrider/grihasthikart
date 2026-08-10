@@ -10,6 +10,7 @@ use App\Models\CustomerAddress;
 use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
+use App\Models\PendingOrder;
 use App\Models\Payment;
 use App\Models\ReturnRequest;
 
@@ -69,6 +70,56 @@ class NotificationService
             route('admin.orders.show', $order),
             $order,
             ['order_number' => $order->order_number]
+        );
+    }
+
+    public function notifyAdminPendingCartStarted(PendingOrder $pendingOrder): void
+    {
+        $this->admin(
+            'pending_cart.started',
+            'Pending cart started',
+            'Pending cart '.$pendingOrder->reference.' was started by '.$pendingOrder->customer?->name.'.',
+            route('admin.pending-orders.show', $pendingOrder),
+            $pendingOrder,
+            ['pending_reference' => $pendingOrder->reference]
+        );
+    }
+
+    public function notifyCustomerPendingCartReminder(PendingOrder $pendingOrder, int $remainingMinutes): void
+    {
+        $this->customer(
+            $pendingOrder->customer,
+            'pending_cart.reminder',
+            'Your cart is waiting',
+            'Complete your order before it expires. Please place your order within the next '.$remainingMinutes.' minutes, otherwise reserved items may become unavailable.',
+            route('cart.show'),
+            $pendingOrder,
+            ['pending_reference' => $pendingOrder->reference, 'remaining_minutes' => $remainingMinutes]
+        );
+    }
+
+    public function notifyAdminPendingCartReminder(PendingOrder $pendingOrder): void
+    {
+        $this->admin(
+            'pending_cart.reminder',
+            'Abandoned cart reminder',
+            'Pending cart '.$pendingOrder->reference.' is still active after the reminder window.',
+            route('admin.pending-orders.show', $pendingOrder),
+            $pendingOrder,
+            ['pending_reference' => $pendingOrder->reference]
+        );
+    }
+
+    public function notifyCustomerCartExpired(PendingOrder $pendingOrder): void
+    {
+        $this->customer(
+            $pendingOrder->customer,
+            'pending_cart.expired',
+            'Cart expired',
+            'Your cart expired and reserved items were released.',
+            route('cart.show'),
+            $pendingOrder,
+            ['pending_reference' => $pendingOrder->reference]
         );
     }
 

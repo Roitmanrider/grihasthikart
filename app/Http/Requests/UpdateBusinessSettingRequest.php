@@ -23,6 +23,8 @@ class UpdateBusinessSettingRequest extends FormRequest
             'today_delivery_cutoff_time' => ['required', 'date_format:H:i'],
             'custom_delivery_date_enabled' => ['nullable', 'boolean'],
             'max_delivery_days_ahead' => ['required', 'integer', 'min:0', 'max:60'],
+            'cart_hold_minutes' => ['required', 'integer', 'min:15', 'max:1440', 'gte:cart_reminder_minutes'],
+            'cart_reminder_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
             'default_state' => ['nullable', 'string', 'max:100'],
             'default_city' => ['nullable', 'string', 'max:100'],
             'store_contact_mobile' => ['nullable', 'string', 'max:15'],

@@ -75,6 +75,11 @@
             Orders
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.pending-orders.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.pending-orders.index') }}">
+            Pending Orders
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.returns.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.returns.index') }}">
             Returns

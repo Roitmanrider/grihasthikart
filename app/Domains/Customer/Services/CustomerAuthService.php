@@ -154,12 +154,18 @@ class CustomerAuthService
 
     public function attachSessionCartToCustomer(Store $session, Customer $customer): void
     {
-        $sessionId = $this->cartService->sessionIdentifier($session);
-        $sessionCart = $this->cartService->getOrCreateCartForSession($sessionId);
-        $existingCart = $customer->carts()->active()->whereKeyNot($sessionCart->id)->first();
+        $guestSessionId = (string) ($session->get('cart_session_id') ?: $session->getId());
+        $customerSessionId = 'customer:'.$customer->id;
+        $sessionCart = $guestSessionId !== $customerSessionId
+            ? $this->cartService->getOrCreateCartForSession($guestSessionId)
+            : null;
+        $existingCart = $customer->carts()->active()->first()
+            ?? $this->cartService->getOrCreateCartForSession($customerSessionId);
 
-        if (! $existingCart) {
-            $sessionCart->update(['customer_id' => $customer->id]);
+        if (! $sessionCart || $sessionCart->id === $existingCart->id) {
+            $existingCart->update(['session_id' => $customerSessionId, 'customer_id' => $customer->id]);
+            $this->cartService->syncPendingLifecycle($existingCart);
+            $session->put('cart_session_id', $customerSessionId);
 
             return;
         }
@@ -179,6 +185,9 @@ class CustomerAuthService
         }
 
         $sessionCart->update(['status' => 'merged']);
-        $existingCart->update(['session_id' => $sessionId, 'customer_id' => $customer->id]);
+        $existingCart->update(['session_id' => $customerSessionId, 'customer_id' => $customer->id]);
+        $this->cartService->recordCartMutation($existingCart);
+        $this->cartService->syncPendingLifecycle($existingCart);
+        $session->put('cart_session_id', $customerSessionId);
     }
 }

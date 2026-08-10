@@ -8,6 +8,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\DailyOffer;
 use App\Models\ProductVariant;
+use Illuminate\Database\QueryException;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,12 +22,31 @@ class CartService
 
     public function __construct(
         private readonly CartRepositoryInterface $repository,
-        private readonly InventoryService $inventoryService
+        private readonly InventoryService $inventoryService,
+        private readonly PendingOrderService $pendingOrderService
     ) {}
 
     public function getOrCreateCartForSession(string $sessionId): Cart
     {
         return DB::transaction(function () use ($sessionId) {
+            if ($customerId = $this->customerIdFromSessionIdentifier($sessionId)) {
+                $cart = $this->repository->activeCartForCustomer($customerId);
+
+                if ($cart) {
+                    return $cart;
+                }
+
+                try {
+                    return $this->repository->createCartForCustomer($customerId, $sessionId);
+                } catch (QueryException $exception) {
+                    if (! $this->isUniqueViolation($exception, 'carts_one_active_per_customer_unique')) {
+                        throw $exception;
+                    }
+
+                    return $this->repository->activeCartForCustomer($customerId) ?? throw $exception;
+                }
+            }
+
             return $this->repository->activeCartForSession($sessionId)
                 ?? $this->repository->createCartForSession($sessionId);
         });
@@ -34,6 +54,13 @@ class CartService
 
     public function sessionIdentifier(Store $session): string
     {
+        if ($session->has('customer_id')) {
+            $sessionId = 'customer:'.$session->get('customer_id');
+            $session->put('cart_session_id', $sessionId);
+
+            return $sessionId;
+        }
+
         if (! $session->has('cart_session_id')) {
             $session->put('cart_session_id', $session->getId() ?: (string) Str::uuid());
         }
@@ -43,7 +70,11 @@ class CartService
 
     public function cartForSession(string $sessionId): Cart
     {
-        return $this->repository->cartWithItems($this->getOrCreateCartForSession($sessionId));
+        $cart = $this->getOrCreateCartForSession($sessionId);
+        $this->pendingOrderService->expireIfNeeded($cart);
+        $this->pendingOrderService->triggerReminderIfDue($cart);
+
+        return $this->repository->cartWithItems($cart->fresh());
     }
 
     public function addItem(string $sessionId, int $productVariantId, float $quantity, ?int $dailyOfferId = null): CartItem
@@ -79,16 +110,25 @@ class CartService
                     $existingItem->restore();
                 }
 
-                return $this->repository->updateItem($existingItem, array_merge([
+                $item = $this->repository->updateItem($existingItem, array_merge([
                     'quantity' => $targetQuantity,
                 ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
+                $this->recordCartMutation($cart);
+                $this->pendingOrderService->afterItemAddedOrUpdated($cart);
+
+                return $item;
             }
 
-            return CartItem::query()->create(array_merge([
+            $item = CartItem::query()->create(array_merge([
                 'cart_id' => $cart->id,
                 'product_variant_id' => $variant->id,
                 'quantity' => $quantity,
             ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
+
+            $this->recordCartMutation($cart);
+            $this->pendingOrderService->afterItemAddedOrUpdated($cart);
+
+            return $item;
         });
     }
 
@@ -107,7 +147,11 @@ class CartService
 
             $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $quantity, (float) $cartItem->quantity);
 
-            return $this->repository->updateItem($cartItem, ['quantity' => $quantity]);
+            $updated = $this->repository->updateItem($cartItem, ['quantity' => $quantity]);
+            $this->recordCartMutation($cart);
+            $this->pendingOrderService->afterItemAddedOrUpdated($cart);
+
+            return $updated;
         });
     }
 
@@ -118,29 +162,59 @@ class CartService
             $cartItem = $this->repository->findItem($cartItem->id);
             $this->ensureCartItemBelongsToCurrentCart($cart, $cartItem);
 
-            return $this->repository->deleteItem($cartItem);
+            $deleted = $this->repository->deleteItem($cartItem);
+            $this->recordCartMutation($cart);
+            $this->pendingOrderService->afterItemRemoved($cart, $cartItem);
+
+            return $deleted;
         });
     }
 
     public function clearCart(string $sessionId): int
     {
         return DB::transaction(function () use ($sessionId) {
-            return $this->repository->clearCart($this->getOrCreateCartForSession($sessionId));
+            $cart = $this->getOrCreateCartForSession($sessionId);
+            $count = $this->repository->clearCart($cart);
+            $this->recordCartMutation($cart);
+            $this->pendingOrderService->afterCartCleared($cart);
+
+            return $count;
         });
     }
 
     public function getCartSummary(string $sessionId): array
     {
-        $cart = $this->refreshCartPrices($this->cartForSession($sessionId));
+        $baseCart = $this->getOrCreateCartForSession($sessionId);
+        $cartExpired = $this->pendingOrderService->expireIfNeeded($baseCart);
+        $this->pendingOrderService->triggerReminderIfDue($baseCart);
+        $cart = $this->refreshCartPrices($this->repository->cartWithItems($baseCart->fresh()));
 
         return [
             'cart' => $cart,
+            'cart_expired' => $cartExpired,
             'item_count' => (float) $cart->items->sum('quantity'),
             'line_count' => $cart->items->count(),
             'subtotal' => $this->calculateSubtotal($cart),
             'savings' => $this->calculateSavings($cart),
             'coupon_discount' => (float) $cart->coupon_discount_amount,
             'applied_coupon' => $cart->coupon,
+            'pending_order' => $this->pendingOrderService->activeForCart($cart),
+        ];
+    }
+
+    public function status(string $sessionId): array
+    {
+        $summary = $this->getCartSummary($sessionId);
+        $pending = $summary['pending_order'];
+
+        return [
+            'cart_id' => $summary['cart']->id,
+            'revision' => $summary['cart']->revision,
+            'item_count' => $summary['item_count'],
+            'line_count' => $summary['line_count'],
+            'subtotal' => $summary['subtotal'],
+            'pending_reference' => $pending?->reference,
+            'expires_at' => $pending?->expires_at?->toIso8601String(),
         ];
     }
 
@@ -254,6 +328,33 @@ class CartService
         }
 
         return (int) $quantity;
+    }
+
+    public function recordCartMutation(Cart $cart): void
+    {
+        $cart->increment('revision');
+    }
+
+    public function syncPendingLifecycle(Cart $cart): void
+    {
+        $this->pendingOrderService->afterItemAddedOrUpdated($cart);
+    }
+
+    private function customerIdFromSessionIdentifier(string $sessionId): ?int
+    {
+        if (! str_starts_with($sessionId, 'customer:')) {
+            return null;
+        }
+
+        $customerId = (int) Str::after($sessionId, 'customer:');
+
+        return $customerId > 0 ? $customerId : null;
+    }
+
+    private function isUniqueViolation(QueryException $exception, string $indexName): bool
+    {
+        return ($exception->errorInfo[0] ?? null) === '23000'
+            && str_contains($exception->getMessage(), $indexName);
     }
 
     private function currentDailyOfferForVariant(int $productVariantId, ?int $dailyOfferId = null): ?DailyOffer

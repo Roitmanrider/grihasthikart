@@ -10,7 +10,11 @@ interface CartRepositoryInterface extends RepositoryInterface
 {
     public function activeCartForSession(string $sessionId): ?Cart;
 
+    public function activeCartForCustomer(int $customerId): ?Cart;
+
     public function createCartForSession(string $sessionId): Cart;
+
+    public function createCartForCustomer(int $customerId, string $sessionId): Cart;
 
     public function cartWithItems(Cart $cart): Cart;
 

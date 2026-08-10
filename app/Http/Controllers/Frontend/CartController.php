@@ -22,6 +22,13 @@ class CartController extends Controller
         return view('frontend.cart.show', $summary);
     }
 
+    public function status()
+    {
+        return response()->json(
+            $this->cartService->status($this->cartService->sessionIdentifier(request()->session()))
+        );
+    }
+
     public function store(AddToCartRequest $request)
     {
         $data = $request->validated();

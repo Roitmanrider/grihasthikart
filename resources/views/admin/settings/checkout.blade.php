@@ -15,6 +15,18 @@
 <div class="col-md-4"><label class="form-label">Delivery Charge</label><input type="number" step="0.01" min="0" name="delivery_charge" value="{{ old('delivery_charge', $settings['delivery_charge']) }}" class="form-control"></div>
 <div class="col-md-4"><label class="form-label">Today Cutoff Time</label><input type="time" name="today_delivery_cutoff_time" value="{{ old('today_delivery_cutoff_time', $settings['today_delivery_cutoff_time']) }}" class="form-control"></div>
 <div class="col-md-4"><label class="form-label">Max Delivery Days Ahead</label><input type="number" min="0" name="max_delivery_days_ahead" value="{{ old('max_delivery_days_ahead', $settings['max_delivery_days_ahead']) }}" class="form-control"></div>
+<div class="col-md-4">
+    <label class="form-label">Cart Hold Duration</label>
+    <input type="number" min="15" max="1440" name="cart_hold_minutes" value="{{ old('cart_hold_minutes', $settings['cart_hold_minutes']) }}" class="form-control @error('cart_hold_minutes') is-invalid @enderror">
+    <div class="form-text">Time allowed from creation of the active pending cart before the cart expires and reserved stock is released.</div>
+    @error('cart_hold_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+</div>
+<div class="col-md-4">
+    <label class="form-label">Abandoned Cart Reminder After</label>
+    <input type="number" min="5" max="1440" name="cart_reminder_minutes" value="{{ old('cart_reminder_minutes', $settings['cart_reminder_minutes']) }}" class="form-control @error('cart_reminder_minutes') is-invalid @enderror">
+    <div class="form-text">Reminder delay in minutes. It cannot exceed the cart hold duration.</div>
+    @error('cart_reminder_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+</div>
 <div class="col-md-4"><label class="form-label">Default City</label><input name="default_city" value="{{ old('default_city', $settings['default_city']) }}" class="form-control"></div>
 <div class="col-md-4"><label class="form-label">Default State</label><input name="default_state" value="{{ old('default_state', $settings['default_state']) }}" class="form-control"></div>
 <div class="col-md-6"><label class="form-label">Contact Mobile</label><input name="store_contact_mobile" value="{{ old('store_contact_mobile', $settings['store_contact_mobile']) }}" class="form-control"></div>

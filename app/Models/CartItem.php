@@ -49,6 +49,11 @@ class CartItem extends Model
         return $this->belongsTo(DailyOffer::class);
     }
 
+    public function pendingOrderItems()
+    {
+        return $this->hasMany(PendingOrderItem::class);
+    }
+
     public function getLineTotalAttribute(): float
     {
         return (float) $this->quantity * (float) $this->unit_price;

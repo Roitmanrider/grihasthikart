@@ -3,6 +3,7 @@
 namespace App\Domains\Order\Services;
 
 use App\Domains\Cart\Services\CartService;
+use App\Domains\Cart\Services\PendingOrderService;
 use App\Domains\Checkout\Services\CheckoutRuleService;
 use App\Domains\Coupon\Services\CouponService;
 use App\Domains\Inventory\Services\InventoryService;
@@ -17,6 +18,7 @@ use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\PendingOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,7 +35,8 @@ class OrderService
         private readonly PaymentService $paymentService,
         private readonly BusinessSettingService $settingService,
         private readonly OrderStatusService $orderStatusService,
-        private readonly NotificationService $notificationService
+        private readonly NotificationService $notificationService,
+        private readonly PendingOrderService $pendingOrderService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -44,13 +47,15 @@ class OrderService
     public function placeOrderFromCart(string $sessionId, array $checkoutData): Order
     {
         return DB::transaction(function () use ($sessionId, $checkoutData) {
-            $cart = $this->cartService->cartForSession($sessionId);
+            $cart = $this->lockedCartForSession($sessionId);
+            $pending = $this->lockedActivePendingForCart($cart);
 
             $this->validateCartIsNotEmpty($cart);
             $this->cartService->validateDailyOfferHold($cart);
             $cart = $this->cartService->refreshCartPrices($cart);
             $this->validateCartItemsStillPurchasable($cart);
-            $this->validateInventoryAvailabilityForEveryCartItem($cart);
+            $lockedInventories = $this->lockInventoryRowsForCart($cart);
+            $this->validateInventoryAvailabilityForEveryCartItem($cart, $lockedInventories);
 
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
@@ -60,7 +65,10 @@ class OrderService
             $this->createOrderItems($order, $cart);
             $this->createCouponUsageIfApplied($order, $couponData['coupon'], $couponData['discount']);
             $this->paymentService->createForOrder($order, $checkoutData['payment_method'] ?? 'cod');
-            $this->deductInventoryForOrder($order);
+            $this->deductInventoryForOrder($order, $lockedInventories);
+            if ($pending) {
+                $this->pendingOrderService->convert($pending, $order);
+            }
             $this->createStatusHistory($order, null, 'placed', 'Order placed.');
             $this->couponService->clearCouponAfterOrder($cart);
             $this->cartService->clearCart($sessionId);
@@ -239,11 +247,21 @@ class OrderService
         }
     }
 
-    public function validateInventoryAvailabilityForEveryCartItem(Cart $cart): void
+    public function validateInventoryAvailabilityForEveryCartItem(Cart $cart, ?iterable $lockedInventories = null): void
     {
+        $inventories = $lockedInventories ? collect($lockedInventories) : null;
+
         foreach ($cart->items as $item) {
-            if ($this->inventoryService->getAvailableQuantity($item->product_variant_id) < (float) $item->quantity) {
-                throw new InvalidArgumentException('Insufficient stock for '.$item->product_name_snapshot.' / '.$item->variant_name_snapshot.'.');
+            $available = $inventories
+                ? (float) $inventories->where('product_variant_id', $item->product_variant_id)->sum('available_quantity')
+                : $this->inventoryService->getAvailableQuantity($item->product_variant_id);
+
+            if ($available < (float) $item->quantity) {
+                if ($available <= 0) {
+                    throw new InvalidArgumentException($item->product_name_snapshot.' is no longer available. Please review your cart.');
+                }
+
+                throw new InvalidArgumentException($item->product_name_snapshot.' is now available only in quantity '.(int) floor($available).'. Please review your cart.');
             }
         }
     }
@@ -339,15 +357,20 @@ class OrderService
         }
     }
 
-    public function deductInventoryForOrder(Order $order): void
+    public function deductInventoryForOrder(Order $order, ?iterable $lockedInventories = null): void
     {
+        $lockedInventoryCollection = $lockedInventories ? collect($lockedInventories) : null;
+
         foreach ($order->items as $item) {
             $remaining = (float) $item->quantity;
-            $inventories = Inventory::query()
-                ->active()
-                ->where('product_variant_id', $item->product_variant_id)
-                ->orderBy('stock_location_id')
-                ->get();
+            $inventories = $lockedInventoryCollection
+                ? $lockedInventoryCollection->where('product_variant_id', $item->product_variant_id)->sortBy('stock_location_id')->values()
+                : Inventory::query()
+                    ->active()
+                    ->where('product_variant_id', $item->product_variant_id)
+                    ->orderBy('stock_location_id')
+                    ->lockForUpdate()
+                    ->get();
 
             foreach ($inventories as $inventory) {
                 if ($remaining <= 0) {
@@ -358,6 +381,11 @@ class OrderService
 
                 if ($deductQuantity > 0) {
                     $updatedInventory = $this->inventoryService->adjustStock($inventory, 'sale', $deductQuantity, 'Order '.$order->order_number);
+                    $inventory->forceFill([
+                        'quantity_on_hand' => $updatedInventory->quantity_on_hand,
+                        'reserved_quantity' => $updatedInventory->reserved_quantity,
+                        'damaged_quantity' => $updatedInventory->damaged_quantity,
+                    ]);
                     $this->notificationService->notifyAdminLowStock($updatedInventory);
                     $remaining -= $deductQuantity;
                 }
@@ -403,5 +431,72 @@ class OrderService
         } while (Order::query()->where('order_number', $number)->exists());
 
         return $number;
+    }
+
+    private function lockedCartForSession(string $sessionId): Cart
+    {
+        $cart = $this->cartService->cartForSession($sessionId);
+
+        /** @var Cart $lockedCart */
+        $lockedCart = Cart::query()
+            ->with(['items.productVariant.product', 'items.dailyOffer', 'coupon'])
+            ->whereKey($cart->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedCart;
+    }
+
+    private function lockedActivePendingForCart(Cart $cart): ?PendingOrder
+    {
+        if (! $cart->customer_id) {
+            return null;
+        }
+
+        $pending = PendingOrder::query()
+            ->where('cart_id', $cart->id)
+            ->whereIn('status', [PendingOrder::STATUS_ACTIVE, PendingOrder::STATUS_CONVERTED])
+            ->latest()
+            ->lockForUpdate()
+            ->first();
+
+        if (! $pending) {
+            $pending = $this->pendingOrderService->ensureActiveForCart($cart);
+            $pending = $pending
+                ? PendingOrder::query()->whereKey($pending->id)->lockForUpdate()->first()
+                : null;
+        }
+
+        if (! $pending) {
+            return null;
+        }
+
+        if ($pending->status === PendingOrder::STATUS_CONVERTED) {
+            throw new InvalidArgumentException('This cart has already been placed as an order.');
+        }
+
+        if ($pending->expires_at->isPast()) {
+            $this->pendingOrderService->close($pending, PendingOrder::CLOSE_EXPIRED);
+            throw new InvalidArgumentException('Your cart expired because it was not ordered within the allowed time.');
+        }
+
+        return $pending;
+    }
+
+    private function lockInventoryRowsForCart(Cart $cart)
+    {
+        $variantIds = $cart->items
+            ->pluck('product_variant_id')
+            ->unique()
+            ->sort()
+            ->values();
+
+        return Inventory::query()
+            ->active()
+            ->whereIn('product_variant_id', $variantIds)
+            ->orderBy('product_variant_id')
+            ->orderBy('stock_location_id')
+            ->lockForUpdate()
+            ->get();
     }
 }
