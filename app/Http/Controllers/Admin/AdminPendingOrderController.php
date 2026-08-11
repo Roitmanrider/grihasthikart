@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domains\Setting\Services\BusinessSettingService;
 use App\Http\Controllers\Controller;
+use App\Models\CustomerCartRiskMonthly;
 use App\Models\PendingOrder;
 use Illuminate\Http\Request;
 
@@ -10,13 +12,44 @@ class AdminPendingOrderController extends Controller
 {
     public function index(Request $request)
     {
+        $employeeFollowupEnabled = app(BusinessSettingService::class)
+            ->get('checkout.cart_employee_followup_enabled', true);
         $query = PendingOrder::query()
-            ->with(['customer', 'convertedOrder', 'activeItems'])
-            ->withCount('activeItems')
-            ->latest('started_at');
+            ->with(['customer', 'convertedOrder', 'cart.items.productVariant'])
+            ->orderBy('expires_at');
 
-        if ($request->filled('status')) {
-            $query->where('status', (string) $request->string('status'));
+        $status = (string) $request->string('status', PendingOrder::STATUS_ACTIVE);
+
+        if ($status !== '') {
+            $query->where('status', $status);
+
+            if ($status === PendingOrder::STATUS_ACTIVE) {
+                $query->where('expires_at', '>', now());
+            }
+        }
+
+        if ($request->string('filter')->toString() === 'whatsapp_due') {
+            $query->whereNull('whatsapp_reminder_attempted_at')
+                ->whereNotNull('whatsapp_reminder_due_at')
+                ->where('whatsapp_reminder_due_at', '<=', now());
+        }
+
+        if ($request->string('filter')->toString() === 'call_followup') {
+            $employeeFollowupEnabled
+                ? $query->whereNotNull('follow_up_updated_at')->where('follow_up_status', 'NOT_CONTACTED')
+                : $query->whereRaw('1 = 0');
+        }
+
+        if ($request->string('filter')->toString() === 'scarce_stock') {
+            $query->where('scarce_stock_hold', true);
+        }
+
+        if ($request->string('filter')->toString() === 'watch') {
+            $query->where('risk_level', 'WATCH');
+        }
+
+        if ($request->string('filter')->toString() === 'high_risk') {
+            $query->where('risk_level', 'HIGH_RISK');
         }
 
         if ($request->filled('from')) {
@@ -40,13 +73,18 @@ class AdminPendingOrderController extends Controller
 
         $pendingOrders = $query->paginate(20)->withQueryString();
 
-        return view('admin.pending-orders.index', compact('pendingOrders'));
+        return view('admin.pending-orders.index', compact('pendingOrders', 'employeeFollowupEnabled'));
     }
 
     public function show(PendingOrder $pendingOrder)
     {
-        $pendingOrder->load(['customer', 'convertedOrder', 'items.productVariant']);
+        $pendingOrder->load(['customer', 'convertedOrder', 'cart.items.productVariant.inventories', 'items.productVariant']);
+        $riskHistory = CustomerCartRiskMonthly::query()
+            ->where('customer_id', $pendingOrder->customer_id)
+            ->latest('period_month')
+            ->limit(6)
+            ->get();
 
-        return view('admin.pending-orders.show', compact('pendingOrder'));
+        return view('admin.pending-orders.show', compact('pendingOrder', 'riskHistory'));
     }
 }

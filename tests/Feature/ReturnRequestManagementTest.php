@@ -228,6 +228,7 @@ class ReturnRequestManagementTest extends TestCase
         [$customer, $order, $item] = $this->deliveredOrder();
         $this->withSession(['customer_id' => $customer->id])
             ->post(route('customer.returns.store'), $this->payload($order, $item, 1));
+        $this->flushSession();
 
         return ReturnRequest::query()->firstOrFail();
     }

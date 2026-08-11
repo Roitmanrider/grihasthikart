@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\CashbackRedemptionRequest;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
@@ -25,6 +27,8 @@ class MvpReadinessTest extends TestCase
         parent::setUp();
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
         $this->seed(BusinessSettingSeeder::class);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
     }
 
     public function test_customer_home_cart_checkout_and_dashboard_routes_load(): void
@@ -38,7 +42,7 @@ class MvpReadinessTest extends TestCase
             ->get(route('customer.dashboard'))
             ->assertOk()
             ->assertSee('My Account')
-            ->assertSee('Cashback');
+            ->assertSee('Order History');
     }
 
     public function test_admin_dashboard_loads_with_summary_cards(): void

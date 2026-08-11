@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\DeliverySlot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +19,8 @@ class DeliverySlotManagementTest extends TestCase
     {
         parent::setUp();
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
     }
 

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\BusinessSetting;
 use App\Models\CartItem;
 use App\Models\DeliverySlot;
@@ -31,6 +33,8 @@ class CheckoutManagementTest extends TestCase
 
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
         $this->seed(BusinessSettingSeeder::class);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
         DeliverySlot::factory()->create([
             'name' => '9-11 AM',
@@ -289,7 +293,8 @@ class CheckoutManagementTest extends TestCase
 
         $this->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
             'payment_method' => 'qr',
-        ]))->assertRedirect();
+        ]))->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $order = Order::query()->firstOrFail();
         $payment = Payment::query()->firstOrFail();

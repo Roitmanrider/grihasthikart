@@ -11,3 +11,11 @@ Artisan::command('inspire', function () {
 Schedule::command('pending-orders:process')
     ->everyFiveMinutes()
     ->withoutOverlapping();
+
+Schedule::command('cart-activity:cleanup')
+    ->dailyAt('02:10')
+    ->withoutOverlapping();
+
+Schedule::command('cart-activity:generate-monthly-risk')
+    ->monthlyOn(1, '02:30')
+    ->withoutOverlapping();

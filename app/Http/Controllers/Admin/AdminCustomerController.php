@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
 use App\Domains\Customer\Services\CustomerAddressService;
-use App\Domains\Customer\Services\CustomerSessionService;
 use App\Domains\Customer\Services\CustomerService;
+use App\Domains\Customer\Services\CustomerSessionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;

@@ -9,13 +9,13 @@ class ProcessPendingOrders extends Command
 {
     protected $signature = 'pending-orders:process {--chunk=100 : Number of pending records to scan per chunk}';
 
-    protected $description = 'Process pending cart reminders and expiries.';
+    protected $description = 'Process cart activity reminders, WhatsApp attempts, and expiries.';
 
     public function handle(PendingOrderService $pendingOrders): int
     {
         $summary = $pendingOrders->processDue((int) $this->option('chunk'));
 
-        $this->info('Pending orders processed. Reminded: '.$summary['reminded'].'. Expired: '.$summary['expired'].'.');
+        $this->info('Cart activity processed. Reminded: '.$summary['reminded'].'. WhatsApp sent: '.$summary['whatsapp_sent'].'. WhatsApp skipped: '.$summary['whatsapp_skipped'].'. Expired: '.$summary['expired'].'.');
 
         return self::SUCCESS;
     }

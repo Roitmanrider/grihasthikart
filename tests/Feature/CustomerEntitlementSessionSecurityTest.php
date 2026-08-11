@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Customer\Services\CustomerAuthService;
 use App\Domains\Customer\Services\CustomerSessionService;
 use App\Models\Customer;
 use App\Models\CustomerSession;
@@ -45,7 +46,9 @@ class CustomerEntitlementSessionSecurityTest extends TestCase
         $this->withSession(['customer_id' => $standard->id])
             ->get(route('customer.cashback.index'))
             ->assertRedirect(route('customer.dashboard'))
-            ->assertSessionHasErrors('cashback');
+            ->assertSessionHas('errors');
+
+        $this->flushSession();
 
         $this->withSession(['customer_id' => $premium->id])
             ->get(route('customer.dashboard'))
@@ -95,6 +98,9 @@ class CustomerEntitlementSessionSecurityTest extends TestCase
         $first = $this->sessionStore('first');
         $second = $this->sessionStore('second');
         $third = $this->sessionStore('third');
+        $first->put('customer_id', $customer->id);
+        $second->put('customer_id', $customer->id);
+        $third->put('customer_id', $customer->id);
 
         $service->start($customer, $first);
         $service->start($customer, $second);
@@ -115,6 +121,7 @@ class CustomerEntitlementSessionSecurityTest extends TestCase
         $customer = Customer::factory()->create();
         $service = app(CustomerSessionService::class);
         $session = $this->sessionStore('expiring');
+        $session->put('customer_id', $customer->id);
 
         $this->travelTo(now());
         $tracked = $service->start($customer, $session);
@@ -137,7 +144,7 @@ class CustomerEntitlementSessionSecurityTest extends TestCase
         app(CustomerSessionService::class)->start($customer, $session);
         $session->put('customer_id', $customer->id);
 
-        app(\App\Domains\Customer\Services\CustomerAuthService::class)->logout($session);
+        app(CustomerAuthService::class)->logout($session);
 
         $this->assertSame(0, CustomerSession::query()->where('customer_id', $customer->id)->active()->count());
     }

@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Cart\Services\CartService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\PendingOrder;
 use App\Models\PendingOrderItem;
@@ -57,7 +60,7 @@ class PendingOrderManagementTest extends TestCase
 
         $this->assertSame(PendingOrder::STATUS_ACTIVE, $pending->status);
         $this->assertMatchesRegularExpression('/^PND-\d{4}-\d{6}$/', $pending->reference);
-        $this->assertTrue($pending->expires_at->equalTo($pending->started_at->copy()->addMinutes(120)));
+        $this->assertTrue($pending->expires_at->equalTo($pending->started_at->copy()->addMinutes(60)));
         $this->assertSame(1, PendingOrder::query()->active()->count());
         $this->assertSame(2, $cart->revision);
 
@@ -67,13 +70,14 @@ class PendingOrderManagementTest extends TestCase
         ])->assertRedirect(route('cart.show'));
 
         $this->assertSame(1, PendingOrder::query()->active()->count());
-        $this->assertSame('2.000', PendingOrderItem::query()->firstOrFail()->fresh()->quantity);
+        $this->assertSame(0, PendingOrderItem::query()->count());
+        $this->assertSame(2.0, (float) CartItem::query()->firstOrFail()->fresh()->quantity);
     }
 
     public function test_custom_hold_and_reminder_are_respected_and_reminder_is_sent_once(): void
     {
         app(BusinessSettingService::class)->set('checkout.cart_hold_minutes', 60)->update(['value_type' => 'integer']);
-        app(BusinessSettingService::class)->set('checkout.cart_reminder_minutes', 10)->update(['value_type' => 'integer']);
+        app(BusinessSettingService::class)->set('checkout.cart_reminder_minutes', 30)->update(['value_type' => 'integer']);
         [, $variant] = $this->purchasableVariant();
 
         $this->travelTo(now()->setSecond(0));
@@ -82,16 +86,16 @@ class PendingOrderManagementTest extends TestCase
 
         $this->assertTrue($pending->expires_at->equalTo($pending->started_at->copy()->addMinutes(60)));
 
-        $this->travel(11)->minutes();
+        $this->travel(31)->minutes();
         $this->asCustomer()->get(route('cart.show'))->assertOk();
         $this->asCustomer()->get(route('cart.show'))->assertOk();
 
         $this->assertNotNull($pending->fresh()->reminder_sent_at);
-        $this->assertSame(1, \App\Models\Notification::query()->where('type', 'pending_cart.reminder')->where('audience', 'customer')->count());
+        $this->assertSame(1, Notification::query()->where('type', 'pending_cart.reminder')->where('audience', 'customer')->count());
         $this->travelBack();
     }
 
-    public function test_anchor_item_removal_closes_pending_and_starts_new_reference_for_remaining_items(): void
+    public function test_anchor_item_removal_keeps_one_activity_reference_and_tracks_anchor_change(): void
     {
         [, $anchorVariant] = $this->purchasableVariant(['name' => 'Anchor Rice']);
         [, $secondVariant] = $this->purchasableVariant(['name' => 'Second Dal']);
@@ -100,16 +104,18 @@ class PendingOrderManagementTest extends TestCase
         $firstReference = PendingOrder::query()->firstOrFail()->reference;
         $this->asCustomer()->post(route('cart.items.store'), ['product_variant_id' => $secondVariant->id, 'quantity' => 1]);
 
-        $anchorItem = \App\Models\CartItem::query()->where('product_variant_id', $anchorVariant->id)->firstOrFail();
+        $anchorItem = CartItem::query()->where('product_variant_id', $anchorVariant->id)->firstOrFail();
         $this->asCustomer()->delete(route('cart.items.destroy', $anchorItem))->assertRedirect(route('cart.show'));
 
         $this->assertDatabaseHas('pending_orders', [
             'reference' => $firstReference,
-            'status' => PendingOrder::STATUS_NOT_ORDERED,
-            'close_reason' => PendingOrder::CLOSE_ANCHOR_REMOVED,
+            'status' => PendingOrder::STATUS_ACTIVE,
         ]);
         $this->assertSame(1, PendingOrder::query()->active()->count());
-        $this->assertNotSame($firstReference, PendingOrder::query()->active()->firstOrFail()->reference);
+        $activity = PendingOrder::query()->active()->firstOrFail();
+        $this->assertSame($firstReference, $activity->reference);
+        $this->assertSame(1, $activity->anchor_change_count);
+        $this->assertSame(1, CartItem::query()->count());
     }
 
     public function test_expired_pending_cart_is_marked_not_ordered_and_cart_is_cleared(): void
@@ -118,7 +124,7 @@ class PendingOrderManagementTest extends TestCase
 
         $this->travelTo(now()->setSecond(0));
         $this->asCustomer()->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
-        $this->travel(121)->minutes();
+        $this->travel(61)->minutes();
 
         $this->asCustomer()->get(route('cart.show'))
             ->assertOk()
@@ -127,8 +133,8 @@ class PendingOrderManagementTest extends TestCase
         $pending = PendingOrder::query()->firstOrFail();
         $this->assertSame(PendingOrder::STATUS_NOT_ORDERED, $pending->status);
         $this->assertSame(PendingOrder::CLOSE_EXPIRED, $pending->close_reason);
-        $this->assertSame(0, \App\Models\CartItem::query()->count());
-        $this->assertSame(1, PendingOrderItem::query()->whereNotNull('removed_at')->count());
+        $this->assertSame(0, CartItem::query()->count());
+        $this->assertSame(0, PendingOrderItem::query()->count());
         $this->travelBack();
     }
 
@@ -142,7 +148,7 @@ class PendingOrderManagementTest extends TestCase
         $this->withSession(['customer_id' => $this->customer->id, 'cart_session_id' => 'device-c'])
             ->getJson(route('cart.status'))
             ->assertOk()
-            ->assertJsonPath('item_count', 1.0)
+            ->assertJsonPath('item_count', 1)
             ->assertJsonPath('revision', Cart::query()->firstOrFail()->revision);
 
         $this->assertSame(1, Cart::query()->where('customer_id', $this->customer->id)->active()->count());
@@ -157,7 +163,7 @@ class PendingOrderManagementTest extends TestCase
         ]);
         $oldCart->delete();
 
-        $cart = app(\App\Domains\Cart\Services\CartService::class)->getOrCreateCartForSession('customer:'.$this->customer->id);
+        $cart = app(CartService::class)->getOrCreateCartForSession('customer:'.$this->customer->id);
 
         $this->assertNull($cart->deleted_at);
         $this->assertSame($this->customer->id, $cart->customer_id);
@@ -196,18 +202,33 @@ class PendingOrderManagementTest extends TestCase
         [, $variant] = $this->purchasableVariant(['name' => 'Pending Sugar']);
         $this->asCustomer()->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
         $pending = PendingOrder::query()->firstOrFail();
+        $legacyCustomer = Customer::factory()->create();
+        $legacyCart = Cart::factory()->create([
+            'customer_id' => $legacyCustomer->id,
+            'status' => 'active',
+        ]);
+        PendingOrder::query()->create([
+            'customer_id' => $legacyCustomer->id,
+            'cart_id' => $legacyCart->id,
+            'reference' => 'PND-2026-999999',
+            'status' => PendingOrder::STATUS_ACTIVE,
+            'started_at' => now()->subHours(2),
+            'expires_at' => now()->subHour(),
+        ]);
 
         $this->actingAs($this->admin)
-            ->get(route('admin.pending-orders.index', ['status' => 'ACTIVE', 'search' => $pending->reference]))
+            ->get(route('admin.pending-orders.index'))
             ->assertOk()
-            ->assertSee('Pending Orders')
+            ->assertSee('Cart Activity Monitor')
             ->assertSee($pending->reference)
-            ->assertSee('Pending Sugar');
+            ->assertSee($this->customer->mobile)
+            ->assertDontSee('PND-2026-999999')
+            ->assertDontSee('Pending Sugar');
 
         $this->actingAs($this->admin)
             ->get(route('admin.pending-orders.show', $pending))
             ->assertOk()
-            ->assertSee('Item Snapshot')
+            ->assertSee('Current Cart Items')
             ->assertSee('Pending Sugar');
     }
 
@@ -221,16 +242,16 @@ class PendingOrderManagementTest extends TestCase
         $this->travel(31)->minutes();
         Artisan::call('pending-orders:process');
         Artisan::call('pending-orders:process');
-        $this->assertSame(1, \App\Models\Notification::query()->where('type', 'pending_cart.reminder')->where('audience', 'customer')->count());
+        $this->assertSame(1, Notification::query()->where('type', 'pending_cart.reminder')->where('audience', 'customer')->count());
 
-        $this->travel(90)->minutes();
+        $this->travel(30)->minutes();
         Artisan::call('pending-orders:process');
         Artisan::call('pending-orders:process');
 
         $pending = PendingOrder::query()->firstOrFail();
         $this->assertSame(PendingOrder::STATUS_NOT_ORDERED, $pending->status);
         $this->assertSame(PendingOrder::CLOSE_EXPIRED, $pending->close_reason);
-        $this->assertSame(1, \App\Models\Notification::query()->where('type', 'pending_cart.expired')->where('audience', 'customer')->count());
+        $this->assertSame(1, Notification::query()->where('type', 'pending_cart.expired')->where('audience', 'customer')->count());
         $this->travelBack();
     }
 
@@ -241,7 +262,7 @@ class PendingOrderManagementTest extends TestCase
         $this->travelTo(now()->setSecond(0));
         $this->asCustomer()->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
         Artisan::call('pending-orders:process');
-        $this->assertSame(0, \App\Models\Notification::query()->where('type', 'pending_cart.reminder')->count());
+        $this->assertSame(0, Notification::query()->where('type', 'pending_cart.reminder')->count());
 
         PendingOrder::query()->firstOrFail()->update([
             'status' => PendingOrder::STATUS_CONVERTED,
@@ -250,7 +271,7 @@ class PendingOrderManagementTest extends TestCase
 
         $this->travel(31)->minutes();
         Artisan::call('pending-orders:process');
-        $this->assertSame(0, \App\Models\Notification::query()->where('type', 'pending_cart.reminder')->count());
+        $this->assertSame(0, Notification::query()->where('type', 'pending_cart.reminder')->count());
         $this->travelBack();
     }
 
@@ -261,7 +282,45 @@ class PendingOrderManagementTest extends TestCase
                 'cart_hold_minutes' => 30,
                 'cart_reminder_minutes' => 45,
             ]))
-            ->assertSessionHasErrors('cart_hold_minutes');
+            ->assertSessionHasErrors('cart_reminder_minutes');
+    }
+
+    public function test_checkout_setting_validation_rejects_invalid_increment_and_whatsapp_order(): void
+    {
+        $this->actingAs($this->admin)
+            ->put(route('admin.settings.checkout.update'), $this->checkoutSettingsPayload([
+                'cart_hold_minutes' => 60,
+                'cart_reminder_minutes' => 20,
+            ]))
+            ->assertSessionHasErrors('cart_reminder_minutes');
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.settings.checkout.update'), $this->checkoutSettingsPayload([
+                'cart_hold_minutes' => 60,
+                'cart_reminder_minutes' => 45,
+                'cart_whatsapp_reminder_enabled' => 1,
+                'cart_whatsapp_reminder_minutes' => 30,
+            ]))
+            ->assertSessionHasErrors('cart_whatsapp_reminder_minutes');
+    }
+
+    public function test_whatsapp_enabled_without_provider_skips_safely_once(): void
+    {
+        app(BusinessSettingService::class)->set('checkout.cart_whatsapp_reminder_enabled', true)->update(['value_type' => 'boolean']);
+        app(BusinessSettingService::class)->set('checkout.cart_whatsapp_reminder_minutes', 45)->update(['value_type' => 'integer']);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->travelTo(now()->setSecond(0));
+        $this->asCustomer()->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->travel(46)->minutes();
+        Artisan::call('pending-orders:process');
+        Artisan::call('pending-orders:process');
+
+        $pending = PendingOrder::query()->firstOrFail();
+        $this->assertSame('NOT_CONFIGURED', $pending->fresh()->whatsapp_reminder_status);
+        $this->assertNotNull($pending->fresh()->whatsapp_reminder_attempted_at);
+        $this->travelBack();
     }
 
     private function asCustomer()
@@ -320,8 +379,14 @@ class PendingOrderManagementTest extends TestCase
             'today_delivery_cutoff_time' => '14:00',
             'custom_delivery_date_enabled' => 1,
             'max_delivery_days_ahead' => 7,
-            'cart_hold_minutes' => 120,
+            'cart_hold_minutes' => 60,
+            'cart_reminder_enabled' => 1,
             'cart_reminder_minutes' => 30,
+            'cart_whatsapp_reminder_enabled' => 0,
+            'cart_whatsapp_reminder_minutes' => 45,
+            'cart_employee_followup_enabled' => 1,
+            'cart_abuse_monitoring_enabled' => 1,
+            'daily_offer_hold_minutes' => 15,
             'default_state' => null,
             'default_city' => null,
             'store_contact_mobile' => null,

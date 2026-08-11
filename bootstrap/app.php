@@ -1,5 +1,7 @@
 <?php
 
+use App\Console\Commands\CleanupCartActivity;
+use App\Console\Commands\GenerateMonthlyCartRisk;
 use App\Console\Commands\ProcessPendingOrders;
 use App\Http\Middleware\EnsureCustomerAuthenticated;
 use App\Http\Middleware\EnsureStorefrontAccess;
@@ -27,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withCommands([
+        CleanupCartActivity::class,
+        GenerateMonthlyCartRisk::class,
         ProcessPendingOrders::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {

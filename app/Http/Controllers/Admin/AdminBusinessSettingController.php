@@ -23,6 +23,10 @@ class AdminBusinessSettingController extends Controller
         $data['cod_enabled'] = (bool) ($data['cod_enabled'] ?? false);
         $data['today_delivery_enabled'] = (bool) ($data['today_delivery_enabled'] ?? false);
         $data['custom_delivery_date_enabled'] = (bool) ($data['custom_delivery_date_enabled'] ?? false);
+        $data['cart_reminder_enabled'] = (bool) ($data['cart_reminder_enabled'] ?? false);
+        $data['cart_whatsapp_reminder_enabled'] = (bool) ($data['cart_whatsapp_reminder_enabled'] ?? false);
+        $data['cart_employee_followup_enabled'] = (bool) ($data['cart_employee_followup_enabled'] ?? false);
+        $data['cart_abuse_monitoring_enabled'] = (bool) ($data['cart_abuse_monitoring_enabled'] ?? false);
         $data['customer_invoice_enabled'] = (bool) ($data['customer_invoice_enabled'] ?? false);
 
         $this->settingService->updateCheckoutSettings($data);

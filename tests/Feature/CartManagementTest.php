@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Domains\Cart\Services\CartService;
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\DailyOffer;
@@ -17,6 +19,14 @@ use Tests\TestCase;
 class CartManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
+    }
 
     public function test_cart_page_loads(): void
     {

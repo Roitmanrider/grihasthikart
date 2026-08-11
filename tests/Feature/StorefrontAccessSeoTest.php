@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\BusinessSetting;
 use App\Models\Category;
 use App\Models\Customer;
@@ -26,6 +26,7 @@ class StorefrontAccessSeoTest extends TestCase
 
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
         $this->seed(BusinessSettingSeeder::class);
+        Cache::flush();
     }
 
     public function test_public_browse_members_buy_allows_catalog_browsing_but_blocks_guest_transactions(): void
@@ -60,6 +61,8 @@ class StorefrontAccessSeoTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('products.show', $product->slug))
             ->assertOk();
+
+        $this->flushSession();
 
         $this->setStorefrontMode('MEMBERS_ONLY_STOREFRONT', false);
         $this->get(route('home'))->assertRedirect(route('customer.login'));
@@ -109,7 +112,7 @@ class StorefrontAccessSeoTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.settings.storefront-seo.edit'))
             ->assertOk()
-            ->assertSee('SEO & Storefront Visibility')
+            ->assertSeeText('SEO & Storefront Visibility')
             ->assertSee('Current Active Mode:')
             ->assertSee('Members-Only Storefront')
             ->assertSee('Future Sitemap Inclusion')
@@ -246,6 +249,7 @@ class StorefrontAccessSeoTest extends TestCase
             'homepage_public_in_members_only' => $homepagePublic,
             'allow_guest_checkout' => $allowGuestCheckout,
         ]);
+        Cache::flush();
     }
 
     private function storefrontPayload(array $overrides = []): array

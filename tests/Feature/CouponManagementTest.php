@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Domains\Coupon\Services\CouponService;
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
@@ -32,6 +34,8 @@ class CouponManagementTest extends TestCase
 
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
         $this->seed(BusinessSettingSeeder::class);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
         DeliverySlot::factory()->create([
             'name' => '9-11 AM',

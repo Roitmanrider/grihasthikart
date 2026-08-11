@@ -4,6 +4,7 @@ namespace App\Domains\Cart\Services;
 
 use App\Domains\Cart\Contracts\CartRepositoryInterface;
 use App\Domains\Inventory\Services\InventoryService;
+use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\DailyOffer;
@@ -23,7 +24,8 @@ class CartService
     public function __construct(
         private readonly CartRepositoryInterface $repository,
         private readonly InventoryService $inventoryService,
-        private readonly PendingOrderService $pendingOrderService
+        private readonly PendingOrderService $pendingOrderService,
+        private readonly BusinessSettingService $settings
     ) {}
 
     public function getOrCreateCartForSession(string $sessionId): Cart
@@ -380,7 +382,8 @@ class CartService
             return;
         }
 
-        $holdExpiresAt = now()->addMinutes(30);
+        $holdMinutes = max(1, (int) $this->settings->get('checkout.daily_offer_hold_minutes', 15));
+        $holdExpiresAt = now()->addMinutes($holdMinutes);
 
         if ($cart->expires_at === null || $cart->expires_at->greaterThan($holdExpiresAt)) {
             $cart->update(['expires_at' => $holdExpiresAt]);

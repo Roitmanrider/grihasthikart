@@ -37,10 +37,19 @@ class SettingManagementTest extends TestCase
             'today_delivery_cutoff_time' => '13:30',
             'custom_delivery_date_enabled' => 1,
             'max_delivery_days_ahead' => 5,
+            'cart_hold_minutes' => 60,
+            'cart_reminder_enabled' => 1,
+            'cart_reminder_minutes' => 30,
+            'cart_whatsapp_reminder_enabled' => 0,
+            'cart_whatsapp_reminder_minutes' => 45,
+            'cart_employee_followup_enabled' => 1,
+            'cart_abuse_monitoring_enabled' => 1,
+            'daily_offer_hold_minutes' => 15,
             'default_state' => 'Bihar',
             'default_city' => 'Patna',
             'store_contact_mobile' => '9876543210',
             'store_whatsapp_number' => '9876543210',
+            'customer_invoice_enabled' => 1,
         ])->assertRedirect(route('admin.settings.checkout.edit'));
 
         $service = app(BusinessSettingService::class);

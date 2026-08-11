@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Customer\Services\CustomerAddressService;
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\Cart;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
@@ -27,6 +30,8 @@ class CustomerAccountTest extends TestCase
     {
         parent::setUp();
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
     }
 
@@ -443,7 +448,7 @@ class CustomerAccountTest extends TestCase
             'is_approved' => true,
         ]);
 
-        app(\App\Domains\Customer\Services\CustomerAddressService::class)->approve($address, true);
+        app(CustomerAddressService::class)->approve($address, true);
 
         $this->assertSame(0, Notification::query()
             ->where('customer_id', $customer->id)

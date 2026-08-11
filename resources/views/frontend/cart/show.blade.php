@@ -30,7 +30,7 @@
                 @endif
                 @if ($pending_order)
                     <div class="alert alert-light border d-flex flex-wrap justify-content-between gap-2">
-                        <span>Pending Ref: <strong>{{ $pending_order->reference }}</strong></span>
+                        <span>Cart Activity Ref: <strong>{{ $pending_order->reference }}</strong></span>
                         <span>Cart reserved until {{ $pending_order->expires_at->format('d M Y, h:i A') }}</span>
                     </div>
                 @endif

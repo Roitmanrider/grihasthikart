@@ -7,10 +7,10 @@ use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
 use App\Models\CartItem;
 use App\Models\Customer;
 use App\Models\CustomerLoginOtp;
+use Illuminate\Http\Request;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\Request;
 use InvalidArgumentException;
 
 class CustomerAuthService

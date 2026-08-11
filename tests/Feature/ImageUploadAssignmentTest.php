@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Customer;
@@ -28,6 +30,8 @@ class ImageUploadAssignmentTest extends TestCase
         parent::setUp();
 
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
         Storage::fake('uploads');
 
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);

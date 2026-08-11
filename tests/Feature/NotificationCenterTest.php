@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Domains\Notification\Services\NotificationService;
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\BusinessSetting;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
@@ -28,6 +30,8 @@ class NotificationCenterTest extends TestCase
 
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
         $this->seed(BusinessSettingSeeder::class);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
     }
 

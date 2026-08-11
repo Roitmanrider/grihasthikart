@@ -192,7 +192,7 @@ class CashbackManagementTest extends TestCase
     public function test_customer_and_admin_cashback_authorization_and_no_disallowed_modules(): void
     {
         $customer = Customer::factory()->create();
-        $other = Customer::factory()->create();
+        $other = Customer::factory()->create(['cashback_enabled' => true]);
         app(CashbackService::class)->writeLedger($customer, 'earned', 500);
 
         $this->withSession(['customer_id' => $other->id])->get(route('customer.cashback.index'))

@@ -2,31 +2,38 @@
 
 namespace App\Domains\Cart\Services;
 
+use App\Domains\Messaging\Contracts\WhatsAppMessagingServiceInterface;
 use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\PendingOrder;
-use App\Models\PendingOrderItem;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class PendingOrderService
 {
     public function __construct(
         private readonly BusinessSettingService $settings,
-        private readonly NotificationService $notifications
+        private readonly NotificationService $notifications,
+        private readonly WhatsAppMessagingServiceInterface $whatsApp
     ) {}
 
     public function holdMinutes(): int
     {
-        return max(1, (int) $this->settings->get('checkout.cart_hold_minutes', 120));
+        return max(1, (int) $this->settings->get('checkout.cart_hold_minutes', 60));
     }
 
     public function reminderMinutes(): int
     {
         return max(1, (int) $this->settings->get('checkout.cart_reminder_minutes', 30));
+    }
+
+    public function whatsAppReminderMinutes(): int
+    {
+        return max(1, (int) $this->settings->get('checkout.cart_whatsapp_reminder_minutes', 45));
     }
 
     public function activeForCart(Cart $cart): ?PendingOrder
@@ -38,7 +45,7 @@ class PendingOrderService
         return PendingOrder::query()
             ->active()
             ->where('cart_id', $cart->id)
-            ->with(['activeItems', 'customer'])
+            ->with(['cart.items.productVariant.inventories', 'customer'])
             ->first();
     }
 
@@ -58,15 +65,11 @@ class PendingOrderService
 
         if (! $pending) {
             $pending = $this->createActivePendingWithRetry($cart);
-
-            if ($pending->wasRecentlyCreated) {
-                $this->notifications->notifyAdminPendingCartStarted($pending);
-            }
         }
 
-        $this->syncSnapshots($pending, $cart);
+        $this->syncActivity($pending, $cart);
 
-        return $pending->fresh(['activeItems', 'customer']);
+        return $pending->fresh(['cart.items.productVariant.inventories', 'customer']);
     }
 
     public function afterItemAddedOrUpdated(Cart $cart): void
@@ -84,33 +87,13 @@ class PendingOrderService
             return;
         }
 
-        $pendingItem = PendingOrderItem::query()
-            ->where('pending_order_id', $pending->id)
-            ->where('cart_item_id', $removedItem->id)
-            ->whereNull('removed_at')
-            ->first();
-
-        if ($pendingItem) {
-            $pendingItem->update(['removed_at' => now()]);
-        }
-
-        $anchor = PendingOrderItem::query()
-            ->where('pending_order_id', $pending->id)
-            ->orderBy('added_at')
-            ->orderBy('id')
-            ->first();
-
-        if ($anchor && $anchor->cart_item_id === $removedItem->id) {
-            $this->close($pending, PendingOrder::CLOSE_ANCHOR_REMOVED);
-
-            if ($cart->items->isNotEmpty()) {
-                $this->ensureActiveForCart($cart);
-            }
+        if ($cart->items->isEmpty()) {
+            $this->close($pending, PendingOrder::CLOSE_CART_CLEARED);
 
             return;
         }
 
-        $this->syncSnapshots($pending, $cart);
+        $this->syncActivity($pending, $cart, $removedItem);
     }
 
     public function afterCartCleared(Cart $cart): void
@@ -120,11 +103,6 @@ class PendingOrderService
         if (! $pending) {
             return;
         }
-
-        PendingOrderItem::query()
-            ->where('pending_order_id', $pending->id)
-            ->whereNull('removed_at')
-            ->update(['removed_at' => now()]);
 
         $this->close($pending, PendingOrder::CLOSE_CART_CLEARED);
     }
@@ -157,28 +135,17 @@ class PendingOrderService
     {
         $pending = $this->activeForCart($cart);
 
-        if (! $pending || $pending->reminder_sent_at || $pending->expires_at->isPast()) {
+        if (! $pending || $pending->expires_at->isPast()) {
             return;
         }
 
-        if ($pending->started_at->copy()->addMinutes($this->reminderMinutes())->isFuture()) {
-            return;
-        }
-
-        if ($cart->items()->count() === 0) {
-            return;
-        }
-
-        $remainingMinutes = max(1, now()->diffInMinutes($pending->expires_at, false));
-        $pending->update(['reminder_sent_at' => now()]);
-
-        $this->notifications->notifyCustomerPendingCartReminder($pending, $remainingMinutes);
-        $this->notifications->notifyAdminPendingCartReminder($pending);
+        $this->sendInAppReminderIfDue($pending, $cart);
+        $this->sendWhatsAppReminderIfDue($pending, $cart);
     }
 
     public function processDue(int $chunkSize = 100): array
     {
-        $summary = ['reminded' => 0, 'expired' => 0];
+        $summary = ['reminded' => 0, 'whatsapp_sent' => 0, 'whatsapp_skipped' => 0, 'expired' => 0];
 
         PendingOrder::query()
             ->active()
@@ -187,6 +154,10 @@ class PendingOrderService
                     ->orWhere(function ($query) {
                         $query->whereNull('reminder_sent_at')
                             ->where('started_at', '<=', now()->subMinutes($this->reminderMinutes()));
+                    })
+                    ->orWhere(function ($query) {
+                        $query->whereNull('whatsapp_reminder_attempted_at')
+                            ->where('whatsapp_reminder_due_at', '<=', now());
                     });
             })
             ->orderBy('id')
@@ -221,14 +192,16 @@ class PendingOrderService
                             return;
                         }
 
-                        if (! $lockedPending->reminder_sent_at
-                            && $lockedPending->started_at->copy()->addMinutes($this->reminderMinutes())->isPast()
-                            && $cart->items()->count() > 0) {
-                            $remainingMinutes = max(1, now()->diffInMinutes($lockedPending->expires_at, false));
-                            $lockedPending->update(['reminder_sent_at' => now()]);
-                            $this->notifications->notifyCustomerPendingCartReminder($lockedPending, $remainingMinutes);
-                            $this->notifications->notifyAdminPendingCartReminder($lockedPending);
+                        if ($this->sendInAppReminderIfDue($lockedPending, $cart)) {
                             $summary['reminded']++;
+                        }
+
+                        $whatsAppResult = $this->sendWhatsAppReminderIfDue($lockedPending, $cart);
+
+                        if ($whatsAppResult === 'sent') {
+                            $summary['whatsapp_sent']++;
+                        } elseif ($whatsAppResult === 'skipped') {
+                            $summary['whatsapp_skipped']++;
                         }
                     });
                 }
@@ -244,44 +217,41 @@ class PendingOrderService
             'converted_order_id' => $order->id,
             'closed_at' => now(),
             'close_reason' => null,
+            'detail_cleanup_eligible_at' => now()->addDays(7),
         ]);
     }
 
-    public function syncSnapshots(PendingOrder $pending, Cart $cart): void
+    public function syncActivity(PendingOrder $pending, Cart $cart, ?CartItem $removedItem = null): void
     {
-        $cart->loadMissing('items.productVariant.product');
-        $activeCartItemIds = $cart->items->pluck('id')->all();
+        $cart->loadMissing('items.productVariant.inventories');
+        $anchorId = $pending->anchor_cart_item_id;
+        $nextAnchor = $cart->items->sortBy('id')->first();
+        $anchorChanged = false;
 
-        foreach ($cart->items as $item) {
-            PendingOrderItem::query()->updateOrCreate(
-                [
-                    'pending_order_id' => $pending->id,
-                    'cart_item_id' => $item->id,
-                ],
-                [
-                    'product_id' => $item->productVariant?->product_id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'product_name_snapshot' => $item->product_name_snapshot,
-                    'variant_name_snapshot' => $item->variant_name_snapshot,
-                    'sku_snapshot' => $item->sku_snapshot,
-                    'quantity' => $item->quantity,
-                    'price_snapshot' => $item->unit_price,
-                    'sale_type' => $item->sale_type,
-                    'daily_offer_id' => $item->daily_offer_id,
-                    'added_at' => PendingOrderItem::query()
-                        ->where('pending_order_id', $pending->id)
-                        ->where('cart_item_id', $item->id)
-                        ->value('added_at') ?? now(),
-                    'removed_at' => null,
-                ]
-            );
+        if (! $anchorId && $nextAnchor) {
+            $anchorId = $nextAnchor->id;
+        } elseif ($removedItem && $pending->anchor_cart_item_id === $removedItem->id) {
+            $anchorId = $nextAnchor?->id;
+            $anchorChanged = true;
         }
 
-        PendingOrderItem::query()
-            ->where('pending_order_id', $pending->id)
-            ->whereNull('removed_at')
-            ->whereNotIn('cart_item_id', $activeCartItemIds)
-            ->update(['removed_at' => now()]);
+        $updates = [
+            'anchor_cart_item_id' => $anchorId,
+            'last_activity_at' => now(),
+            'whatsapp_reminder_due_at' => $pending->whatsapp_reminder_due_at ?? $this->whatsAppReminderDueAt(),
+            'cart_value_snapshot' => $cart->items->sum(fn (CartItem $item) => (float) $item->quantity * (float) $item->unit_price),
+            'item_count_snapshot' => (int) $cart->items->sum('quantity'),
+            'reserved_sku_count_snapshot' => $cart->items->pluck('product_variant_id')->unique()->count(),
+            'scarce_stock_hold' => $this->hasScarceStockHold($cart),
+            'risk_level' => $this->settings->get('checkout.cart_abuse_monitoring_enabled', true) ? $this->activityRiskLevel($pending, $cart) : 'NORMAL',
+        ];
+
+        if ($anchorChanged) {
+            $updates['anchor_changed_at'] = now();
+            $updates['anchor_change_count'] = ((int) $pending->anchor_change_count) + 1;
+        }
+
+        $pending->update($updates);
     }
 
     public function close(PendingOrder $pending, string $reason): void
@@ -302,11 +272,6 @@ class PendingOrderService
         CartItem::query()
             ->where('cart_id', $cart->id)
             ->delete();
-
-        PendingOrderItem::query()
-            ->where('pending_order_id', $pending->id)
-            ->whereNull('removed_at')
-            ->update(['removed_at' => now()]);
 
         $this->close($pending, PendingOrder::CLOSE_EXPIRED);
         $cart->increment('revision');
@@ -332,7 +297,9 @@ class PendingOrderService
                     'reference' => $this->generateReference(),
                     'status' => PendingOrder::STATUS_ACTIVE,
                     'started_at' => now(),
+                    'last_activity_at' => now(),
                     'expires_at' => now()->addMinutes($this->holdMinutes()),
+                    'whatsapp_reminder_due_at' => $this->whatsAppReminderDueAt(),
                 ]);
             } catch (QueryException $exception) {
                 if ($this->isUniqueViolation($exception, 'pending_orders_one_active_per_cart_unique')) {
@@ -362,5 +329,102 @@ class PendingOrderService
     {
         return ($exception->errorInfo[0] ?? null) === '23000'
             && str_contains($exception->getMessage(), $indexName);
+    }
+
+    private function sendInAppReminderIfDue(PendingOrder $pending, Cart $cart): bool
+    {
+        if (! $this->settings->get('checkout.cart_reminder_enabled', true)
+            || $pending->reminder_sent_at
+            || $pending->started_at->copy()->addMinutes($this->reminderMinutes())->isFuture()
+            || $cart->items()->count() === 0) {
+            return false;
+        }
+
+        $remainingMinutes = max(1, now()->diffInMinutes($pending->expires_at, false));
+        $pending->update(['reminder_sent_at' => now()]);
+        $this->notifications->notifyCustomerPendingCartReminder($pending, $remainingMinutes);
+
+        return true;
+    }
+
+    private function sendWhatsAppReminderIfDue(PendingOrder $pending, Cart $cart): ?string
+    {
+        if (! $this->settings->get('checkout.cart_whatsapp_reminder_enabled', false)
+            || $pending->whatsapp_reminder_attempted_at
+            || ! $pending->whatsapp_reminder_due_at
+            || $pending->whatsapp_reminder_due_at->isFuture()
+            || $cart->items()->count() === 0) {
+            return null;
+        }
+
+        $attemptedAt = now();
+
+        if (! $this->whatsApp->configured()) {
+            $pending->update([
+                'whatsapp_reminder_attempted_at' => $attemptedAt,
+                'whatsapp_reminder_status' => 'NOT_CONFIGURED',
+                'whatsapp_failure_code' => 'NOT_CONFIGURED',
+                'whatsapp_failure_message' => 'WhatsApp messaging provider is not configured.',
+                'follow_up_updated_at' => $attemptedAt,
+            ]);
+
+            return 'skipped';
+        }
+
+        $remainingMinutes = max(1, now()->diffInMinutes($pending->expires_at, false));
+        $result = $this->whatsApp->sendCartReminder($pending, $remainingMinutes);
+
+        $pending->update([
+            'whatsapp_reminder_attempted_at' => $attemptedAt,
+            'whatsapp_reminder_status' => $result->sent ? 'SENT' : 'FAILED',
+            'whatsapp_provider_message_id' => $result->providerMessageId,
+            'whatsapp_failure_code' => $result->failureCode,
+            'whatsapp_failure_message' => $result->failureMessage,
+            'follow_up_updated_at' => $attemptedAt,
+        ]);
+
+        return $result->sent ? 'sent' : 'skipped';
+    }
+
+    private function whatsAppReminderDueAt(): ?Carbon
+    {
+        if (! $this->settings->get('checkout.cart_whatsapp_reminder_enabled', false)) {
+            return null;
+        }
+
+        return now()->addMinutes($this->whatsAppReminderMinutes());
+    }
+
+    private function hasScarceStockHold(Cart $cart): bool
+    {
+        foreach ($cart->items as $item) {
+            $variant = $item->productVariant;
+
+            if (! $variant) {
+                continue;
+            }
+
+            foreach ($variant->inventories as $inventory) {
+                $threshold = $inventory->low_stock_threshold;
+                $available = max(0.001, (float) $inventory->available_quantity);
+
+                if ($threshold !== null
+                    && $available <= (float) $threshold
+                    && ((float) $item->quantity / $available) >= 0.70) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function activityRiskLevel(PendingOrder $pending, Cart $cart): string
+    {
+        if ($this->hasScarceStockHold($cart) || (int) $pending->anchor_change_count >= 3) {
+            return 'WATCH';
+        }
+
+        return 'NORMAL';
     }
 }

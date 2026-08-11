@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\DailyOffer;
@@ -29,6 +31,8 @@ class DailyOfferManagementTest extends TestCase
 
         config(['app.timezone' => 'Asia/Kolkata']);
         config(['grihasthikart.admin_emails' => ['admin@example.com']]);
+        app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
+        app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
 
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
     }
@@ -513,7 +517,7 @@ class DailyOfferManagementTest extends TestCase
 
         $this->assertSame('30.00', (string) $item->unit_price);
         $this->assertNotNull($cart->expires_at);
-        $this->assertTrue($cart->expires_at->between(now()->addMinutes(29), now()->addMinutes(31)));
+        $this->assertTrue($cart->expires_at->between(now()->addMinutes(14), now()->addMinutes(16)));
     }
 
     public function test_daily_offer_cart_price_is_server_authoritative(): void

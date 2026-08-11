@@ -45,8 +45,14 @@ class BusinessSettingService
             'today_delivery_cutoff_time' => $this->get('checkout.today_delivery_cutoff_time', '14:00'),
             'custom_delivery_date_enabled' => (bool) $this->get('checkout.custom_delivery_date_enabled', true),
             'max_delivery_days_ahead' => (int) $this->get('checkout.max_delivery_days_ahead', 7),
-            'cart_hold_minutes' => (int) $this->get('checkout.cart_hold_minutes', 120),
+            'cart_hold_minutes' => (int) $this->get('checkout.cart_hold_minutes', 60),
+            'cart_reminder_enabled' => filter_var($this->get('checkout.cart_reminder_enabled', true), FILTER_VALIDATE_BOOLEAN),
             'cart_reminder_minutes' => (int) $this->get('checkout.cart_reminder_minutes', 30),
+            'cart_whatsapp_reminder_enabled' => filter_var($this->get('checkout.cart_whatsapp_reminder_enabled', false), FILTER_VALIDATE_BOOLEAN),
+            'cart_whatsapp_reminder_minutes' => (int) $this->get('checkout.cart_whatsapp_reminder_minutes', 45),
+            'cart_employee_followup_enabled' => filter_var($this->get('checkout.cart_employee_followup_enabled', true), FILTER_VALIDATE_BOOLEAN),
+            'cart_abuse_monitoring_enabled' => filter_var($this->get('checkout.cart_abuse_monitoring_enabled', true), FILTER_VALIDATE_BOOLEAN),
+            'daily_offer_hold_minutes' => (int) $this->get('checkout.daily_offer_hold_minutes', 15),
             'default_state' => $this->get('checkout.default_state'),
             'default_city' => $this->get('checkout.default_city'),
             'store_contact_mobile' => $this->get('checkout.store_contact_mobile'),
@@ -128,6 +134,17 @@ class BusinessSettingService
 
     public function updateCheckoutSettings(array $data): void
     {
+        $metadata = [
+            'cart_hold_minutes' => ['integer', 'Cart Hold Duration', 8],
+            'cart_reminder_enabled' => ['boolean', 'Customer In-App Cart Reminder', 9],
+            'cart_reminder_minutes' => ['integer', 'In-App Cart Reminder After', 10],
+            'cart_whatsapp_reminder_enabled' => ['boolean', 'Automatic WhatsApp Cart Reminder', 11],
+            'cart_whatsapp_reminder_minutes' => ['integer', 'WhatsApp Cart Reminder After', 12],
+            'cart_employee_followup_enabled' => ['boolean', 'Employee Cart Follow-up', 13],
+            'cart_abuse_monitoring_enabled' => ['boolean', 'Abuse / Reservation Monitoring', 14],
+            'daily_offer_hold_minutes' => ['integer', 'Daily Offer Reservation Duration', 15],
+        ];
+
         foreach ($data as $key => $value) {
             if ($key === 'customer_invoice_enabled') {
                 $this->set('order.customer_invoice_enabled', $value);
@@ -135,7 +152,16 @@ class BusinessSettingService
                 continue;
             }
 
-            $this->set('checkout.'.$key, $value);
+            $setting = $this->set('checkout.'.$key, $value);
+
+            if (isset($metadata[$key])) {
+                [$type, $label, $order] = $metadata[$key];
+                $setting->update([
+                    'value_type' => $type,
+                    'label' => $label,
+                    'display_order' => $order,
+                ]);
+            }
         }
     }
 
