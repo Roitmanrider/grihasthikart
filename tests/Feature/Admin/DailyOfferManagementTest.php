@@ -516,8 +516,9 @@ class DailyOfferManagementTest extends TestCase
         $cart = Cart::query()->firstOrFail();
 
         $this->assertSame('30.00', (string) $item->unit_price);
-        $this->assertNotNull($cart->expires_at);
-        $this->assertTrue($cart->expires_at->between(now()->addMinutes(14), now()->addMinutes(16)));
+        $this->assertNull($cart->expires_at);
+        $this->assertNotNull($item->daily_offer_reserved_until);
+        $this->assertTrue($item->daily_offer_reserved_until->between(now()->addMinutes(14), now()->addMinutes(16)));
     }
 
     public function test_daily_offer_cart_price_is_server_authoritative(): void
@@ -583,10 +584,15 @@ class DailyOfferManagementTest extends TestCase
         ]);
 
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1, 'daily_offer_id' => $offer->id]);
-        Cart::query()->firstOrFail()->update(['expires_at' => now()->subMinute()]);
+        CartItem::query()->firstOrFail()->update(['daily_offer_reserved_until' => now()->subMinute()]);
 
         $this->post(route('checkout.place'), $this->checkoutPayload())
             ->assertSessionHasErrors('checkout');
+
+        $this->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('Daily Offer reservation expired')
+            ->assertDontSee('id="deliverySlot" class="form-select is-invalid"', false);
     }
 
     public function test_daily_offer_checkout_persists_sale_source(): void
@@ -619,7 +625,7 @@ class DailyOfferManagementTest extends TestCase
         $cartItem = CartItem::query()->firstOrFail();
         $this->assertSame('daily_offer', $cartItem->sale_type);
         $this->assertSame($offer->id, $cartItem->daily_offer_id);
-        $this->assertTrue($cartItem->cart->expires_at->isFuture());
+        $this->assertTrue($cartItem->daily_offer_reserved_until->isFuture());
 
         $response = $this->post(route('checkout.place'), $this->checkoutPayload());
         $response->assertSessionHasNoErrors();

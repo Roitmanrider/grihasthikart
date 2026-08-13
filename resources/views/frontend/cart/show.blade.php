@@ -25,7 +25,7 @@
                 @if ($errors->has('cart'))
                     <div class="alert alert-danger">{{ $errors->first('cart') }}</div>
                 @endif
-                @if ($cart->expires_at && $cart->expires_at->isPast() && $cart->items->contains(fn ($item) => $item->sale_type === 'daily_offer'))
+                @if ($cart->items->contains(fn ($item) => $item->sale_type === 'daily_offer' && $item->daily_offer_reserved_until && $item->daily_offer_reserved_until->isPast()))
                     <div class="alert alert-warning">A Daily Offer reservation in your cart has expired. Please remove and re-add the item if the offer is still available.</div>
                 @endif
                 @if ($pending_order)
@@ -72,6 +72,17 @@
                                                                     @foreach ($item->attributes_snapshot as $attribute)
                                                                         <span>{{ $attribute['attribute'] }}: {{ $attribute['value'] }}</span>
                                                                     @endforeach
+                                                                </div>
+                                                            @endif
+                                                            @if ($item->sale_type === 'daily_offer')
+                                                                <div class="small {{ $item->daily_offer_reserved_until?->isPast() ? 'text-danger' : 'text-success' }}"
+                                                                     data-daily-offer-countdown
+                                                                     data-expires-at="{{ $item->daily_offer_reserved_until?->toIso8601String() }}">
+                                                                    @if ($item->daily_offer_reserved_until?->isPast())
+                                                                        Daily Offer reservation expired
+                                                                    @else
+                                                                        Daily Offer price reserved until {{ $item->daily_offer_reserved_until?->format('h:i A') }}
+                                                                    @endif
                                                                 </div>
                                                             @endif
                                                         </div>
@@ -208,6 +219,27 @@
 
         window.addEventListener('focus', check);
         setInterval(check, 15000);
+
+        const countdowns = document.querySelectorAll('[data-daily-offer-countdown]');
+        const pad = (value) => String(value).padStart(2, '0');
+        const renderCountdowns = () => {
+            countdowns.forEach((node) => {
+                const expiresAt = Date.parse(node.dataset.expiresAt || '');
+                if (! expiresAt) return;
+                const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+                if (remaining <= 0) {
+                    node.textContent = 'Daily Offer reservation expired';
+                    node.classList.remove('text-success');
+                    node.classList.add('text-danger');
+                    return;
+                }
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                node.textContent = `Daily Offer price reserved for ${pad(minutes)}:${pad(seconds)}`;
+            });
+        };
+        renderCountdowns();
+        setInterval(renderCountdowns, 1000);
     });
     </script>
 @endsection

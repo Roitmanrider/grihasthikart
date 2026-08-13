@@ -27,6 +27,8 @@
                     <dt class="col-sm-4">Scarce Stock</dt><dd class="col-sm-8">{{ $pendingOrder->scarce_stock_hold ? 'Yes' : 'No' }}</dd>
                     <dt class="col-sm-4">Risk</dt><dd class="col-sm-8">{{ str_replace('_', ' ', $pendingOrder->risk_level) }}</dd>
                     <dt class="col-sm-4">Follow-up</dt><dd class="col-sm-8">{{ str_replace('_', ' ', $pendingOrder->follow_up_status) }}</dd>
+                    <dt class="col-sm-4">Follow-up Eligible</dt><dd class="col-sm-8">{{ $pendingOrder->follow_up_eligible_at?->format('d M Y, h:i A') ?? '-' }}</dd>
+                    <dt class="col-sm-4">Assigned</dt><dd class="col-sm-8">{{ $pendingOrder->assignedAdmin?->name ?: ($pendingOrder->assignedAdmin?->email ?: 'Unassigned') }}</dd>
                     <dt class="col-sm-4">Closed</dt><dd class="col-sm-8">{{ $pendingOrder->closed_at?->format('d M Y, h:i A') ?? '-' }}</dd>
                     <dt class="col-sm-4">Close Reason</dt><dd class="col-sm-8">{{ $pendingOrder->close_reason ? str_replace('_', ' ', $pendingOrder->close_reason) : '-' }}</dd>
                     <dt class="col-sm-4">Converted Order</dt>
@@ -38,6 +40,21 @@
                         @endif
                     </dd>
                 </dl>
+            </div>
+            <div class="card-footer bg-white d-flex flex-wrap gap-2">
+                <form method="POST" action="{{ route('admin.pending-orders.assign', $pendingOrder) }}">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="assigned_admin_user_id" value="{{ auth()->id() }}">
+                    <button class="btn btn-sm btn-outline-success">Assign to Me</button>
+                </form>
+                @if ($pendingOrder->assigned_admin_user_id)
+                    <form method="POST" action="{{ route('admin.pending-orders.unassign', $pendingOrder) }}">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn-sm btn-outline-danger">Clear Assignment</button>
+                    </form>
+                @endif
             </div>
         </div>
     </div>

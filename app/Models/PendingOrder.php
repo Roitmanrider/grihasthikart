@@ -40,7 +40,9 @@ class PendingOrder extends Model
         'whatsapp_failure_code',
         'whatsapp_failure_message',
         'follow_up_status',
+        'follow_up_eligible_at',
         'follow_up_updated_at',
+        'assigned_admin_user_id',
         'scarce_stock_hold',
         'risk_level',
         'cart_value_snapshot',
@@ -62,6 +64,7 @@ class PendingOrder extends Model
         'reminder_sent_at' => 'datetime',
         'whatsapp_reminder_due_at' => 'datetime',
         'whatsapp_reminder_attempted_at' => 'datetime',
+        'follow_up_eligible_at' => 'datetime',
         'follow_up_updated_at' => 'datetime',
         'scarce_stock_hold' => 'boolean',
         'cart_value_snapshot' => 'decimal:2',
@@ -90,6 +93,11 @@ class PendingOrder extends Model
     public function convertedOrder()
     {
         return $this->belongsTo(Order::class, 'converted_order_id');
+    }
+
+    public function assignedAdmin()
+    {
+        return $this->belongsTo(User::class, 'assigned_admin_user_id');
     }
 
     public function items()

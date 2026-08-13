@@ -336,6 +336,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.index');
         Route::get('pending-orders', [AdminPendingOrderController::class, 'index'])
             ->name('pending-orders.index');
+        Route::patch('pending-orders/{pendingOrder}/follow-up', [AdminPendingOrderController::class, 'updateFollowUp'])
+            ->name('pending-orders.follow-up');
+        Route::patch('pending-orders/{pendingOrder}/assign', [AdminPendingOrderController::class, 'assign'])
+            ->name('pending-orders.assign');
+        Route::delete('pending-orders/{pendingOrder}/assign', [AdminPendingOrderController::class, 'unassign'])
+            ->name('pending-orders.unassign');
         Route::get('pending-orders/{pendingOrder}', [AdminPendingOrderController::class, 'show'])
             ->name('pending-orders.show');
         Route::get('orders/{order}/invoice', [AdminOrderDocumentController::class, 'invoice'])

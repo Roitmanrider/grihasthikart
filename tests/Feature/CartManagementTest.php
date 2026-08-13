@@ -322,10 +322,41 @@ class CartManagementTest extends TestCase
 
         $this->assertSame('daily_offer', $item->sale_type);
         $this->assertSame($offer->id, $item->daily_offer_id);
-        $this->assertTrue($item->cart->expires_at->isFuture());
+        $this->assertNull($item->cart->expires_at);
+        $this->assertTrue($item->daily_offer_reserved_until->isFuture());
         $this->assertSame('90.00', (string) $item->fresh()->unit_price);
         $this->assertSame(90.0, $summary['subtotal']);
         $this->assertSame(1, CartItem::query()->count());
+    }
+
+    public function test_daily_offer_reservation_timer_does_not_reset_on_cart_refresh(): void
+    {
+        [, $variant] = $this->purchasableVariant(variantOverrides: [
+            'selling_price' => 120,
+            'mrp' => 150,
+        ]);
+        $offer = DailyOffer::factory()->create([
+            'product_variant_id' => $variant->id,
+            'offer_price' => 90,
+            'allocated_quantity' => 5,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'is_active' => true,
+        ]);
+
+        $this->travelTo(now()->setSecond(0));
+        $this->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+            'daily_offer_id' => $offer->id,
+        ])->assertRedirect(route('cart.show'));
+        $reservedUntil = CartItem::query()->firstOrFail()->daily_offer_reserved_until->copy();
+
+        $this->travel(5)->minutes();
+        app(CartService::class)->getCartSummary(Cart::query()->firstOrFail()->session_id);
+
+        $this->assertTrue(CartItem::query()->firstOrFail()->daily_offer_reserved_until->equalTo($reservedUntil));
+        $this->travelBack();
     }
 
     public function test_normal_and_daily_offer_rows_for_same_variant_do_not_merge(): void

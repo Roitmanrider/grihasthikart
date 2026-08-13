@@ -15,6 +15,7 @@ class CartItem extends Model
         'product_variant_id',
         'sale_type',
         'daily_offer_id',
+        'daily_offer_reserved_until',
         'quantity',
         'unit_price',
         'mrp',
@@ -30,6 +31,7 @@ class CartItem extends Model
         'quantity' => 'decimal:3',
         'unit_price' => 'decimal:2',
         'mrp' => 'decimal:2',
+        'daily_offer_reserved_until' => 'datetime',
         'gst_rate_snapshot' => 'decimal:2',
         'attributes_snapshot' => 'array',
     ];

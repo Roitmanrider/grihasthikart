@@ -151,16 +151,16 @@ class DailyOffer extends Model
             return (float) $this->cartItems
                 ->filter(fn (CartItem $item) => $item->cart?->status === 'active'
                     && ! $item->trashed()
-                    && $item->cart?->expires_at
-                    && $item->cart->expires_at->greaterThan($now))
+                    && $item->daily_offer_reserved_until
+                    && $item->daily_offer_reserved_until->greaterThan($now))
                 ->sum('quantity');
         }
 
         return (float) $this->cartItems()
             ->whereHas('cart', fn ($query) => $query
-                ->where('status', 'active')
-                ->whereNotNull('expires_at')
-                ->where('expires_at', '>', $now))
+                ->where('status', 'active'))
+            ->whereNotNull('daily_offer_reserved_until')
+            ->where('daily_offer_reserved_until', '>', $now)
             ->sum('quantity');
     }
 

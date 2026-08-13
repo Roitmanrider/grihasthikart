@@ -18,6 +18,12 @@
                 <a href="{{ route('cart.show') }}" class="btn btn-outline-secondary">Back to Cart</a>
             </div>
 
+            @if ($errors->has('checkout') || $errors->has('cart') || $errors->has('payment'))
+                <div class="alert alert-danger">
+                    {{ $errors->first('checkout') ?: ($errors->first('cart') ?: $errors->first('payment')) }}
+                </div>
+            @endif
+
             <div class="row g-4">
                 <div class="col-lg-7">
                     @if ($pending_order)
@@ -178,16 +184,13 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Delivery Slot</label>
-                                    <select name="delivery_slot" id="deliverySlot" class="form-select @error('delivery_slot') is-invalid @enderror @error('checkout') is-invalid @enderror">
+                                    <select name="delivery_slot" id="deliverySlot" class="form-select @error('delivery_slot') is-invalid @enderror">
                                         <option value="">No preference</option>
                                         @foreach ($deliverySlots as $slot)
                                             <option value="{{ $slot->label }}" @selected(old('delivery_slot') === $slot->label)>{{ $slot->label }}</option>
                                         @endforeach
                                     </select>
                                     @error('delivery_slot')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    @error('checkout')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -251,6 +254,17 @@
                                     <div>
                                         <div class="fw-semibold">{{ $item->product_name_snapshot }}</div>
                                         <div class="small text-muted">{{ $item->variant_name_snapshot }} x {{ rtrim(rtrim(number_format((float) $item->quantity, 3), '0'), '.') }}</div>
+                                        @if ($item->sale_type === 'daily_offer')
+                                            <div class="small {{ $item->daily_offer_reserved_until?->isPast() ? 'text-danger' : 'text-success' }}"
+                                                 data-daily-offer-countdown
+                                                 data-expires-at="{{ $item->daily_offer_reserved_until?->toIso8601String() }}">
+                                                @if ($item->daily_offer_reserved_until?->isPast())
+                                                    Daily Offer reservation expired
+                                                @else
+                                                    Daily Offer price reserved until {{ $item->daily_offer_reserved_until?->format('h:i A') }}
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
                                     <div>Rs. {{ number_format($item->line_total, 2) }}</div>
                                 </div>
@@ -312,6 +326,27 @@
 
         window.addEventListener('focus', check);
         setInterval(check, 15000);
+
+        const countdowns = document.querySelectorAll('[data-daily-offer-countdown]');
+        const pad = (value) => String(value).padStart(2, '0');
+        const renderCountdowns = () => {
+            countdowns.forEach((node) => {
+                const expiresAt = Date.parse(node.dataset.expiresAt || '');
+                if (! expiresAt) return;
+                const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+                if (remaining <= 0) {
+                    node.textContent = 'Daily Offer reservation expired';
+                    node.classList.remove('text-success');
+                    node.classList.add('text-danger');
+                    return;
+                }
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                node.textContent = `Daily Offer price reserved for ${pad(minutes)}:${pad(seconds)}`;
+            });
+        };
+        renderCountdowns();
+        setInterval(renderCountdowns, 1000);
     });
     </script>
 @endsection

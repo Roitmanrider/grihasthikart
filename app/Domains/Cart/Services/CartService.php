@@ -11,6 +11,7 @@ use App\Models\DailyOffer;
 use App\Models\ProductVariant;
 use Illuminate\Database\QueryException;
 use Illuminate\Session\Store;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -97,8 +98,6 @@ class CartService
             $saleType = $dailyOffer ? self::SALE_TYPE_DAILY_OFFER : self::SALE_TYPE_NORMAL;
 
             $this->validateVariantIsPurchasable($variant);
-            $this->applyDailyOfferHoldIfNeeded($cart, $dailyOffer);
-
             $existingItem = $this->repository->findItemInCart($cart, $variant->id, $saleType, $dailyOffer?->id);
             $existingQuantity = $existingItem && ! $existingItem->trashed()
                 ? (float) $existingItem->quantity
@@ -108,13 +107,19 @@ class CartService
             $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $targetQuantity, $existingQuantity);
 
             if ($existingItem) {
+                $wasTrashed = $existingItem->trashed();
+
                 if ($existingItem->trashed()) {
                     $existingItem->restore();
                 }
 
                 $item = $this->repository->updateItem($existingItem, array_merge([
                     'quantity' => $targetQuantity,
-                ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
+                ], $this->prepareCartItemSnapshot($variant, $dailyOffer), [
+                    'daily_offer_reserved_until' => $dailyOffer
+                        ? ($wasTrashed ? $this->dailyOfferHoldExpiresAt() : ($existingItem->daily_offer_reserved_until ?? $this->dailyOfferHoldExpiresAt()))
+                        : null,
+                ]));
                 $this->recordCartMutation($cart);
                 $this->pendingOrderService->afterItemAddedOrUpdated($cart);
 
@@ -125,6 +130,7 @@ class CartService
                 'cart_id' => $cart->id,
                 'product_variant_id' => $variant->id,
                 'quantity' => $quantity,
+                'daily_offer_reserved_until' => $dailyOffer ? $this->dailyOfferHoldExpiresAt() : null,
             ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
 
             $this->recordCartMutation($cart);
@@ -281,12 +287,10 @@ class CartService
 
     public function validateDailyOfferHold(Cart $cart): void
     {
-        if (! $cart->expires_at || $cart->expires_at->isFuture()) {
-            return;
-        }
-
         foreach ($cart->items as $item) {
-            if ($item->sale_type === self::SALE_TYPE_DAILY_OFFER && $item->daily_offer_id !== null) {
+            if ($item->sale_type === self::SALE_TYPE_DAILY_OFFER
+                && $item->daily_offer_id !== null
+                && (! $item->daily_offer_reserved_until || $item->daily_offer_reserved_until->isPast())) {
                 throw new InvalidArgumentException('Daily offer reservation expired. Please review your cart before checkout.');
             }
         }
@@ -376,18 +380,11 @@ class CartService
         return $item->sale_type === self::SALE_TYPE_DAILY_OFFER && $item->daily_offer_id !== null;
     }
 
-    private function applyDailyOfferHoldIfNeeded(Cart $cart, ?DailyOffer $dailyOffer): void
+    private function dailyOfferHoldExpiresAt(): Carbon
     {
-        if (! $dailyOffer) {
-            return;
-        }
-
         $holdMinutes = max(1, (int) $this->settings->get('checkout.daily_offer_hold_minutes', 15));
-        $holdExpiresAt = now()->addMinutes($holdMinutes);
 
-        if ($cart->expires_at === null || $cart->expires_at->greaterThan($holdExpiresAt)) {
-            $cart->update(['expires_at' => $holdExpiresAt]);
-        }
+        return now()->addMinutes($holdMinutes);
     }
 
     private function validateEffectiveQuantityLimit(?ProductVariant $variant, ?DailyOffer $dailyOffer, float $targetQuantity, float $existingQuantity = 0): void

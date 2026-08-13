@@ -7,6 +7,7 @@ use App\Domains\Messaging\Contracts\WhatsAppMessageResult;
 use App\Domains\Messaging\Contracts\WhatsAppMessagingServiceInterface;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\CustomerCartRiskMonthly;
@@ -73,9 +74,11 @@ class CartActivityManagementTest extends TestCase
         ])->assertRedirect(route('cart.show'));
 
         $cart = Cart::query()->firstOrFail();
+        $cartItem = CartItem::query()->firstOrFail();
         $activity = PendingOrder::query()->firstOrFail();
 
-        $this->assertTrue($cart->expires_at->between(now()->addMinutes(14), now()->addMinutes(16)));
+        $this->assertNull($cart->expires_at);
+        $this->assertTrue($cartItem->daily_offer_reserved_until->between(now()->addMinutes(14), now()->addMinutes(16)));
         $this->assertTrue($activity->expires_at->between(now()->addMinutes(59), now()->addMinutes(61)));
 
         $this->travel(16)->minutes();
@@ -111,7 +114,9 @@ class CartActivityManagementTest extends TestCase
         ])->assertRedirect(route('cart.show'));
 
         $cart = Cart::query()->with('items')->firstOrFail();
-        $this->assertTrue($cart->expires_at->between(now()->addMinutes(14), now()->addMinutes(16)));
+        $offerItem = CartItem::query()->where('product_variant_id', $offerVariant->id)->firstOrFail();
+        $this->assertNull($cart->expires_at);
+        $this->assertTrue($offerItem->daily_offer_reserved_until->between(now()->addMinutes(14), now()->addMinutes(16)));
         $this->assertTrue($activity->fresh()->expires_at->between(now()->addMinutes(59), now()->addMinutes(61)));
         $this->assertSame(2, $cart->items->count());
         $this->assertSame(4.0, $offer->fresh(['cartItems.cart', 'orderItems'])->availableOfferQuantity());
@@ -233,6 +238,76 @@ class CartActivityManagementTest extends TestCase
             ->assertSee('Cart Activity Monitor')
             ->assertSee('Cart Follow-up')
             ->assertSee($this->customer->mobile);
+    }
+
+    public function test_followup_queue_uses_in_app_reminder_stage_and_assignment_without_whatsapp(): void
+    {
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $employee = User::factory()->create(['email' => 'employee@example.com']);
+        $this->customer->update(['is_premium' => true]);
+        [, $variant] = $this->purchasableVariant(['name' => 'Followup Rice']);
+
+        $this->travelTo(now()->setSecond(0));
+        $this->asCustomer()->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $pending = PendingOrder::query()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('admin.pending-orders.index', ['filters' => ['call_followup']]))
+            ->assertOk()
+            ->assertDontSee($pending->reference);
+
+        $this->travel(31)->minutes();
+        Artisan::call('pending-orders:process');
+        $pending->refresh();
+        $this->assertNotNull($pending->follow_up_eligible_at);
+        $this->assertNull($pending->whatsapp_reminder_attempted_at);
+
+        $this->actingAs($admin)
+            ->get(route('admin.pending-orders.index', [
+                'filters' => ['call_followup', 'premium', 'not_contacted'],
+                'sort' => 'oldest_waiting',
+            ]))
+            ->assertOk()
+            ->assertSee($pending->reference)
+            ->assertSee('Need Follow-up')
+            ->assertSee('Assigned to Me')
+            ->assertSee('Not Contacted');
+
+        $this->actingAs($admin)
+            ->patch(route('admin.pending-orders.assign', $pending), ['assigned_admin_user_id' => $employee->id])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->get(route('admin.pending-orders.index', [
+                'filters' => ['call_followup'],
+                'assigned_admin_user_id' => $employee->id,
+            ]))
+            ->assertOk()
+            ->assertSee($pending->reference);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.pending-orders.follow-up', $pending), ['follow_up_status' => 'CALLED'])
+            ->assertRedirect();
+
+        $this->assertSame('CALLED', $pending->fresh()->follow_up_status);
+        $this->assertNotNull($pending->fresh()->follow_up_updated_at);
+
+        PendingOrder::query()->create([
+            'customer_id' => Customer::factory()->create()->id,
+            'cart_id' => Cart::factory()->create(['status' => 'active'])->id,
+            'reference' => 'PND-2026-888888',
+            'status' => PendingOrder::STATUS_ACTIVE,
+            'started_at' => now()->subHours(2),
+            'follow_up_eligible_at' => now()->subHour(),
+            'expires_at' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.pending-orders.index', ['filters' => ['call_followup']]))
+            ->assertOk()
+            ->assertDontSee('PND-2026-888888');
+
+        $this->travelBack();
     }
 
     private function asCustomer()

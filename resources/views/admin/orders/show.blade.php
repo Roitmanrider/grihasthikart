@@ -107,6 +107,7 @@
                 <div class="d-flex justify-content-between"><span>MRP Total</span><span>Rs. {{ number_format((float) $order->total_mrp, 2) }}</span></div>
                 <div class="d-flex justify-content-between text-success"><span>Savings</span><span>Rs. {{ number_format((float) $order->total_savings, 2) }}</span></div>
                 <div class="d-flex justify-content-between"><span>Tax</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
+                <div class="d-flex justify-content-between"><span>Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
                 @if ($order->discount_total > 0)
                     <div class="d-flex justify-content-between text-success"><span>Coupon {{ $order->coupon_code_snapshot }}</span><span>- Rs. {{ number_format((float) $order->discount_total, 2) }}</span></div>
                 @endif

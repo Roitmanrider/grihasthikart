@@ -373,6 +373,7 @@ class CheckoutManagementTest extends TestCase
 
     public function test_admin_order_index_show_update_and_cancellation_restores_stock(): void
     {
+        app(BusinessSettingService::class)->set('checkout.delivery_charge', 25)->update(['value_type' => 'decimal']);
         [, $variant, $inventory] = $this->cartItem();
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 2]);
         $this->post(route('checkout.place'), $this->checkoutPayload());
@@ -384,7 +385,9 @@ class CheckoutManagementTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.orders.show', $order))
             ->assertOk()
-            ->assertSee('Status History');
+            ->assertSee('Status History')
+            ->assertSee('Delivery Charge')
+            ->assertSee('Rs. 25.00');
 
         $this->actingAs($this->admin)->patch(route('admin.orders.update-status', $order), [
             'order_status' => 'confirmed',

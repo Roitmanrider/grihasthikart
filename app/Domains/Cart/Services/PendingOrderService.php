@@ -140,12 +140,13 @@ class PendingOrderService
         }
 
         $this->sendInAppReminderIfDue($pending, $cart);
+        $this->markFollowUpEligibleIfDue($pending, $cart);
         $this->sendWhatsAppReminderIfDue($pending, $cart);
     }
 
     public function processDue(int $chunkSize = 100): array
     {
-        $summary = ['reminded' => 0, 'whatsapp_sent' => 0, 'whatsapp_skipped' => 0, 'expired' => 0];
+        $summary = ['reminded' => 0, 'follow_up_eligible' => 0, 'whatsapp_sent' => 0, 'whatsapp_skipped' => 0, 'expired' => 0];
 
         PendingOrder::query()
             ->active()
@@ -153,6 +154,10 @@ class PendingOrderService
                 $query->where('expires_at', '<=', now())
                     ->orWhere(function ($query) {
                         $query->whereNull('reminder_sent_at')
+                            ->where('started_at', '<=', now()->subMinutes($this->reminderMinutes()));
+                    })
+                    ->orWhere(function ($query) {
+                        $query->whereNull('follow_up_eligible_at')
                             ->where('started_at', '<=', now()->subMinutes($this->reminderMinutes()));
                     })
                     ->orWhere(function ($query) {
@@ -194,6 +199,10 @@ class PendingOrderService
 
                         if ($this->sendInAppReminderIfDue($lockedPending, $cart)) {
                             $summary['reminded']++;
+                        }
+
+                        if ($this->markFollowUpEligibleIfDue($lockedPending, $cart)) {
+                            $summary['follow_up_eligible']++;
                         }
 
                         $whatsAppResult = $this->sendWhatsAppReminderIfDue($lockedPending, $cart);
@@ -238,6 +247,7 @@ class PendingOrderService
         $updates = [
             'anchor_cart_item_id' => $anchorId,
             'last_activity_at' => now(),
+            'follow_up_eligible_at' => $pending->follow_up_eligible_at ?: $this->followUpEligibleAtIfDue($pending, $cart),
             'whatsapp_reminder_due_at' => $pending->whatsapp_reminder_due_at ?? $this->whatsAppReminderDueAt(),
             'cart_value_snapshot' => $cart->items->sum(fn (CartItem $item) => (float) $item->quantity * (float) $item->unit_price),
             'item_count_snapshot' => (int) $cart->items->sum('quantity'),
@@ -341,10 +351,38 @@ class PendingOrderService
         }
 
         $remainingMinutes = max(1, now()->diffInMinutes($pending->expires_at, false));
-        $pending->update(['reminder_sent_at' => now()]);
+        $pending->update([
+            'reminder_sent_at' => now(),
+            'follow_up_eligible_at' => $pending->follow_up_eligible_at ?? now(),
+        ]);
         $this->notifications->notifyCustomerPendingCartReminder($pending, $remainingMinutes);
 
         return true;
+    }
+
+    private function markFollowUpEligibleIfDue(PendingOrder $pending, Cart $cart): bool
+    {
+        if ($pending->follow_up_eligible_at
+            || ! $this->settings->get('checkout.cart_employee_followup_enabled', true)
+            || $pending->started_at->copy()->addMinutes($this->reminderMinutes())->isFuture()
+            || $cart->items()->count() === 0) {
+            return false;
+        }
+
+        $pending->update(['follow_up_eligible_at' => now()]);
+
+        return true;
+    }
+
+    private function followUpEligibleAtIfDue(PendingOrder $pending, Cart $cart): ?Carbon
+    {
+        if (! $this->settings->get('checkout.cart_employee_followup_enabled', true)
+            || $pending->started_at->copy()->addMinutes($this->reminderMinutes())->isFuture()
+            || $cart->items->isEmpty()) {
+            return null;
+        }
+
+        return now();
     }
 
     private function sendWhatsAppReminderIfDue(PendingOrder $pending, Cart $cart): ?string
@@ -365,7 +403,6 @@ class PendingOrderService
                 'whatsapp_reminder_status' => 'NOT_CONFIGURED',
                 'whatsapp_failure_code' => 'NOT_CONFIGURED',
                 'whatsapp_failure_message' => 'WhatsApp messaging provider is not configured.',
-                'follow_up_updated_at' => $attemptedAt,
             ]);
 
             return 'skipped';
@@ -380,7 +417,6 @@ class PendingOrderService
             'whatsapp_provider_message_id' => $result->providerMessageId,
             'whatsapp_failure_code' => $result->failureCode,
             'whatsapp_failure_message' => $result->failureMessage,
-            'follow_up_updated_at' => $attemptedAt,
         ]);
 
         return $result->sent ? 'sent' : 'skipped';
