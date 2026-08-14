@@ -23,8 +23,15 @@
 <div class="card border-0 shadow-sm"><div class="card-body">
 <form method="POST" action="{{ route('admin.settings.checkout.update') }}" class="row g-3">
 @csrf @method('PUT')
+<div class="col-12"><h2 class="h5 mb-1">Standard Delivery Rules</h2><div class="text-muted small">Used for guests and standard customers unless a customer override applies.</div></div>
 <div class="col-md-4"><label class="form-label">Minimum Order Amount</label><input type="number" step="0.01" min="0" name="minimum_order_amount" value="{{ old('minimum_order_amount', $settings['minimum_order_amount']) }}" class="form-control"></div>
 <div class="col-md-4"><label class="form-label">Delivery Charge</label><input type="number" step="0.01" min="0" name="delivery_charge" value="{{ old('delivery_charge', $settings['delivery_charge']) }}" class="form-control"></div>
+<div class="col-md-4"><label class="form-label">Free Delivery Threshold</label><input type="number" step="0.01" min="0" name="free_delivery_threshold" value="{{ old('free_delivery_threshold', $settings['free_delivery_threshold']) }}" class="form-control"><div class="form-text">Blank keeps a flat delivery charge. 0 means always free.</div></div>
+<div class="col-12"><h2 class="h5 mb-1 mt-2">Premium Delivery Rules</h2><div class="text-muted small">Blank values inherit the Standard delivery rule.</div></div>
+<div class="col-md-4"><label class="form-label">Premium Minimum Order</label><input type="number" step="0.01" min="0" name="premium_minimum_order_amount" value="{{ old('premium_minimum_order_amount', $settings['premium_minimum_order_amount']) }}" class="form-control"></div>
+<div class="col-md-4"><label class="form-label">Premium Delivery Charge</label><input type="number" step="0.01" min="0" name="premium_delivery_charge" value="{{ old('premium_delivery_charge', $settings['premium_delivery_charge']) }}" class="form-control"></div>
+<div class="col-md-4"><label class="form-label">Premium Free Delivery Threshold</label><input type="number" step="0.01" min="0" name="premium_free_delivery_threshold" value="{{ old('premium_free_delivery_threshold', $settings['premium_free_delivery_threshold']) }}" class="form-control"><div class="form-text">Blank inherits Standard. 0 means always free.</div></div>
+<div class="col-12"><hr><h2 class="h5 mb-1">Delivery Scheduling</h2></div>
 <div class="col-md-4"><label class="form-label">Today Cutoff Time</label><input type="time" name="today_delivery_cutoff_time" value="{{ old('today_delivery_cutoff_time', $settings['today_delivery_cutoff_time']) }}" class="form-control"></div>
 <div class="col-md-4"><label class="form-label">Max Delivery Days Ahead</label><input type="number" min="0" name="max_delivery_days_ahead" value="{{ old('max_delivery_days_ahead', $settings['max_delivery_days_ahead']) }}" class="form-control"></div>
 <div class="col-12"><hr><h2 class="h5 mb-1">Cart Activity / Reservation Settings</h2><div class="text-muted small">Controls customer reservation timing, reminder stages, and employee follow-up visibility.</div></div>

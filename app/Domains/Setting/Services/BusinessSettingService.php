@@ -40,6 +40,10 @@ class BusinessSettingService
         return [
             'minimum_order_amount' => (float) $this->get('checkout.minimum_order_amount', 0),
             'delivery_charge' => (float) $this->get('checkout.delivery_charge', 0),
+            'free_delivery_threshold' => $this->get('checkout.free_delivery_threshold', null),
+            'premium_minimum_order_amount' => $this->get('checkout.premium_minimum_order_amount', null),
+            'premium_delivery_charge' => $this->get('checkout.premium_delivery_charge', null),
+            'premium_free_delivery_threshold' => $this->get('checkout.premium_free_delivery_threshold', null),
             'cod_enabled' => (bool) $this->get('payment.cod_enabled', $this->get('checkout.cod_enabled', true)),
             'today_delivery_enabled' => (bool) $this->get('checkout.today_delivery_enabled', true),
             'today_delivery_cutoff_time' => $this->get('checkout.today_delivery_cutoff_time', '14:00'),
@@ -135,6 +139,12 @@ class BusinessSettingService
     public function updateCheckoutSettings(array $data): void
     {
         $metadata = [
+            'minimum_order_amount' => ['decimal', 'Standard Minimum Order Amount', 1],
+            'delivery_charge' => ['decimal', 'Standard Delivery Charge', 2],
+            'free_delivery_threshold' => ['decimal', 'Standard Free Delivery Threshold', 3],
+            'premium_minimum_order_amount' => ['decimal', 'Premium Minimum Order Amount', 4],
+            'premium_delivery_charge' => ['decimal', 'Premium Delivery Charge', 5],
+            'premium_free_delivery_threshold' => ['decimal', 'Premium Free Delivery Threshold', 6],
             'cart_hold_minutes' => ['integer', 'Cart Hold Duration', 8],
             'cart_reminder_enabled' => ['boolean', 'Customer In-App Cart Reminder', 9],
             'cart_reminder_minutes' => ['integer', 'In-App Cart Reminder After', 10],
@@ -231,7 +241,7 @@ class BusinessSettingService
         return match ($type) {
             'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
             'integer' => (int) $value,
-            'decimal' => (float) $value,
+            'decimal' => $value === null ? null : (float) $value,
             default => $value,
         };
     }

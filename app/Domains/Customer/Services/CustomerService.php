@@ -56,8 +56,12 @@ class CustomerService
 
     private function normalize(array $data): array
     {
-        foreach (['status', 'is_premium', 'cashback_enabled'] as $flag) {
+        foreach (['status', 'is_premium', 'cashback_enabled', 'custom_delivery_rules_enabled'] as $flag) {
             $data[$flag] = (bool) ($data[$flag] ?? false);
+        }
+
+        foreach (['minimum_order_amount_override', 'delivery_charge_override', 'free_delivery_threshold_override'] as $field) {
+            $data[$field] = ($data[$field] ?? null) === '' ? null : ($data[$field] ?? null);
         }
 
         return $data;

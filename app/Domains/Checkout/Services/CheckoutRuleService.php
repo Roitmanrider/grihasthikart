@@ -14,12 +14,13 @@ class CheckoutRuleService
         private readonly DeliverySlotService $deliverySlotService
     ) {}
 
-    public function validateCheckout(array $data, float $subtotal): void
+    public function validateCheckout(array $data, float $subtotal, ?array $deliveryRule = null): void
     {
         $checkout = $this->settings->checkoutSettings();
+        $minimumOrderAmount = $deliveryRule['minimum_order_amount'] ?? $checkout['minimum_order_amount'];
 
-        if ($subtotal < $checkout['minimum_order_amount']) {
-            throw new InvalidArgumentException('Minimum order amount is Rs. '.number_format($checkout['minimum_order_amount'], 2).'.');
+        if ($subtotal < $minimumOrderAmount) {
+            throw new InvalidArgumentException('Minimum order amount is Rs. '.number_format($minimumOrderAmount, 2).'.');
         }
 
         $this->validateDeliveryDate($data['delivery_date'] ?? null);

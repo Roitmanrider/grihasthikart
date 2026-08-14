@@ -140,6 +140,15 @@
                                     <span>Total Savings</span>
                                     <span class="fw-semibold text-success">Rs. {{ number_format($savings, 2) }}</span>
                                 </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Delivery Charge</span>
+                                    <span class="fw-semibold">{{ (float) $delivery_charge > 0 ? 'Rs. '.number_format((float) $delivery_charge, 2) : 'Free' }}</span>
+                                </div>
+                                @if (($delivery_rule['free_delivery_remaining'] ?? 0) > 0)
+                                    <div class="small text-success mb-3">Add Rs. {{ number_format((float) $delivery_rule['free_delivery_remaining'], 2) }} more for FREE delivery</div>
+                                @elseif (($delivery_rule['free_delivery_threshold'] ?? null) !== null)
+                                    <div class="small text-success mb-3">Free delivery unlocked</div>
+                                @endif
                                 <div class="border-top pt-3 mb-3">
                                     @if ($applied_coupon)
                                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -175,6 +184,10 @@
                                         <span class="fw-semibold text-success">- Rs. {{ number_format($coupon_discount, 2) }}</span>
                                     </div>
                                 @endif
+                                <div class="d-flex justify-content-between h5 mb-3">
+                                    <span>Grand Total</span>
+                                    <span>Rs. {{ number_format($grand_total, 2) }}</span>
+                                </div>
                                 <a href="{{ route('checkout.show') }}" class="btn btn-success w-100">Checkout</a>
                                 <form method="POST" action="{{ route('cart.clear') }}" class="mt-2">
                                     @csrf

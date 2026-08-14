@@ -25,6 +25,10 @@ class StoreCustomerRequest extends FormRequest
             'cashback_enabled' => ['nullable', 'boolean'],
             'monthly_cashback_threshold' => ['nullable', 'numeric', 'min:0'],
             'category_cashback_threshold_percent' => ['nullable', 'numeric', 'min:0'],
+            'custom_delivery_rules_enabled' => ['nullable', 'boolean'],
+            'minimum_order_amount_override' => ['nullable', 'numeric', 'min:0'],
+            'delivery_charge_override' => ['nullable', 'numeric', 'min:0'],
+            'free_delivery_threshold_override' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

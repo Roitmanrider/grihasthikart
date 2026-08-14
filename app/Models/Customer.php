@@ -19,6 +19,10 @@ class Customer extends Model
         'cashback_enabled',
         'monthly_cashback_threshold',
         'category_cashback_threshold_percent',
+        'custom_delivery_rules_enabled',
+        'minimum_order_amount_override',
+        'delivery_charge_override',
+        'free_delivery_threshold_override',
         'notes',
         'last_login_at',
     ];
@@ -29,6 +33,10 @@ class Customer extends Model
         'cashback_enabled' => 'boolean',
         'monthly_cashback_threshold' => 'decimal:2',
         'category_cashback_threshold_percent' => 'decimal:2',
+        'custom_delivery_rules_enabled' => 'boolean',
+        'minimum_order_amount_override' => 'decimal:2',
+        'delivery_charge_override' => 'decimal:2',
+        'free_delivery_threshold_override' => 'decimal:2',
         'last_login_at' => 'datetime',
     ];
 

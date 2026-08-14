@@ -276,8 +276,13 @@
                             </div>
                             <div class="d-flex justify-content-between">
                                 <span>Delivery Charge</span>
-                                <strong>Rs. {{ number_format($checkoutSettings['delivery_charge'], 2) }}</strong>
+                                <strong>{{ (float) $delivery_charge > 0 ? 'Rs. '.number_format((float) $delivery_charge, 2) : 'Free' }}</strong>
                             </div>
+                            @if (($delivery_rule['free_delivery_remaining'] ?? 0) > 0)
+                                <div class="small text-success">Add Rs. {{ number_format((float) $delivery_rule['free_delivery_remaining'], 2) }} more for FREE delivery</div>
+                            @elseif (($delivery_rule['free_delivery_threshold'] ?? null) !== null)
+                                <div class="small text-success">Free delivery unlocked</div>
+                            @endif
                             <div class="d-flex justify-content-between text-success">
                                 <span>Savings</span>
                                 <strong>Rs. {{ number_format($savings, 2) }}</strong>
@@ -291,7 +296,7 @@
                             <hr>
                             <div class="d-flex justify-content-between h5">
                                 <span>Grand Total</span>
-                                <strong>Rs. {{ number_format(max(0, $subtotal - $coupon_discount) + $checkoutSettings['delivery_charge'], 2) }}</strong>
+                                <strong>Rs. {{ number_format($grand_total, 2) }}</strong>
                             </div>
                         </div>
                     </div>

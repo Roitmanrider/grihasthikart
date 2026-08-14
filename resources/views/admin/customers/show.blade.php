@@ -27,8 +27,33 @@
                     <dd class="col-7">{{ $customer->status ? 'Active' : 'Inactive' }}</dd>
                     <dt class="col-5">Premium</dt>
                     <dd class="col-7">{{ $customer->is_premium ? 'Yes' : 'No' }}</dd>
+                    <dt class="col-5">Delivery Rules</dt>
+                    <dd class="col-7">{{ $customer->custom_delivery_rules_enabled ? 'Custom' : 'Inherited' }}</dd>
                     <dt class="col-5">Last Login</dt>
                     <dd class="col-7">{{ $customer->last_login_at?->format('d M Y, h:i A') ?: 'Never' }}</dd>
+                </dl>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white fw-semibold">Delivery Rules</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Customer Tier</dt>
+                    <dd class="col-7">{{ str($deliveryRule['customer_tier'])->headline() }}</dd>
+                    <dt class="col-5">Custom Delivery Rules</dt>
+                    <dd class="col-7">{{ $customer->custom_delivery_rules_enabled ? 'ON' : 'OFF' }}</dd>
+                    <dt class="col-5">Minimum Order</dt>
+                    <dd class="col-7">{{ $customer->minimum_order_amount_override === null ? 'Inherit '.$deliveryRule['sources']['minimum_order_amount'] : 'Rs. '.number_format((float) $customer->minimum_order_amount_override, 2) }}</dd>
+                    <dt class="col-5">Delivery Charge</dt>
+                    <dd class="col-7">{{ $customer->delivery_charge_override === null ? 'Inherit '.$deliveryRule['sources']['delivery_charge'] : 'Rs. '.number_format((float) $customer->delivery_charge_override, 2) }}</dd>
+                    <dt class="col-5">Free Delivery Threshold</dt>
+                    <dd class="col-7">{{ $customer->free_delivery_threshold_override === null ? 'Inherit '.$deliveryRule['sources']['free_delivery_threshold'] : 'Rs. '.number_format((float) $customer->free_delivery_threshold_override, 2) }}</dd>
+                    <dt class="col-5">Effective Minimum Order</dt>
+                    <dd class="col-7">Rs. {{ number_format((float) $deliveryRule['minimum_order_amount'], 2) }}</dd>
+                    <dt class="col-5">Effective Delivery Charge</dt>
+                    <dd class="col-7">{{ (float) $deliveryRule['delivery_charge_configured'] > 0 ? 'Rs. '.number_format((float) $deliveryRule['delivery_charge_configured'], 2) : 'Free' }}</dd>
+                    <dt class="col-5">Effective Free Threshold</dt>
+                    <dd class="col-7">{{ $deliveryRule['free_delivery_threshold'] === null ? 'None' : 'Rs. '.number_format((float) $deliveryRule['free_delivery_threshold'], 2) }}</dd>
                 </dl>
             </div>
         </div>

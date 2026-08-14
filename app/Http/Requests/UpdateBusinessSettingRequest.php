@@ -22,6 +22,10 @@ class UpdateBusinessSettingRequest extends FormRequest
         return [
             'minimum_order_amount' => ['required', 'numeric', 'min:0'],
             'delivery_charge' => ['required', 'numeric', 'min:0'],
+            'free_delivery_threshold' => ['nullable', 'numeric', 'min:0'],
+            'premium_minimum_order_amount' => ['nullable', 'numeric', 'min:0'],
+            'premium_delivery_charge' => ['nullable', 'numeric', 'min:0'],
+            'premium_free_delivery_threshold' => ['nullable', 'numeric', 'min:0'],
             'cod_enabled' => ['nullable', 'boolean'],
             'today_delivery_enabled' => ['nullable', 'boolean'],
             'today_delivery_cutoff_time' => ['required', 'date_format:H:i'],

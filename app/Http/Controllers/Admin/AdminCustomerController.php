@@ -6,6 +6,7 @@ use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
 use App\Domains\Customer\Services\CustomerAddressService;
 use App\Domains\Customer\Services\CustomerService;
 use App\Domains\Customer\Services\CustomerSessionService;
+use App\Domains\Delivery\Services\DeliveryChargeService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
@@ -20,7 +21,8 @@ class AdminCustomerController extends Controller
         private readonly CustomerService $customerService,
         private readonly CustomerRepositoryInterface $customerRepository,
         private readonly CustomerAddressService $addressService,
-        private readonly CustomerSessionService $customerSessionService
+        private readonly CustomerSessionService $customerSessionService,
+        private readonly DeliveryChargeService $deliveryChargeService
     ) {}
 
     public function index(Request $request)
@@ -35,7 +37,9 @@ class AdminCustomerController extends Controller
 
     public function create()
     {
-        return view('admin.customers.create');
+        $deliveryRule = $this->deliveryChargeService->resolve();
+
+        return view('admin.customers.create', compact('deliveryRule'));
     }
 
     public function store(StoreCustomerRequest $request)
@@ -48,13 +52,16 @@ class AdminCustomerController extends Controller
     public function show(Customer $customer)
     {
         $customer = $this->customerRepository->findWithDetails($customer->id);
+        $deliveryRule = $this->deliveryChargeService->resolve($customer);
 
-        return view('admin.customers.show', compact('customer'));
+        return view('admin.customers.show', compact('customer', 'deliveryRule'));
     }
 
     public function edit(Customer $customer)
     {
-        return view('admin.customers.edit', compact('customer'));
+        $deliveryRule = $this->deliveryChargeService->resolve($customer);
+
+        return view('admin.customers.edit', compact('customer', 'deliveryRule'));
     }
 
     public function update(Customer $customer, UpdateCustomerRequest $request)

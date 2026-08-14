@@ -6,12 +6,14 @@ use App\Domains\Cart\Services\CartService;
 use App\Domains\Cart\Services\PendingOrderService;
 use App\Domains\Checkout\Services\CheckoutRuleService;
 use App\Domains\Coupon\Services\CouponService;
+use App\Domains\Delivery\Services\DeliveryChargeService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Order\Contracts\OrderRepositoryInterface;
 use App\Domains\Payment\Services\PaymentService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\Inventory;
@@ -36,7 +38,8 @@ class OrderService
         private readonly BusinessSettingService $settingService,
         private readonly OrderStatusService $orderStatusService,
         private readonly NotificationService $notificationService,
-        private readonly PendingOrderService $pendingOrderService
+        private readonly PendingOrderService $pendingOrderService,
+        private readonly DeliveryChargeService $deliveryChargeService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -59,8 +62,9 @@ class OrderService
 
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
-            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount']);
-            $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal']);
+            $deliveryRule = $this->deliveryChargeService->resolve($customer, $this->cartSubtotal($cart));
+            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount'], $deliveryRule);
+            $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal'], $deliveryRule);
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals);
             $this->createOrderItems($order, $cart);
             $this->createCouponUsageIfApplied($order, $couponData['coupon'], $couponData['discount']);
@@ -95,8 +99,9 @@ class OrderService
 
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
-            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount']);
-            $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal']);
+            $deliveryRule = $this->deliveryChargeService->resolve($customer, $this->cartSubtotal($cart));
+            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount'], $deliveryRule);
+            $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal'], $deliveryRule);
 
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals, 'pending');
             $this->createOrderItems($order, $cart);
@@ -266,7 +271,7 @@ class OrderService
         }
     }
 
-    public function calculateTotalsFromCartSnapshots(Cart $cart, float $couponDiscount = 0): array
+    public function calculateTotalsFromCartSnapshots(Cart $cart, float $couponDiscount = 0, ?array $deliveryRule = null): array
     {
         $subtotal = 0.0;
         $totalMrp = 0.0;
@@ -282,7 +287,8 @@ class OrderService
             $taxTotal += $lineSubtotal * $taxRate / (100 + $taxRate);
         }
 
-        $deliveryCharge = (float) $this->settingService->get('checkout.delivery_charge', 0);
+        $deliveryRule ??= $this->deliveryChargeService->resolve($cart->customer, $subtotal);
+        $deliveryCharge = (float) $deliveryRule['delivery_charge'];
         $couponDiscount = round(min(max(0, $couponDiscount), $subtotal), 2);
 
         return [
@@ -294,6 +300,13 @@ class OrderService
             'discount_total' => $couponDiscount,
             'grand_total' => round(max(0, $subtotal - $couponDiscount) + $deliveryCharge, 2),
         ];
+    }
+
+    private function cartSubtotal(Cart $cart): float
+    {
+        $cart->loadMissing('items');
+
+        return round((float) $cart->items->sum(fn (CartItem $item) => (float) $item->quantity * (float) $item->unit_price), 2);
     }
 
     public function createOrder(Cart $cart, string $sessionId, array $checkoutData, array $totals, string $initialStatus = 'placed'): Order

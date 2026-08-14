@@ -3,10 +3,12 @@
 namespace App\Domains\Cart\Services;
 
 use App\Domains\Cart\Contracts\CartRepositoryInterface;
+use App\Domains\Delivery\Services\DeliveryChargeService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Customer;
 use App\Models\DailyOffer;
 use App\Models\ProductVariant;
 use Illuminate\Database\QueryException;
@@ -26,7 +28,8 @@ class CartService
         private readonly CartRepositoryInterface $repository,
         private readonly InventoryService $inventoryService,
         private readonly PendingOrderService $pendingOrderService,
-        private readonly BusinessSettingService $settings
+        private readonly BusinessSettingService $settings,
+        private readonly DeliveryChargeService $deliveryChargeService
     ) {}
 
     public function getOrCreateCartForSession(string $sessionId): Cart
@@ -196,17 +199,23 @@ class CartService
         $cartExpired = $this->pendingOrderService->expireIfNeeded($baseCart);
         $this->pendingOrderService->triggerReminderIfDue($baseCart);
         $cart = $this->refreshCartPrices($this->repository->cartWithItems($baseCart->fresh()));
+        $subtotal = $this->calculateSubtotal($cart);
+        $couponDiscount = (float) $cart->coupon_discount_amount;
+        $deliveryRule = $this->deliveryChargeService->resolve($this->customerForSession($sessionId), $subtotal);
 
         return [
             'cart' => $cart,
             'cart_expired' => $cartExpired,
             'item_count' => (float) $cart->items->sum('quantity'),
             'line_count' => $cart->items->count(),
-            'subtotal' => $this->calculateSubtotal($cart),
+            'subtotal' => $subtotal,
             'savings' => $this->calculateSavings($cart),
-            'coupon_discount' => (float) $cart->coupon_discount_amount,
+            'coupon_discount' => $couponDiscount,
             'applied_coupon' => $cart->coupon,
             'pending_order' => $this->pendingOrderService->activeForCart($cart),
+            'delivery_rule' => $deliveryRule,
+            'delivery_charge' => $deliveryRule['delivery_charge'],
+            'grand_total' => round(max(0, $subtotal - $couponDiscount) + $deliveryRule['delivery_charge'], 2),
         ];
     }
 
@@ -355,6 +364,13 @@ class CartService
         $customerId = (int) Str::after($sessionId, 'customer:');
 
         return $customerId > 0 ? $customerId : null;
+    }
+
+    private function customerForSession(string $sessionId): ?Customer
+    {
+        $customerId = $this->customerIdFromSessionIdentifier($sessionId);
+
+        return $customerId ? Customer::query()->find($customerId) : null;
     }
 
     private function isUniqueViolation(QueryException $exception, string $indexName): bool

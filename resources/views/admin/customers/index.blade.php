@@ -28,7 +28,7 @@
         <tbody>
         @forelse ($customers as $customer)
             <tr @class(['table-warning'=>$customer->trashed()])>
-                <td class="fw-semibold">{{ $customer->name }}</td><td>{{ $customer->mobile }}</td><td>{{ $customer->email ?: 'None' }}</td>
+                <td class="fw-semibold">{{ $customer->name }} @if($customer->custom_delivery_rules_enabled)<span class="badge text-bg-info ms-1">Custom Delivery</span>@endif</td><td>{{ $customer->mobile }}</td><td>{{ $customer->email ?: 'None' }}</td>
                 <td><span class="badge {{ $customer->status ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $customer->status ? 'Active' : 'Inactive' }}</span></td>
                 <td>{{ $customer->is_premium ? 'Yes' : 'No' }}</td>
                 <td class="text-end">
