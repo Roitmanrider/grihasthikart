@@ -75,17 +75,57 @@ class PaymentService
 
             $gatewayData = $this->gateway($method)->createPayment($order, $payment);
 
-            $payment->update(collect($gatewayData)->only([
-                'gateway',
-                'gateway_order_id',
-                'gateway_payment_id',
-                'gateway_signature',
-            ])->merge([
-                'metadata' => collect($gatewayData)->only(['key_id', 'amount', 'currency', 'raw_response'])->all() ?: null,
-            ])->all());
+            $this->applyGatewayData($payment, $gatewayData, false);
 
             $this->syncOrderPaymentStatus($order, $payment->payment_status, $method);
             $this->log($payment, 'initiated', $payment->payment_status, (float) $payment->amount, $gatewayData);
+
+            return $payment->fresh(['order', 'transactions']);
+        });
+    }
+
+    public function retryRazorpayPayment(Order $order): Payment
+    {
+        $this->ensureMethodEnabled('razorpay');
+
+        if ($order->payment_method !== 'razorpay') {
+            throw new InvalidArgumentException('This order is not eligible for online payment retry.');
+        }
+
+        if ($order->payment_status === 'paid' || $order->order_status !== 'pending') {
+            throw new InvalidArgumentException('This order is not eligible for online payment retry.');
+        }
+
+        if (! $this->settings->razorpayConfigured()) {
+            throw new InvalidArgumentException('Online payment is not configured yet.');
+        }
+
+        return DB::transaction(function () use ($order) {
+            /** @var Payment $payment */
+            $payment = Payment::query()
+                ->where('order_id', $order->id)
+                ->where('payment_method', 'razorpay')
+                ->latest()
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (in_array($payment->payment_status, ['paid', 'refunded', 'cancelled'], true)) {
+                throw new InvalidArgumentException('This payment can no longer be retried.');
+            }
+
+            $payment->update([
+                'payment_status' => 'pending',
+                'amount' => $order->grand_total,
+                'currency' => $this->settings->get('payment.currency', 'INR'),
+                'gateway_payment_id' => null,
+                'gateway_signature' => null,
+                'verified_at' => null,
+                'failure_reason' => null,
+            ]);
+
+            $gatewayData = $this->razorpayGateway->createPayment($order, $payment);
+            $this->applyGatewayData($payment, $gatewayData);
+            $this->syncOrderPaymentStatus($order, 'pending', 'razorpay');
 
             return $payment->fresh(['order', 'transactions']);
         });
@@ -235,6 +275,76 @@ class PaymentService
         });
     }
 
+    public function markRazorpayPaidFromWebhook(Payment $payment, array $providerPayment, array $eventPayload): Payment
+    {
+        if ($payment->payment_method !== 'razorpay') {
+            throw new InvalidArgumentException('This payment is not a Razorpay payment.');
+        }
+
+        if ($payment->gateway_order_id !== ($providerPayment['order_id'] ?? null)) {
+            throw new InvalidArgumentException('Payment order reference does not match.');
+        }
+
+        $amount = (int) ($providerPayment['amount'] ?? 0);
+        $currency = strtoupper((string) ($providerPayment['currency'] ?? $payment->currency));
+
+        if ($amount !== $this->razorpayGateway->amountToPaise($payment->amount) || $currency !== strtoupper($payment->currency)) {
+            throw new InvalidArgumentException('Razorpay payment amount does not match this order.');
+        }
+
+        $providerStatus = (string) ($providerPayment['status'] ?? '');
+
+        if (! in_array($providerStatus, ['captured', 'authorized'], true)) {
+            throw new InvalidArgumentException('Razorpay payment is not successful.');
+        }
+
+        return DB::transaction(function () use ($payment, $providerPayment, $eventPayload, $providerStatus) {
+            /** @var Payment $lockedPayment */
+            $lockedPayment = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedPayment->payment_status === 'paid') {
+                return $lockedPayment->fresh(['order', 'transactions']);
+            }
+
+            if (in_array($lockedPayment->payment_status, ['refunded', 'cancelled'], true)) {
+                throw new InvalidArgumentException('This payment can no longer be verified.');
+            }
+
+            $lockedPayment->update([
+                'payment_status' => 'paid',
+                'gateway_payment_id' => $providerPayment['id'] ?? null,
+                'verified_at' => now(),
+                'failure_reason' => null,
+                'metadata' => array_merge($lockedPayment->metadata ?? [], [
+                    'razorpay_webhook_response' => [
+                        'event' => $eventPayload['event'] ?? null,
+                        'payment_id' => $providerPayment['id'] ?? null,
+                        'provider_status' => $providerStatus,
+                    ],
+                ]),
+            ]);
+
+            $this->syncOrderPaymentStatus($lockedPayment->order, 'paid', 'razorpay');
+            $this->log($lockedPayment, 'webhook_received', 'paid', (float) $lockedPayment->amount, [
+                'event' => $eventPayload['event'] ?? null,
+                'razorpay_payment_id' => $providerPayment['id'] ?? null,
+                'provider_status' => $providerStatus,
+            ]);
+
+            return $lockedPayment->fresh(['order', 'transactions']);
+        });
+    }
+
+    public function verifyRazorpayWebhookSignature(string $rawBody, ?string $signature): bool
+    {
+        return $this->razorpayGateway->verifyWebhookSignature($rawBody, $signature);
+    }
+
+    public function razorpayAmountToPaise(float|string $amount): int
+    {
+        return $this->razorpayGateway->amountToPaise($amount);
+    }
+
     public function updateSettings(array $data): void
     {
         foreach (['cod_enabled', 'qr_enabled', 'razorpay_enabled'] as $key) {
@@ -320,5 +430,21 @@ class PaymentService
             'note' => $note,
             'created_by' => Auth::id(),
         ]);
+    }
+
+    private function applyGatewayData(Payment $payment, array $gatewayData, bool $log = true): void
+    {
+        $payment->update(collect($gatewayData)->only([
+            'gateway',
+            'gateway_order_id',
+            'gateway_payment_id',
+            'gateway_signature',
+        ])->merge([
+            'metadata' => collect($gatewayData)->only(['key_id', 'amount', 'currency', 'mode', 'raw_response'])->all() ?: null,
+        ])->all());
+
+        if ($log) {
+            $this->log($payment, 'initiated', $payment->payment_status, (float) $payment->amount, $gatewayData);
+        }
     }
 }

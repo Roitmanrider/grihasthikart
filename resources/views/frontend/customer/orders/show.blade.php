@@ -23,6 +23,17 @@
                 @if ($returnService->isEligible($order))
                     <a href="{{ route('customer.returns.create', $order) }}" class="btn btn-outline-success">Request Return</a>
                 @endif
+                @if ($order->payment_method === 'razorpay' && $order->payment_status !== 'paid' && $order->order_status === 'pending')
+                    <button class="btn btn-success"
+                            type="button"
+                            id="retryRazorpayPayment"
+                            data-retry-url="{{ route('checkout.razorpay.retry', $order->order_number) }}"
+                            data-verify-url="{{ route('checkout.razorpay.verify') }}"
+                            data-failure-url="{{ route('checkout.razorpay.failure') }}"
+                            data-csrf-token="{{ csrf_token() }}">
+                        Retry Payment
+                    </button>
+                @endif
                 <a href="{{ route('customer.orders.index') }}" class="btn btn-outline-secondary">Back</a>
             </div>
         </div>
@@ -191,3 +202,95 @@
     </div>
 @endif
 @endsection
+
+@if ($order->payment_method === 'razorpay' && $order->payment_status !== 'paid' && $order->order_status === 'pending')
+@push('scripts')
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const button = document.getElementById('retryRazorpayPayment');
+            if (! button || typeof Razorpay === 'undefined') {
+                return;
+            }
+
+            button.addEventListener('click', async function () {
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Opening payment...';
+
+                try {
+                    const retryResponse = await fetch(button.dataset.retryUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': button.dataset.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                    });
+                    const orderData = await retryResponse.json();
+
+                    if (! retryResponse.ok) {
+                        throw new Error(orderData.message || 'Unable to retry online payment.');
+                    }
+
+                    const razorpay = new Razorpay({
+                        key: orderData.key,
+                        amount: orderData.amount,
+                        currency: orderData.currency,
+                        name: orderData.name,
+                        description: orderData.description,
+                        order_id: orderData.order_id,
+                        prefill: orderData.prefill,
+                        handler: async function (response) {
+                            const verifyResponse = await fetch(button.dataset.verifyUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': button.dataset.csrfToken,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    order_number: orderData.order_number,
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                }),
+                            });
+                            const verifyData = await verifyResponse.json();
+
+                            if (! verifyResponse.ok) {
+                                throw new Error(verifyData.message || 'Payment verification failed.');
+                            }
+
+                            window.location.href = verifyData.redirect_url;
+                        },
+                        modal: {
+                            ondismiss: function () {
+                                fetch(button.dataset.failureUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': button.dataset.csrfToken,
+                                        'Accept': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        order_number: orderData.order_number,
+                                        razorpay_order_id: orderData.order_id,
+                                        reason: 'Customer closed Razorpay checkout retry.',
+                                    }),
+                                });
+                            },
+                        },
+                    });
+
+                    razorpay.open();
+                } catch (error) {
+                    alert(error.message || 'Unable to retry online payment.');
+                } finally {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            });
+        });
+    </script>
+@endpush
+@endif

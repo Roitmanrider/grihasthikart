@@ -93,6 +93,8 @@ class BusinessSettingService
             'qr_image_path' => $this->get('payment.qr_image_path'),
             'razorpay_key_id' => $this->get('payment.razorpay_key_id'),
             'razorpay_key_secret' => $this->get('payment.razorpay_key_secret'),
+            'razorpay_mode' => $this->get('payment.razorpay_mode', 'test'),
+            'razorpay_webhook_secret' => $this->get('payment.razorpay_webhook_secret'),
             'currency' => $this->get('payment.currency', 'INR'),
         ];
     }
@@ -100,7 +102,7 @@ class BusinessSettingService
     public function publicPaymentSettings(): array
     {
         $settings = $this->paymentSettings();
-        unset($settings['razorpay_key_secret']);
+        unset($settings['razorpay_key_secret'], $settings['razorpay_webhook_secret']);
 
         return $settings;
     }
@@ -217,7 +219,7 @@ class BusinessSettingService
     public function updatePaymentSettings(array $data): void
     {
         foreach ($data as $key => $value) {
-            if ($key === 'razorpay_key_secret' && ($value === null || $value === '')) {
+            if (in_array($key, ['razorpay_key_secret', 'razorpay_webhook_secret'], true) && ($value === null || $value === '')) {
                 continue;
             }
 

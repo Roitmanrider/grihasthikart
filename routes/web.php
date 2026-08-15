@@ -17,10 +17,13 @@ use App\Http\Controllers\Frontend\CustomerReturnController;
 use App\Http\Controllers\Frontend\DailyOfferCatalogController;
 use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
+use App\Http\Controllers\Frontend\RazorpayWebhookController;
 use App\Http\Controllers\Frontend\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
+
+Route::post('/checkout/razorpay/webhook', RazorpayWebhookController::class)->name('checkout.razorpay.webhook');
 
 Route::get('/', CatalogHomeController::class)->middleware('storefront.access:home')->name('home');
 Route::get('/daily-offers', [DailyOfferCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('daily-offers.index');
@@ -72,6 +75,7 @@ Route::middleware('storefront.access:transactional')->group(function () {
     Route::post('/checkout/razorpay/order', [CheckoutController::class, 'createRazorpayOrder'])->name('checkout.razorpay.order');
     Route::post('/checkout/razorpay/verify', [CheckoutController::class, 'verifyRazorpayPayment'])->name('checkout.razorpay.verify');
     Route::post('/checkout/razorpay/failure', [CheckoutController::class, 'failRazorpayPayment'])->name('checkout.razorpay.failure');
+    Route::post('/checkout/razorpay/retry/{orderNumber}', [CheckoutController::class, 'retryRazorpayPayment'])->name('checkout.razorpay.retry');
     Route::get('/orders/success/{orderNumber}', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::post('/orders/{orderNumber}/payment-proof', [PaymentController::class, 'uploadProof'])->name('orders.payment-proof.store');
 });

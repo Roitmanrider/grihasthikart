@@ -25,6 +25,8 @@ class UpdatePaymentSettingRequest extends FormRequest
             'qr_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'razorpay_key_id' => ['nullable', 'string', 'max:255'],
             'razorpay_key_secret' => ['nullable', 'string', 'max:255'],
+            'razorpay_mode' => ['required', 'string', 'in:test,live'],
+            'razorpay_webhook_secret' => ['nullable', 'string', 'max:255'],
             'currency' => ['required', 'string', 'size:3'],
         ];
     }

@@ -62,8 +62,19 @@
             <input type="text" name="razorpay_key_id" value="{{ old('razorpay_key_id', $settings['razorpay_key_id']) }}" class="form-control">
         </div>
         <div class="col-md-6">
+            <label class="form-label">Razorpay Mode</label>
+            <select name="razorpay_mode" class="form-select">
+                <option value="test" @selected(old('razorpay_mode', $settings['razorpay_mode'] ?? 'test') === 'test')>Test Mode</option>
+                <option value="live" @selected(old('razorpay_mode', $settings['razorpay_mode'] ?? 'test') === 'live')>Live Mode</option>
+            </select>
+        </div>
+        <div class="col-md-6">
             <label class="form-label">Razorpay Key Secret</label>
             <input type="password" name="razorpay_key_secret" class="form-control" autocomplete="new-password" placeholder="Leave blank to keep existing secret">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Razorpay Webhook Secret</label>
+            <input type="password" name="razorpay_webhook_secret" class="form-control" autocomplete="new-password" placeholder="Leave blank to keep existing webhook secret">
         </div>
     </div>
     <div class="card-footer bg-white">

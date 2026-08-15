@@ -18,12 +18,17 @@ class RazorpayPaymentGateway implements PaymentGatewayInterface
     {
         $keyId = $this->settings->get('payment.razorpay_key_id');
         $keySecret = $this->settings->get('payment.razorpay_key_secret');
+        $mode = $this->mode();
 
         if (! $keyId || ! $keySecret) {
             throw new InvalidArgumentException('Online payment is not configured yet.');
         }
 
-        $amount = (int) round((float) $payment->amount * 100);
+        if ($mode === 'test' && ! str_starts_with((string) $keyId, 'rzp_test_')) {
+            throw new InvalidArgumentException('Razorpay Test Mode requires a test key id.');
+        }
+
+        $amount = $this->amountToPaise($payment->amount);
         $currency = (string) ($payment->currency ?: $this->settings->get('payment.currency', 'INR'));
         $response = Http::withBasicAuth($keyId, $keySecret)
             ->acceptJson()
@@ -55,6 +60,7 @@ class RazorpayPaymentGateway implements PaymentGatewayInterface
             'key_id' => $keyId,
             'amount' => $amount,
             'currency' => $currency,
+            'mode' => $mode,
             'raw_response' => $payload,
         ];
     }
@@ -74,6 +80,34 @@ class RazorpayPaymentGateway implements PaymentGatewayInterface
         );
 
         return hash_equals($expected, (string) ($payload['razorpay_signature'] ?? ''));
+    }
+
+    public function verifyWebhookSignature(string $rawBody, ?string $signature): bool
+    {
+        $secret = $this->settings->get('payment.razorpay_webhook_secret');
+
+        if (! $secret) {
+            throw new InvalidArgumentException('Razorpay webhook secret is not configured.');
+        }
+
+        $expected = hash_hmac('sha256', $rawBody, $secret);
+
+        return hash_equals($expected, (string) $signature);
+    }
+
+    public function amountToPaise(float|string $amount): int
+    {
+        $normalized = number_format((float) $amount, 2, '.', '');
+        [$rupees, $paise] = explode('.', $normalized);
+
+        return ((int) $rupees * 100) + (int) $paise;
+    }
+
+    private function mode(): string
+    {
+        return strtolower((string) $this->settings->get('payment.razorpay_mode', 'test')) === 'live'
+            ? 'live'
+            : 'test';
     }
 
     public function refund(Payment $payment, ?float $amount = null): array

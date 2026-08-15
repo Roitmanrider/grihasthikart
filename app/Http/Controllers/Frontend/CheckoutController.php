@@ -107,20 +107,7 @@ class CheckoutController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        return response()->json([
-            'key' => $checkout['razorpay']['key_id'],
-            'amount' => $checkout['razorpay']['amount'],
-            'currency' => $checkout['razorpay']['currency'],
-            'name' => 'GrihasthiKart',
-            'description' => 'Order '.$checkout['order']->order_number,
-            'order_id' => $checkout['razorpay']['order_id'],
-            'order_number' => $checkout['order']->order_number,
-            'prefill' => [
-                'name' => $checkout['order']->customer_name,
-                'email' => $checkout['order']->customer_email,
-                'contact' => $checkout['order']->customer_mobile,
-            ],
-        ]);
+        return response()->json($this->razorpayCheckoutPayload($checkout));
     }
 
     public function verifyRazorpayPayment(VerifyRazorpayPaymentRequest $request)
@@ -164,6 +151,22 @@ class CheckoutController extends Controller
         return response()->json(['message' => 'Online payment was not completed. Your cart is still available.']);
     }
 
+    public function retryRazorpayPayment(string $orderNumber)
+    {
+        try {
+            $order = $this->orderRepository->findByOrderNumberForSession(
+                $orderNumber,
+                $this->cartService->sessionIdentifier(request()->session())
+            );
+
+            $checkout = $this->orderService->retryRazorpayPayment($order);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json($this->razorpayCheckoutPayload($checkout));
+    }
+
     private function withApprovedAddressSnapshot(array $data, Customer $customer): array
     {
         $addressId = $data['customer_address_id'] ?? null;
@@ -200,5 +203,23 @@ class CheckoutController extends Controller
                 throw new InvalidArgumentException('Please enter a complete delivery address.');
             }
         }
+    }
+
+    private function razorpayCheckoutPayload(array $checkout): array
+    {
+        return [
+            'key' => $checkout['razorpay']['key_id'],
+            'amount' => $checkout['razorpay']['amount'],
+            'currency' => $checkout['razorpay']['currency'],
+            'name' => 'GrihasthiKart',
+            'description' => 'Order '.$checkout['order']->order_number,
+            'order_id' => $checkout['razorpay']['order_id'],
+            'order_number' => $checkout['order']->order_number,
+            'prefill' => [
+                'name' => $checkout['order']->customer_name,
+                'email' => $checkout['order']->customer_email,
+                'contact' => $checkout['order']->customer_mobile,
+            ],
+        ];
     }
 }

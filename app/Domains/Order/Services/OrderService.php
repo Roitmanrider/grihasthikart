@@ -21,6 +21,7 @@ use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Payment;
 use App\Models\PendingOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -102,7 +103,8 @@ class OrderService
         }
 
         return DB::transaction(function () use ($sessionId, $checkoutData) {
-            $cart = $this->cartService->cartForSession($sessionId);
+            $cart = $this->lockedCartForSession($sessionId);
+            $this->lockedActivePendingForCart($cart);
 
             $this->validateCartIsNotEmpty($cart);
             $this->cartService->validateDailyOfferHold($cart);
@@ -132,7 +134,39 @@ class OrderService
                 'razorpay' => [
                     'key_id' => $payment->metadata['key_id'] ?? $this->settingService->get('payment.razorpay_key_id'),
                     'order_id' => $payment->gateway_order_id,
-                    'amount' => (int) round((float) $payment->amount * 100),
+                    'amount' => $this->paymentService->razorpayAmountToPaise($payment->amount),
+                    'currency' => $payment->currency,
+                ],
+            ];
+        });
+    }
+
+    public function retryRazorpayPayment(Order $order): array
+    {
+        return DB::transaction(function () use ($order) {
+            /** @var Order $lockedOrder */
+            $lockedOrder = Order::query()
+                ->with(['items', 'payment'])
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedOrder->payment_method !== 'razorpay' || $lockedOrder->payment_status === 'paid' || $lockedOrder->order_status !== 'pending') {
+                throw new InvalidArgumentException('This order is not eligible for online payment retry.');
+            }
+
+            $this->validateOrderItemsStillPurchasable($lockedOrder);
+            $this->validateInventoryAvailabilityForEveryOrderItem($lockedOrder);
+
+            $payment = $this->paymentService->retryRazorpayPayment($lockedOrder);
+
+            return [
+                'order' => $lockedOrder->fresh(['items', 'payment']),
+                'payment' => $payment,
+                'razorpay' => [
+                    'key_id' => $payment->metadata['key_id'] ?? $this->settingService->get('payment.razorpay_key_id'),
+                    'order_id' => $payment->gateway_order_id,
+                    'amount' => $this->paymentService->razorpayAmountToPaise($payment->amount),
                     'currency' => $payment->currency,
                 ],
             ];
@@ -155,36 +189,24 @@ class OrderService
             }
 
             $this->paymentService->verifyRazorpayPayment($payment, $payload);
+            $this->finalizePaidRazorpayOrder($lockedOrder, 'Online payment successful.');
 
-            $completedOnlinePayment = false;
+            return $lockedOrder->fresh(['items', 'statusHistories', 'payment']);
+        });
+    }
 
-            if ($lockedOrder->order_status !== 'placed') {
-                if ((float) $lockedOrder->customer_credit_used > 0 && $lockedOrder->customer) {
-                    $this->customerCreditService->debitForOrder($lockedOrder->customer, $lockedOrder, (float) $lockedOrder->customer_credit_used);
-                }
+    public function completeRazorpayPaymentFromWebhook(Payment $payment, array $providerPayment, array $eventPayload): Order
+    {
+        return DB::transaction(function () use ($payment, $providerPayment, $eventPayload) {
+            /** @var Order $lockedOrder */
+            $lockedOrder = Order::query()
+                ->with(['items', 'payment', 'customer'])
+                ->whereKey($payment->order_id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-                $this->deductInventoryForOrder($lockedOrder);
-
-                if ($lockedOrder->coupon_id && (float) $lockedOrder->coupon_discount_amount > 0) {
-                    $coupon = Coupon::query()->find($lockedOrder->coupon_id);
-                    $this->createCouponUsageIfApplied($lockedOrder, $coupon, (float) $lockedOrder->coupon_discount_amount);
-                }
-
-                $oldStatus = $lockedOrder->order_status;
-                $lockedOrder->update([
-                    'order_status' => 'placed',
-                    'placed_at' => $lockedOrder->placed_at ?? now(),
-                ]);
-                $this->createStatusHistory($lockedOrder, $oldStatus, 'placed', 'Online payment successful.');
-                $this->cartService->clearCart($lockedOrder->session_id);
-                $completedOnlinePayment = true;
-            }
-
-            if ($completedOnlinePayment) {
-                $lockedOrder->refresh();
-                $this->notificationService->notifyAdminNewOrder($lockedOrder);
-                $this->notificationService->notifyRazorpayPaymentSuccess($lockedOrder, $lockedOrder->payment);
-            }
+            $this->paymentService->markRazorpayPaidFromWebhook($lockedOrder->payment, $providerPayment, $eventPayload);
+            $this->finalizePaidRazorpayOrder($lockedOrder, 'Razorpay webhook confirmed payment.');
 
             return $lockedOrder->fresh(['items', 'statusHistories', 'payment']);
         });
@@ -290,6 +312,37 @@ class OrderService
                 }
 
                 throw new InvalidArgumentException($item->product_name_snapshot.' is now available only in quantity '.(int) floor($available).'. Please review your cart.');
+            }
+        }
+    }
+
+    public function validateInventoryAvailabilityForEveryOrderItem(Order $order): void
+    {
+        $variantIds = $order->items
+            ->pluck('product_variant_id')
+            ->unique()
+            ->sort()
+            ->values();
+
+        $inventories = Inventory::query()
+            ->active()
+            ->whereIn('product_variant_id', $variantIds)
+            ->orderBy('product_variant_id')
+            ->orderBy('stock_location_id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($order->items as $item) {
+            $available = (float) $inventories
+                ->where('product_variant_id', $item->product_variant_id)
+                ->sum('available_quantity');
+
+            if ($available < (float) $item->quantity) {
+                if ($available <= 0) {
+                    throw new InvalidArgumentException($item->product_name_snapshot.' is no longer available. Please review your order.');
+                }
+
+                throw new InvalidArgumentException($item->product_name_snapshot.' is now available only in quantity '.(int) floor($available).'. Please review your order.');
             }
         }
     }
@@ -472,6 +525,48 @@ class OrderService
                 throw new InvalidArgumentException('Unable to deduct inventory for '.$item->product_name_snapshot.'.');
             }
         }
+    }
+
+    private function validateOrderItemsStillPurchasable(Order $order): void
+    {
+        foreach ($order->items as $item) {
+            $variant = $item->productVariant?->load('product');
+
+            if (! $variant || ! $variant->status || ! $variant->product?->status) {
+                throw new InvalidArgumentException('One or more order items are no longer available.');
+            }
+        }
+    }
+
+    private function finalizePaidRazorpayOrder(Order $lockedOrder, string $note): void
+    {
+        if ($lockedOrder->order_status === 'placed') {
+            return;
+        }
+
+        $this->validateOrderItemsStillPurchasable($lockedOrder);
+
+        if ((float) $lockedOrder->customer_credit_used > 0 && $lockedOrder->customer) {
+            $this->customerCreditService->debitForOrder($lockedOrder->customer, $lockedOrder, (float) $lockedOrder->customer_credit_used);
+        }
+
+        $this->deductInventoryForOrder($lockedOrder);
+
+        if ($lockedOrder->coupon_id && (float) $lockedOrder->coupon_discount_amount > 0) {
+            $coupon = Coupon::query()->find($lockedOrder->coupon_id);
+            $this->createCouponUsageIfApplied($lockedOrder, $coupon, (float) $lockedOrder->coupon_discount_amount);
+        }
+
+        $oldStatus = $lockedOrder->order_status;
+        $lockedOrder->update([
+            'order_status' => 'placed',
+            'placed_at' => $lockedOrder->placed_at ?? now(),
+        ]);
+        $this->createStatusHistory($lockedOrder, $oldStatus, 'placed', $note);
+        $this->cartService->clearCart($lockedOrder->session_id);
+        $lockedOrder->refresh();
+        $this->notificationService->notifyAdminNewOrder($lockedOrder);
+        $this->notificationService->notifyRazorpayPaymentSuccess($lockedOrder, $lockedOrder->payment);
     }
 
     public function restoreStockOnCancellation(Order $order): void

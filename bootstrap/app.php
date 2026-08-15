@@ -35,6 +35,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
+        $middleware->validateCsrfTokens(except: [
+            'checkout/razorpay/webhook',
+        ]);
         $middleware->alias([
             'customer.auth' => EnsureCustomerAuthenticated::class,
             'storefront.access' => EnsureStorefrontAccess::class,

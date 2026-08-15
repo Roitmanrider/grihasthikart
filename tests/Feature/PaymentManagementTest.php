@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Payment\Services\PaymentService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\CartItem;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\DeliverySlot;
 use App\Models\Inventory;
 use App\Models\Order;
@@ -179,12 +182,15 @@ class PaymentManagementTest extends TestCase
             'qr_display_name' => 'GrihasthiKart',
             'razorpay_key_id' => 'rzp_test_123',
             'razorpay_key_secret' => 'secret-value',
+            'razorpay_mode' => 'test',
+            'razorpay_webhook_secret' => 'webhook-secret',
             'currency' => 'INR',
         ])->assertRedirect(route('admin.settings.payments.edit'));
 
         $service = app(BusinessSettingService::class);
         $this->assertTrue($service->get('payment.qr_enabled'));
         $this->assertSame('secret-value', $service->get('payment.razorpay_key_secret'));
+        $this->assertSame('webhook-secret', $service->get('payment.razorpay_webhook_secret'));
 
         [, $variant] = $this->cartItem();
         $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
@@ -232,6 +238,17 @@ class PaymentManagementTest extends TestCase
             ->assertJsonPath('order_id', 'order_server_amount');
 
         Http::assertSent(fn ($request) => $request['amount'] === 13600);
+    }
+
+    public function test_razorpay_amount_conversion_uses_exact_paise(): void
+    {
+        $service = app(PaymentService::class);
+
+        $this->assertSame(100, $service->razorpayAmountToPaise(1));
+        $this->assertSame(101, $service->razorpayAmountToPaise(1.01));
+        $this->assertSame(9999, $service->razorpayAmountToPaise(99.99));
+        $this->assertSame(61050, $service->razorpayAmountToPaise(610.50));
+        $this->assertSame(100000, $service->razorpayAmountToPaise(1000));
     }
 
     public function test_successful_razorpay_signature_marks_payment_paid_and_clears_cart(): void
@@ -315,6 +332,109 @@ class PaymentManagementTest extends TestCase
         $this->assertSame(1, CartItem::query()->count());
     }
 
+    public function test_razorpay_retry_reuses_existing_order_and_persisted_amount(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::sequence()
+                ->push(['id' => 'order_original'], 200)
+                ->push(['id' => 'order_retry'], 200),
+        ]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertOk();
+
+        $order = Order::query()->firstOrFail();
+        $this->postJson(route('checkout.razorpay.failure'), [
+            'order_number' => $order->order_number,
+            'razorpay_order_id' => 'order_original',
+            'reason' => 'Customer cancelled',
+        ])->assertOk();
+
+        $this->postJson(route('checkout.razorpay.retry', $order->order_number))
+            ->assertOk()
+            ->assertJsonPath('order_number', $order->order_number)
+            ->assertJsonPath('order_id', 'order_retry')
+            ->assertJsonPath('amount', 6800);
+
+        $this->assertSame(1, Order::query()->count());
+        $this->assertSame(1, Payment::query()->count());
+        $this->assertSame('pending', Payment::query()->firstOrFail()->payment_status);
+    }
+
+    public function test_razorpay_webhook_finalizes_once_and_deducts_inventory_once(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_webhook'], 200),
+        ]);
+        [, $variant, $inventory] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertOk();
+
+        $payload = [
+            'id' => 'evt_payment_captured',
+            'event' => 'payment.captured',
+            'payload' => [
+                'payment' => [
+                    'entity' => [
+                        'id' => 'pay_webhook',
+                        'order_id' => 'order_webhook',
+                        'amount' => 6800,
+                        'currency' => 'INR',
+                        'status' => 'captured',
+                    ],
+                ],
+            ],
+        ];
+
+        $this->postSignedWebhook($payload)->assertOk()->assertJson(['status' => 'processed']);
+        $this->postSignedWebhook($payload)->assertOk()->assertJson(['status' => 'processed']);
+
+        $order = Order::query()->firstOrFail();
+        $this->assertSame('placed', $order->fresh()->order_status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('paid', Payment::query()->firstOrFail()->fresh()->payment_status);
+        $this->assertSame('9.000', $inventory->fresh()->quantity_on_hand);
+        $this->assertDatabaseCount('razorpay_webhook_events', 1);
+    }
+
+    public function test_razorpay_coupon_usage_is_created_only_after_success_and_not_on_duplicate_callback(): void
+    {
+        $this->enableRazorpay();
+        Http::fake([
+            'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_coupon'], 200),
+        ]);
+        $coupon = Coupon::factory()->create(['code' => 'RAZOR50', 'discount_value' => 50]);
+        [, $variant] = $this->cartItem();
+        $this->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 2]);
+        $this->post(route('cart.coupon.apply'), ['code' => $coupon->code])->assertSessionHasNoErrors();
+        $this->postJson(route('checkout.razorpay.order'), array_merge($this->checkoutPayload(), [
+            'payment_method' => 'razorpay',
+        ]))->assertOk();
+
+        $order = Order::query()->firstOrFail();
+        $this->assertSame(0, CouponUsage::query()->count());
+
+        $signature = hash_hmac('sha256', 'order_coupon|pay_coupon', 'secret-value');
+        $payload = [
+            'order_number' => $order->order_number,
+            'razorpay_order_id' => 'order_coupon',
+            'razorpay_payment_id' => 'pay_coupon',
+            'razorpay_signature' => $signature,
+        ];
+
+        $this->postJson(route('checkout.razorpay.verify'), $payload)->assertOk();
+        $this->postJson(route('checkout.razorpay.verify'), $payload)->assertOk();
+
+        $this->assertSame(1, CouponUsage::query()->count());
+        $this->assertSame('placed', $order->fresh()->order_status);
+    }
+
     public function test_payment_admin_routes_require_authorization(): void
     {
         $user = User::factory()->create(['email' => 'customer@example.com']);
@@ -377,6 +497,20 @@ class PaymentManagementTest extends TestCase
         $service->set('payment.razorpay_enabled', true);
         $service->set('payment.razorpay_key_id', 'rzp_test_123');
         $service->set('payment.razorpay_key_secret', 'secret-value');
+        $service->set('payment.razorpay_webhook_secret', 'webhook-secret');
+        $service->set('payment.razorpay_mode', 'test');
         $service->set('payment.currency', 'INR');
+    }
+
+    private function postSignedWebhook(array $payload)
+    {
+        $body = json_encode($payload);
+        $signature = hash_hmac('sha256', $body, 'webhook-secret');
+
+        return $this->call('POST', route('checkout.razorpay.webhook'), [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_RAZORPAY_SIGNATURE' => $signature,
+        ], $body);
     }
 }
