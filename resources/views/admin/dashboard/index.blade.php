@@ -17,7 +17,7 @@
         ['label' => 'Products', 'value' => $totalProducts, 'icon' => 'fa-boxes-stacked', 'route' => route('admin.products.index')],
         ['label' => 'Orders', 'value' => $totalOrders, 'icon' => 'fa-receipt', 'route' => route('admin.orders.index')],
         ['label' => 'Pending Orders', 'value' => $pendingOrders, 'icon' => 'fa-clock', 'route' => route('admin.orders.index', ['order_status' => 'placed'])],
-        ['label' => 'Low Stock Items', 'value' => $lowStockItems, 'icon' => 'fa-triangle-exclamation', 'route' => route('admin.inventories.index', ['stock' => 'low'])],
+        ['label' => 'Low Stock Items', 'value' => $lowStockItems, 'icon' => 'fa-triangle-exclamation', 'route' => route('admin.inventory.replenishment.index', ['stock_status' => 'reorder_needed'])],
         ['label' => 'Pending Payments', 'value' => $pendingPayments, 'icon' => 'fa-indian-rupee-sign', 'route' => route('admin.payments.index', ['payment_status' => 'pending'])],
         ['label' => 'Cashback Requests', 'value' => $pendingCashbackRedemptions, 'icon' => 'fa-gift', 'route' => route('admin.cashback.redemptions.index', ['status' => 'pending'])],
     ] as $card)
@@ -56,6 +56,31 @@
             <div class="card-header bg-white fw-semibold">MVP Readiness</div>
             <div class="card-body">
                 <div class="small text-muted">Use the sidebar to review each module before demo. Reports and settings are admin-only and protected by gates.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center gap-2">
+                <div class="fw-semibold">Low Stock Replenishment</div>
+                <a href="{{ route('admin.inventory.replenishment.index', ['stock_status' => 'reorder_needed']) }}" class="btn btn-sm btn-outline-success">View All</a>
+            </div>
+            <div class="card-body">
+                @forelse ($lowStockPreview as $inventory)
+                    <div class="d-flex flex-wrap justify-content-between gap-2 border-bottom pb-3 mb-3">
+                        <div>
+                            <div class="fw-semibold">{{ $inventory->productVariant?->product?->name }}</div>
+                            <div class="small text-muted">{{ $inventory->productVariant?->variant_name }} / {{ $inventory->productVariant?->sku }} / {{ $inventory->stockLocation?->name }}</div>
+                            <div class="small">Sellable: {{ number_format((float) $inventory->available_quantity, 3) }} / Reorder: {{ $inventory->reorder_level ?? 'None' }} / Target: {{ $inventory->target_stock_level ?? 'Not configured' }}</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {{ $inventory->stock_status === 'OUT_OF_STOCK' ? 'text-bg-danger' : 'text-bg-warning' }}">{{ str($inventory->stock_status)->replace('_', ' ')->headline() }}</span>
+                            <div class="small text-muted mt-1">Buy: {{ $inventory->recommended_purchase_quantity === null ? 'Not configured' : number_format((float) $inventory->recommended_purchase_quantity, 3) }}</div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-muted small">No reorder-needed inventory records.</div>
+                @endforelse
             </div>
         </div>
     </div>

@@ -44,6 +44,16 @@
     </div>
 @endif
 
+@if ($inventory)
+    <div class="col-12">
+        <div class="alert alert-light border mb-0">
+            Current Sellable Stock: <strong>{{ number_format((float) $inventory->available_quantity, 3) }}</strong>
+            / Reorder Level: <strong>{{ $inventory->reorder_level ?? 'None' }}</strong>
+            / Target Stock: <strong>{{ $inventory->target_stock_level ?? 'Not configured' }}</strong>
+        </div>
+    </div>
+@endif
+
 <div class="col-md-4">
     <label class="form-label">Low Stock Threshold</label>
     <input type="number" step="0.001" min="0" name="low_stock_threshold" value="{{ old('low_stock_threshold', $inventory?->low_stock_threshold) }}" class="form-control">

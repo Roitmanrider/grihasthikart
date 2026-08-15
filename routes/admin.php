@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Inventory\Services\ReplenishmentService;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminBusinessContactSettingController;
 use App\Http\Controllers\Admin\AdminBusinessSettingController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPaymentSettingController;
 use App\Http\Controllers\Admin\AdminPendingOrderController;
 use App\Http\Controllers\Admin\AdminPurchaseController;
+use App\Http\Controllers\Admin\AdminReplenishmentController;
 use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\AdminReturnController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
@@ -57,9 +59,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'totalProducts' => Product::query()->count(),
             'totalOrders' => Order::query()->count(),
             'pendingOrders' => Order::query()->whereIn('order_status', ['pending', 'placed', 'confirmed', 'picking', 'preparing', 'packed', 'ready_for_delivery', 'out_for_delivery'])->count(),
-            'lowStockItems' => Inventory::query()
-                ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= low_stock_threshold')
-                ->count(),
+            'lowStockItems' => app(ReplenishmentService::class)->summary()['reorder_needed'],
+            'lowStockPreview' => app(ReplenishmentService::class)->dashboardItems(),
             'pendingPayments' => Payment::query()->whereIn('payment_status', ['pending', 'awaiting_verification'])->count(),
             'pendingCashbackRedemptions' => CashbackRedemptionRequest::query()->where('status', 'pending')->count(),
             'pendingAddressCount' => CustomerAddress::query()
@@ -299,6 +300,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::post('inventories/bulk-action', [InventoryController::class, 'bulkAction'])
             ->name('inventories.bulk-action');
+
+        Route::get('inventory/replenishment', [AdminReplenishmentController::class, 'index'])
+            ->name('inventory.replenishment.index');
+
+        Route::post('inventory/replenishment/{inventory}/purchase', [AdminReplenishmentController::class, 'createPurchase'])
+            ->name('inventory.replenishment.purchase');
 
         Route::patch('inventories/{inventory}/restore', [InventoryController::class, 'restore'])
             ->name('inventories.restore');

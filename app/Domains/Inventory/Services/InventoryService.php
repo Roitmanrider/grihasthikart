@@ -19,7 +19,8 @@ class InventoryService
     private const DECREASE_TYPES = ['adjustment_out', 'sale'];
 
     public function __construct(
-        private readonly InventoryRepositoryInterface $repository
+        private readonly InventoryRepositoryInterface $repository,
+        private readonly ReplenishmentService $replenishmentService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -69,6 +70,8 @@ class InventoryService
                 $this->writeMovement($inventory, 'opening', (float) $inventory->quantity_on_hand, 'Opening stock');
             }
 
+            $this->replenishmentService->checkTransitions(collect([$inventory]));
+
             return $inventory;
         });
     }
@@ -86,7 +89,10 @@ class InventoryService
                 'status' => (bool) ($data['status'] ?? $lockedInventory->status),
             ]);
 
-            return $updated->fresh(['productVariant.product', 'stockLocation']);
+            $updated = $updated->fresh(['productVariant.product', 'stockLocation']);
+            $this->replenishmentService->checkTransitions(collect([$updated]));
+
+            return $updated;
         });
     }
 
@@ -127,7 +133,10 @@ class InventoryService
             $lockedInventory->refresh();
             $this->writeMovement($lockedInventory, $movementType, $quantity, $note, $referenceType, $referenceId);
 
-            return $lockedInventory->fresh(['productVariant.product', 'stockLocation']);
+            $updated = $lockedInventory->fresh(['productVariant.product', 'stockLocation']);
+            $this->replenishmentService->checkTransitions(collect([$updated]));
+
+            return $updated;
         });
     }
 
@@ -171,7 +180,10 @@ class InventoryService
             $inventory->refresh();
             $this->writeMovement($inventory, 'reservation', $quantity, $note);
 
-            return $inventory->fresh(['productVariant.product', 'stockLocation']);
+            $updated = $inventory->fresh(['productVariant.product', 'stockLocation']);
+            $this->replenishmentService->checkTransitions(collect([$updated]));
+
+            return $updated;
         });
     }
 
@@ -197,7 +209,10 @@ class InventoryService
             $inventory->refresh();
             $this->writeMovement($inventory, 'reservation_release', $quantity, $note);
 
-            return $inventory->fresh(['productVariant.product', 'stockLocation']);
+            $updated = $inventory->fresh(['productVariant.product', 'stockLocation']);
+            $this->replenishmentService->checkTransitions(collect([$updated]));
+
+            return $updated;
         });
     }
 

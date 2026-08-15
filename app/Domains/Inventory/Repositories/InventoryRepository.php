@@ -142,8 +142,8 @@ class InventoryRepository extends BaseRepository implements InventoryRepositoryI
         }
 
         if (($filters['low_stock'] ?? null) === '1') {
-            $query->whereNotNull('low_stock_threshold')
-                ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= low_stock_threshold');
+            $query->whereNotNull('reorder_level')
+                ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= reorder_level');
         }
 
         $sort = $filters['sort'] ?? 'created_at';

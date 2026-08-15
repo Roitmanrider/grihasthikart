@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\CheckLowStock;
 use App\Console\Commands\CleanupCartActivity;
 use App\Console\Commands\GenerateMonthlyCartRisk;
 use App\Console\Commands\ProcessPendingOrders;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         CleanupCartActivity::class,
+        CheckLowStock::class,
         GenerateMonthlyCartRisk::class,
         ProcessPendingOrders::class,
     ])

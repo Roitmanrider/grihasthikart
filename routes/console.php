@@ -19,3 +19,7 @@ Schedule::command('cart-activity:cleanup')
 Schedule::command('cart-activity:generate-monthly-risk')
     ->monthlyOn(1, '02:30')
     ->withoutOverlapping();
+
+Schedule::command('inventory:check-low-stock')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();

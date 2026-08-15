@@ -516,7 +516,6 @@ class OrderService
                         'reserved_quantity' => $updatedInventory->reserved_quantity,
                         'damaged_quantity' => $updatedInventory->damaged_quantity,
                     ]);
-                    $this->notificationService->notifyAdminLowStock($updatedInventory);
                     $remaining -= $deductQuantity;
                 }
             }

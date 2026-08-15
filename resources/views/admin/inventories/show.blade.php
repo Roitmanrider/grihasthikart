@@ -43,6 +43,12 @@
                     <dd class="col-sm-8 fw-semibold">{{ number_format($inventory->available_quantity, 3) }}</dd>
                     <dt class="col-sm-4">Low Stock Threshold</dt>
                     <dd class="col-sm-8">{{ $inventory->low_stock_threshold ?? 'None' }}</dd>
+                    <dt class="col-sm-4">Reorder Level</dt>
+                    <dd class="col-sm-8">{{ $inventory->reorder_level ?? 'None' }}</dd>
+                    <dt class="col-sm-4">Target Stock</dt>
+                    <dd class="col-sm-8">{{ $inventory->target_stock_level ?? 'Not configured' }}</dd>
+                    <dt class="col-sm-4">Suggested Purchase</dt>
+                    <dd class="col-sm-8">{{ $inventory->recommended_purchase_quantity === null ? 'Not configured' : number_format((float) $inventory->recommended_purchase_quantity, 3) }}</dd>
                 </dl>
             </div>
         </div>
@@ -54,11 +60,7 @@
             <div class="card-body">
                 <div class="mb-2"><span class="badge {{ $inventory->status ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $inventory->status ? 'Active' : 'Inactive' }}</span></div>
                 <div>
-                    @if ($inventory->is_low_stock)
-                        <span class="badge text-bg-danger">Low Stock</span>
-                    @else
-                        <span class="badge text-bg-light border">Stock OK</span>
-                    @endif
+                    <span class="badge {{ $inventory->stock_status === 'OUT_OF_STOCK' ? 'text-bg-danger' : ($inventory->stock_status === 'LOW_STOCK' ? 'text-bg-warning' : 'text-bg-light border') }}">{{ str($inventory->stock_status)->replace('_', ' ')->headline() }}</span>
                 </div>
             </div>
         </div>

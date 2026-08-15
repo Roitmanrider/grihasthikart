@@ -231,7 +231,7 @@ class NotificationService
 
     public function notifyAdminLowStock(Inventory $inventory): void
     {
-        if (! $inventory->is_low_stock) {
+        if (! in_array($inventory->stock_status, ['LOW_STOCK', 'OUT_OF_STOCK'], true)) {
             return;
         }
 
@@ -258,6 +258,33 @@ class NotificationService
             route('admin.inventories.show', $inventory),
             $inventory,
             ['inventory_id' => $inventory->id, 'available_quantity' => $inventory->available_quantity]
+        );
+    }
+
+    public function notifyAdminReplenishmentStockState(Inventory $inventory, string $state): void
+    {
+        if (! in_array($state, ['LOW_STOCK', 'OUT_OF_STOCK'], true)) {
+            return;
+        }
+
+        $variant = $inventory->productVariant;
+        $productName = $variant?->product?->name ?? 'Inventory item';
+        $variantName = $variant?->variant_name ? ' / '.$variant->variant_name : '';
+        $title = $state === 'OUT_OF_STOCK' ? 'Out of stock item' : 'Low stock item';
+
+        $this->admin(
+            'inventory.'.strtolower($state),
+            $title,
+            $productName.$variantName.' is at '.number_format((float) $inventory->available_quantity, 3).' sellable stock.',
+            route('admin.inventory.replenishment.index', ['search' => $variant?->sku]),
+            $inventory,
+            [
+                'inventory_id' => $inventory->id,
+                'stock_status' => $state,
+                'available_quantity' => $inventory->available_quantity,
+                'reorder_level' => $inventory->reorder_level,
+                'target_stock_level' => $inventory->target_stock_level,
+            ]
         );
     }
 

@@ -419,6 +419,14 @@ class ProductCatalogImportExportService
             $errors[] = $this->error($rowNumber, $row, 'gst_rate', $row['gst_rate'], 'GST must be between 0 and 28.');
         }
 
+        if (! $this->blank($row['reorder_level'] ?? null)
+            && ! $this->blank($row['target_stock_level'] ?? null)
+            && is_numeric($row['reorder_level'])
+            && is_numeric($row['target_stock_level'])
+            && (float) $row['target_stock_level'] < (float) $row['reorder_level']) {
+            $errors[] = $this->error($rowNumber, $row, 'target_stock_level', $row['target_stock_level'], 'Target stock level must be greater than or equal to reorder level.');
+        }
+
         if (
             is_numeric($row['opening_stock'] ?? null)
             && (float) $row['opening_stock'] > 0

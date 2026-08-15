@@ -641,6 +641,14 @@ class ProductImportService
                 $errors[] = str_replace('_', ' ', $field).' cannot be negative.';
             }
         }
+
+        if (! $this->blank($row['reorder_level'] ?? null)
+            && ! $this->blank($row['target_stock_level'] ?? null)
+            && is_numeric($row['reorder_level'])
+            && is_numeric($row['target_stock_level'])
+            && (float) $row['target_stock_level'] < (float) $row['reorder_level']) {
+            $errors[] = 'Target stock level must be greater than or equal to reorder level.';
+        }
     }
 
     private function validateImages(array $row, array &$errors, array &$warnings): void

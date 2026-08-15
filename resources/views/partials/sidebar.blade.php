@@ -50,6 +50,11 @@
             Inventory
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.inventory.replenishment.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.inventory.replenishment.index') }}">
+            Replenishment
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.stock-adjustments.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.stock-adjustments.index') }}">
             Stock Adjustments
