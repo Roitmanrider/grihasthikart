@@ -123,15 +123,15 @@
             </div>
 
             <div class="totals">
-                <div class="summary-row"><span>Subtotal</span><strong>Rs. {{ number_format((float) $order->subtotal, 2) }}</strong></div>
+                <div class="summary-row"><span>Merchandise Amount</span><strong>Rs. {{ number_format((float) $order->subtotal, 2) }}</strong></div>
                 <div class="summary-row"><span>MRP Total</span><span>Rs. {{ number_format((float) $order->total_mrp, 2) }}</span></div>
                 <div class="summary-row"><span>Savings</span><span>Rs. {{ number_format((float) $order->total_savings, 2) }}</span></div>
                 @if ((float) $order->discount_total > 0)
                     <div class="summary-row"><span>Coupon Discount {{ $order->coupon_code_snapshot ? '('.$order->coupon_code_snapshot.')' : '' }}</span><span>- Rs. {{ number_format((float) $order->discount_total, 2) }}</span></div>
                 @endif
-                <div class="summary-row"><span>GST Total</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
-                <div class="summary-row"><span>Delivery Charge</span><span>Rs. {{ number_format((float) $order->delivery_charge, 2) }}</span></div>
-                <div class="summary-row grand-total"><span>Grand Total</span><span>Rs. {{ number_format((float) $order->grand_total, 2) }}</span></div>
+                <div class="summary-row"><span>Tax / GST</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
+                <div class="summary-row"><span>Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
+                <div class="summary-row grand-total"><span>Final Amount</span><span>Rs. {{ number_format((float) $order->grand_total, 2) }}</span></div>
             </div>
         </section>
 

@@ -35,7 +35,10 @@ class CustomerRepository extends BaseRepository implements CustomerRepositoryInt
         return $this->model
             ->newQuery()
             ->withTrashed()
-            ->with(['addresses' => fn ($query) => $query->withTrashed(), 'orders' => fn ($query) => $query->latest('placed_at')])
+            ->with([
+                'addresses' => fn ($query) => $query->withTrashed(),
+                'orders' => fn ($query) => $query->with('returnRequests')->latest('placed_at'),
+            ])
             ->findOrFail($id);
     }
 

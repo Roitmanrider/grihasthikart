@@ -62,6 +62,7 @@ class BusinessSettingService
             'store_contact_mobile' => $this->get('checkout.store_contact_mobile'),
             'store_whatsapp_number' => $this->get('checkout.store_whatsapp_number'),
             'customer_invoice_enabled' => (bool) $this->get('order.customer_invoice_enabled', true),
+            'return_window_days' => (int) $this->get('order.return_window_days', 2),
         ];
     }
 
@@ -153,11 +154,23 @@ class BusinessSettingService
             'cart_employee_followup_enabled' => ['boolean', 'Employee Cart Follow-up', 13],
             'cart_abuse_monitoring_enabled' => ['boolean', 'Abuse / Reservation Monitoring', 14],
             'daily_offer_hold_minutes' => ['integer', 'Daily Offer Reservation Duration', 15],
+            'return_window_days' => ['integer', 'Return Window Days', 16],
         ];
 
         foreach ($data as $key => $value) {
             if ($key === 'customer_invoice_enabled') {
                 $this->set('order.customer_invoice_enabled', $value);
+
+                continue;
+            }
+
+            if ($key === 'return_window_days') {
+                $this->set('order.return_window_days', $value)
+                    ->update([
+                        'value_type' => 'integer',
+                        'label' => 'Return Window Days',
+                        'display_order' => 2,
+                    ]);
 
                 continue;
             }

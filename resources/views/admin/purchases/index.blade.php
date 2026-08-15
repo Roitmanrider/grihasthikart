@@ -20,7 +20,9 @@
                     <th>Date</th>
                     <th>Supplier</th>
                     <th>Items</th>
-                    <th>Total</th>
+                    <th>Goods / Purchase Amount</th>
+                    <th>Freight</th>
+                    <th>Final Purchase Total</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -43,7 +45,9 @@
                             @endif
                         </td>
                         <td>{{ $purchase->items_count }}</td>
-                        <td>Rs. {{ number_format((float) $purchase->grand_total, 2) }}</td>
+                        <td>Rs. {{ number_format((float) $purchase->subtotal, 2) }}</td>
+                        <td>Rs. {{ number_format((float) $purchase->freight_allocation, 2) }}</td>
+                        <td class="fw-semibold">Rs. {{ number_format((float) $purchase->grand_total, 2) }}</td>
                         <td><span class="badge text-bg-success">{{ str($purchase->status)->headline() }}</span></td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
@@ -53,7 +57,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center text-muted py-5">No purchase entries found.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-5">No purchase entries found.</td></tr>
                 @endforelse
             </tbody>
         </table>

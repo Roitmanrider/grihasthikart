@@ -44,6 +44,7 @@ class BusinessSettingSeeder extends Seeder
             ['payment', 'razorpay_key_secret', null, 'string', 'Razorpay Key Secret', 9],
             ['payment', 'currency', 'INR', 'string', 'Currency', 10],
             ['order', 'customer_invoice_enabled', '1', 'boolean', 'Customer Invoice Printing Enabled', 1],
+            ['order', 'return_window_days', '2', 'integer', 'Return Window Days', 2],
             ['storefront', 'access_mode', 'PUBLIC_BROWSE_MEMBERS_BUY', 'string', 'Storefront Access Mode', 1],
             ['storefront', 'homepage_public_in_members_only', '1', 'boolean', 'Homepage Public in Members-Only Mode', 2],
             ['storefront', 'allow_guest_checkout', '0', 'boolean', 'Allow Guest Checkout', 3],

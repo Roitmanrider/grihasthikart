@@ -387,6 +387,7 @@ class PendingOrderManagementTest extends TestCase
             'cart_employee_followup_enabled' => 1,
             'cart_abuse_monitoring_enabled' => 1,
             'daily_offer_hold_minutes' => 15,
+            'return_window_days' => 2,
             'default_state' => null,
             'default_city' => null,
             'store_contact_mobile' => null,

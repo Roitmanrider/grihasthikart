@@ -35,6 +35,16 @@
             <div class="alert alert-danger">{{ $errors->first() }}</div>
         @endif
 
+        @if ($order->order_status === 'delivered')
+            <div class="alert alert-light border">
+                @if ($returnService->isEligible($order))
+                    Return available until {{ $returnService->returnAvailableUntil($order)?->format('d M Y, h:i A') }}
+                @else
+                    Return window closed
+                @endif
+            </div>
+        @endif
+
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white fw-semibold">Order Timeline</div>
             <div class="card-body">
@@ -50,6 +60,9 @@
                         <div class="col-6 col-md-4 col-lg-2">
                             <div class="border rounded p-2 h-100 text-center">
                                 <span class="badge {{ $badgeClass }} w-100 text-wrap py-2">{{ $step['label'] }}</span>
+                                @if ($step['completed_at'])
+                                    <div class="small text-muted mt-1">{{ $step['completed_at'] }}</div>
+                                @endif
                             </div>
                         </div>
                     @endforeach
@@ -76,25 +89,57 @@
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span>
                     <span class="badge text-bg-light border">{{ strtoupper($order->payment_method) }} / {{ str($order->payment_status)->headline() }}</span>
+                    @if ($latestReturn = $order->returnRequests->sortByDesc('created_at')->first())
+                        <span class="badge text-bg-info">{{ str($latestReturn->status)->headline() }}</span>
+                    @endif
                 </div>
 
                 @foreach($order->items as $item)
                     <div class="border-bottom pb-2 mb-2">
                         <div class="fw-semibold">{{ $item->product_name_snapshot }}</div>
-                        <div class="small text-muted">{{ $item->variant_name_snapshot }} x {{ rtrim(rtrim(number_format((float)$item->quantity,3),'0'),'.') }} - Rs. {{ number_format((float)$item->line_total,2) }}</div>
+                        <div class="small text-muted">{{ $item->variant_name_snapshot }} x {{ rtrim(rtrim(number_format((float)$item->quantity,3),'0'),'.') }}</div>
+                        <div class="small">Unit price: Rs. {{ number_format((float)$item->unit_price,2) }} / Merchandise: Rs. {{ number_format((float)$item->line_total,2) }}</div>
+                        <div class="small text-muted">GST {{ number_format((float)($item->gst_rate_snapshot ?? 0),2) }}% / Tax: Rs. {{ number_format((float)$item->tax_amount,2) }}</div>
                     </div>
                 @endforeach
 
                 <hr>
 
+                <div class="d-flex justify-content-between">
+                    <span>Merchandise Amount</span>
+                    <span>Rs. {{ number_format((float)$order->subtotal,2) }}</span>
+                </div>
+                @if((float)$order->total_mrp > 0)
+                    <div class="d-flex justify-content-between">
+                        <span>MRP Total</span>
+                        <span>Rs. {{ number_format((float)$order->total_mrp,2) }}</span>
+                    </div>
+                @endif
+                @if((float)$order->total_savings > 0)
+                    <div class="d-flex justify-content-between text-success">
+                        <span>Savings</span>
+                        <span>Rs. {{ number_format((float)$order->total_savings,2) }}</span>
+                    </div>
+                @endif
                 @if($order->discount_total > 0)
                     <div class="d-flex justify-content-between text-success">
                         <span>Coupon Discount</span>
                         <span>- Rs. {{ number_format((float)$order->discount_total,2) }}</span>
                     </div>
                 @endif
+                <div class="d-flex justify-content-between">
+                    <span>Tax / GST</span>
+                    <span>Rs. {{ number_format((float)$order->tax_total,2) }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Delivery Charge</span>
+                    <span>{{ (float)$order->delivery_charge > 0 ? 'Rs. '.number_format((float)$order->delivery_charge,2) : 'Free' }}</span>
+                </div>
 
-                <div class="h5 mt-2">Grand Total: Rs. {{ number_format((float)$order->grand_total,2) }}</div>
+                <div class="d-flex justify-content-between h5 mt-3">
+                    <span>Final Amount</span>
+                    <strong>Rs. {{ number_format((float)$order->grand_total,2) }}</strong>
+                </div>
             </div>
         </div>
     </div>

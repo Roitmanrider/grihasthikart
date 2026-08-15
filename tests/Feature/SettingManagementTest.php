@@ -45,6 +45,7 @@ class SettingManagementTest extends TestCase
             'cart_employee_followup_enabled' => 1,
             'cart_abuse_monitoring_enabled' => 1,
             'daily_offer_hold_minutes' => 15,
+            'return_window_days' => 4,
             'default_state' => 'Bihar',
             'default_city' => 'Patna',
             'store_contact_mobile' => '9876543210',
@@ -57,6 +58,7 @@ class SettingManagementTest extends TestCase
         $this->assertSame(25.0, $service->get('checkout.delivery_charge'));
         $this->assertFalse($service->get('checkout.today_delivery_enabled'));
         $this->assertSame(5, $service->get('checkout.max_delivery_days_ahead'));
+        $this->assertSame(4, $service->get('order.return_window_days'));
     }
 
     public function test_settings_are_type_cast_correctly(): void

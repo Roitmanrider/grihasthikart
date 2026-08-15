@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Domains\Customer\Services\CustomerAuthService;
+use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Order\Services\OrderService;
 use App\Domains\Order\Services\OrderStatusService;
 use App\Domains\Setting\Services\BusinessSettingService;
@@ -17,7 +18,8 @@ class CustomerDashboardController extends Controller
         private readonly CustomerAuthService $authService,
         private readonly OrderStatusService $orderStatusService,
         private readonly OrderService $orderService,
-        private readonly BusinessSettingService $settingService
+        private readonly BusinessSettingService $settingService,
+        private readonly CustomerCreditService $customerCreditService
     ) {}
 
     public function dashboard()
@@ -25,14 +27,19 @@ class CustomerDashboardController extends Controller
         $customer = $this->requireCustomer();
         $customer->loadCount('addresses');
         $orders = $customer->orders()->latest('placed_at')->take(5)->get();
+        $creditBalance = $this->customerCreditService->balance($customer);
+        $creditTransactions = $this->customerCreditService->recent($customer, 5);
 
-        return view('frontend.customer.dashboard', compact('customer', 'orders'));
+        return view('frontend.customer.dashboard', compact('customer', 'orders', 'creditBalance', 'creditTransactions'));
     }
 
     public function orders()
     {
         $customer = $this->requireCustomer();
-        $orders = $customer->orders()->latest('placed_at')->paginate(10);
+        $orders = $customer->orders()
+            ->with('returnRequests')
+            ->latest('placed_at')
+            ->paginate(10);
 
         return view('frontend.customer.orders.index', compact('customer', 'orders'));
     }
@@ -43,7 +50,7 @@ class CustomerDashboardController extends Controller
         $order = Order::query()
             ->where('customer_id', $customer->id)
             ->where('order_number', $orderNumber)
-            ->with(['items', 'statusHistories'])
+            ->with(['items', 'statusHistories', 'returnRequests'])
             ->firstOrFail();
         $statusTimeline = $this->orderStatusService->timelineFor($order);
         $canCancel = $this->orderStatusService->canCustomerCancel($order);

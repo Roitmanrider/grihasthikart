@@ -161,7 +161,9 @@ class OrderStatusService
             'placed' => $order->placed_at?->format('d M Y, h:i A'),
             'confirmed' => $order->confirmed_at?->format('d M Y, h:i A'),
             'delivered' => $order->delivered_at?->format('d M Y, h:i A'),
-            default => null,
+            default => $order->statusHistories
+                ->firstWhere('new_status', $status)
+                ?->created_at?->format('d M Y, h:i A'),
         };
     }
 }

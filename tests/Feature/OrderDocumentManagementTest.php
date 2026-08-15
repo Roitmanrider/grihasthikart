@@ -36,7 +36,7 @@ class OrderDocumentManagementTest extends TestCase
             ->assertSee('Tax Invoice')
             ->assertSee('INV-'.$order->order_number)
             ->assertSee($order->customer_name)
-            ->assertSee('Grand Total')
+            ->assertSee('Final Amount')
             ->assertSee('Rs. 220.00');
     }
 

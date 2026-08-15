@@ -80,6 +80,11 @@ class Customer extends Model
         return $this->hasMany(CashbackMonthlySummary::class)->latest();
     }
 
+    public function creditTransactions()
+    {
+        return $this->hasMany(CustomerCreditTransaction::class)->latest();
+    }
+
     public function notifications()
     {
         return $this->hasMany(Notification::class)->latest();

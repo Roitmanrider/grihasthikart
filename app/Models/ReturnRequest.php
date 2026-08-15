@@ -52,4 +52,9 @@ class ReturnRequest extends Model
     {
         return $this->hasMany(ReturnRequestItem::class);
     }
+
+    public function creditTransactions()
+    {
+        return $this->hasMany(CustomerCreditTransaction::class);
+    }
 }

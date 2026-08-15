@@ -2,6 +2,7 @@
 
 namespace App\Domains\ReturnRequest\Services;
 
+use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Setting\Services\BusinessSettingService;
@@ -11,6 +12,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ReturnRequest;
 use App\Models\StockLocation;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -20,7 +22,8 @@ class ReturnRequestService
     public function __construct(
         private readonly BusinessSettingService $settings,
         private readonly InventoryService $inventoryService,
-        private readonly NotificationService $notificationService
+        private readonly NotificationService $notificationService,
+        private readonly CustomerCreditService $customerCreditService
     ) {}
 
     public function customerPaginate(Customer $customer, int $perPage = 20)
@@ -47,7 +50,16 @@ class ReturnRequestService
         return $order->customer_id !== null
             && $order->order_status === 'delivered'
             && $order->delivered_at !== null
-            && $order->delivered_at->copy()->addDays($this->returnWindowDays())->endOfDay()->gte(now());
+            && $this->returnAvailableUntil($order)?->gte(now());
+    }
+
+    public function returnAvailableUntil(Order $order): ?Carbon
+    {
+        if ($order->delivered_at === null) {
+            return null;
+        }
+
+        return $order->delivered_at->copy()->addDays($this->returnWindowDays())->endOfDay();
     }
 
     public function returnWindowDays(): int
@@ -155,16 +167,28 @@ class ReturnRequestService
 
     public function markRefunded(ReturnRequest $returnRequest, ?string $notes = null): ReturnRequest
     {
-        $this->ensureStatus($returnRequest, ['approved'], 'Only approved returns can be marked refunded.');
-        $returnRequest->update([
-            'status' => 'refunded',
-            'admin_notes' => $notes ?? $returnRequest->admin_notes,
-        ]);
+        return DB::transaction(function () use ($returnRequest, $notes) {
+            $return = ReturnRequest::query()
+                ->whereKey($returnRequest->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $return = $returnRequest->fresh(['order', 'customer']);
-        $this->notificationService->notifyCustomerReturnUpdated($return, 'Return refunded', 'Your return request '.$return->return_number.' was marked refunded.');
+            $this->ensureStatus($return, ['approved', 'refunded'], 'Only approved returns can be marked refunded.');
 
-        return $return;
+            $this->customerCreditService->creditForReturn($return, $notes);
+
+            if ($return->status !== 'refunded') {
+                $return->update([
+                    'status' => 'refunded',
+                    'admin_notes' => $notes ?? $return->admin_notes,
+                ]);
+            }
+
+            $return = $return->fresh(['order', 'customer']);
+            $this->notificationService->notifyCustomerReturnUpdated($return, 'Return refunded', 'Your return request '.$return->return_number.' was refunded to Customer Credit.');
+
+            return $return;
+        });
     }
 
     public function close(ReturnRequest $returnRequest, ?string $notes = null): ReturnRequest
@@ -207,7 +231,10 @@ class ReturnRequestService
                 }
 
                 $requestedInThisReturn[$orderItem->id] = $alreadyInThisReturn + $quantity;
-                $refundAmount = round($quantity * (float) $orderItem->unit_price, 2);
+                $lineShare = (float) $orderItem->line_total > 0
+                    ? ((float) $orderItem->line_total / max(0.001, (float) $orderItem->quantity))
+                    : (float) $orderItem->unit_price;
+                $refundAmount = round($quantity * $lineShare, 2);
 
                 return [
                     'order_item_id' => $orderItem->id,

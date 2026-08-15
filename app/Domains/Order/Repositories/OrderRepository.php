@@ -34,7 +34,7 @@ class OrderRepository extends BaseRepository implements OrderRepositoryInterface
     {
         return $this->model
             ->newQuery()
-            ->with(['items.productVariant', 'statusHistories.changer', 'payment'])
+            ->with(['items.productVariant', 'statusHistories.changer', 'payment', 'returnRequests'])
             ->findOrFail($id);
     }
 
@@ -42,6 +42,7 @@ class OrderRepository extends BaseRepository implements OrderRepositoryInterface
     {
         $query = $this->model
             ->newQuery()
+            ->with('returnRequests')
             ->withCount('items');
 
         if (($filters['search'] ?? null) !== null && $filters['search'] !== '') {

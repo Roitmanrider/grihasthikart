@@ -113,15 +113,40 @@
 
 <div class="card border-0 shadow-sm mt-4">
     <div class="card-header bg-white fw-semibold">Orders</div>
-    <div class="card-body">
-        @forelse ($customer->orders as $order)
-            <div>
-                <a href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a>
-                - Rs. {{ number_format((float) $order->grand_total, 2) }}
-            </div>
-        @empty
-            <div class="text-muted">No orders.</div>
-        @endforelse
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Order Date/Time</th>
+                        <th>Merchandise Amount</th>
+                        <th>Delivery Charge</th>
+                        <th>Final Amount</th>
+                        <th>Fulfillment</th>
+                        <th>Return Status</th>
+                        <th>Delivered</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($customer->orders as $order)
+                        @php($latestReturn = $order->returnRequests->sortByDesc('created_at')->first())
+                        <tr>
+                            <td><a href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a></td>
+                            <td>{{ $order->placed_at?->format('d M Y, h:i A') ?: '-' }}</td>
+                            <td>Rs. {{ number_format((float) $order->subtotal, 2) }}</td>
+                            <td>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</td>
+                            <td>Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
+                            <td><span class="badge text-bg-light">{{ str($order->order_status)->headline() }}</span></td>
+                            <td>{{ $latestReturn ? str($latestReturn->status)->headline() : '-' }}</td>
+                            <td>{{ $order->delivered_at?->format('d M Y, h:i A') ?: '-' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="8" class="text-muted">No orders.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

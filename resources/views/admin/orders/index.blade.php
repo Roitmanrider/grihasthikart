@@ -59,11 +59,13 @@
                 <tr>
                     <th>Order</th>
                     <th>Customer</th>
+                    <th>Order Date/Time</th>
                     <th>Delivery</th>
+                    <th>Merchandise Amount</th>
+                    <th>Delivery Charge</th>
+                    <th>Final Amount</th>
                     <th>Payment</th>
                     <th>Status</th>
-                    <th>Total</th>
-                    <th>Placed</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -75,14 +77,16 @@
                             <div>{{ $order->customer_name }}</div>
                             <div class="small text-muted">{{ $order->customer_mobile }}</div>
                         </td>
+                        <td>{{ $order->placed_at?->format('d M Y, h:i A') }}</td>
                         <td>
                             <div>{{ $order->delivery_date?->format('d M Y') ?? 'Not set' }}</div>
                             <div class="small text-muted">{{ $order->delivery_slot ?? 'No slot' }}</div>
                         </td>
+                        <td>Rs. {{ number_format((float) $order->subtotal, 2) }}</td>
+                        <td>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</td>
+                        <td class="fw-semibold">Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
                         <td>{{ strtoupper($order->payment_method) }} / {{ $order->payment_status }}</td>
-                        <td><span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span></td>
-                        <td>Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
-                        <td>{{ $order->placed_at?->format('d M Y, h:i A') }}</td>
+                        <td><span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span>@if($order->returnRequests->isNotEmpty())<div class="small text-muted">{{ str($order->returnRequests->sortByDesc('created_at')->first()->status)->headline() }}</div>@endif</td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-outline-success">View</a>
@@ -93,7 +97,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="text-center text-muted py-5">No orders found.</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-5">No orders found.</td></tr>
                 @endforelse
             </tbody>
         </table>

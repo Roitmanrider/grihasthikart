@@ -75,6 +75,7 @@
     <div class="form-text">Daily Offer reservations use this stricter window.</div>
     @error('daily_offer_hold_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
 </div>
+<div class="col-md-4"><label class="form-label">Return Window Days</label><input type="number" min="0" max="30" name="return_window_days" value="{{ old('return_window_days', $settings['return_window_days']) }}" class="form-control @error('return_window_days') is-invalid @enderror"><div class="form-text">Counted from the delivered timestamp.</div>@error('return_window_days')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
 <div class="col-md-4"><label class="form-label">Default City</label><input name="default_city" value="{{ old('default_city', $settings['default_city']) }}" class="form-control"></div>
 <div class="col-md-4"><label class="form-label">Default State</label><input name="default_state" value="{{ old('default_state', $settings['default_state']) }}" class="form-control"></div>
 <div class="col-md-6"><label class="form-label">Contact Mobile</label><input name="store_contact_mobile" value="{{ old('store_contact_mobile', $settings['store_contact_mobile']) }}" class="form-control"></div>

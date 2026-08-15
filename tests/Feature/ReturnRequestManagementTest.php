@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Domains\Customer\Services\CustomerCreditService;
+use App\Domains\Setting\Services\BusinessSettingService;
+use App\Models\CashbackLedger;
 use App\Models\Customer;
+use App\Models\CustomerCreditTransaction;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Notification;
@@ -81,6 +85,21 @@ class ReturnRequestManagementTest extends TestCase
         ]);
     }
 
+    public function test_customer_can_create_full_return_request(): void
+    {
+        [$customer, $order, $item] = $this->deliveredOrder();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('customer.returns.store'), $this->payload($order, $item, 3))
+            ->assertRedirect();
+
+        $return = ReturnRequest::query()->firstOrFail();
+        $returnItem = ReturnRequestItem::query()->firstOrFail();
+
+        $this->assertSame('150.00', $return->refund_amount);
+        $this->assertSame('3.000', $returnItem->quantity);
+    }
+
     public function test_customer_cannot_return_non_delivered_order(): void
     {
         $customer = Customer::factory()->create();
@@ -107,6 +126,18 @@ class ReturnRequestManagementTest extends TestCase
             ->assertSessionHasErrors('return');
 
         $this->assertSame(0, ReturnRequest::query()->count());
+    }
+
+    public function test_return_window_uses_configured_business_setting(): void
+    {
+        app(BusinessSettingService::class)->set('order.return_window_days', 5)->update(['value_type' => 'integer']);
+        [$customer, $order, $item] = $this->deliveredOrder(['delivered_at' => now()->subDays(4)]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('customer.returns.store'), $this->payload($order, $item, 1))
+            ->assertRedirect();
+
+        $this->assertSame(1, ReturnRequest::query()->count());
     }
 
     public function test_cannot_return_more_than_purchased_quantity(): void
@@ -163,6 +194,80 @@ class ReturnRequestManagementTest extends TestCase
 
         $this->assertSame('refunded', $return->fresh()->status);
         $this->assertSame('Manual refund done', $return->fresh()->admin_notes);
+        $this->assertDatabaseHas('customer_credit_transactions', [
+            'customer_id' => $return->customer_id,
+            'return_request_id' => $return->id,
+            'type' => CustomerCreditTransaction::RETURN_REFUND_CREDIT,
+            'amount' => '50.00',
+        ]);
+    }
+
+    public function test_rejected_return_creates_no_customer_credit(): void
+    {
+        $return = $this->returnRequest();
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.returns.reject', $return), ['admin_notes' => 'Product used'])
+            ->assertRedirect();
+
+        $this->assertSame('rejected', $return->fresh()->status);
+        $this->assertSame(0, CustomerCreditTransaction::query()->count());
+    }
+
+    public function test_customer_credit_refund_is_idempotent_and_separate_from_cashback(): void
+    {
+        $return = $this->returnRequest();
+        $return->update(['status' => 'approved', 'approved_at' => now()]);
+        CashbackLedger::query()->create([
+            'customer_id' => $return->customer_id,
+            'ledger_type' => 'earned',
+            'amount' => 25,
+            'balance_after' => 25,
+            'description' => 'Promotional cashback',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.returns.mark-refunded', $return), ['admin_notes' => 'Credit refund'])
+            ->assertRedirect();
+        $this->actingAs($this->admin)
+            ->patch(route('admin.returns.mark-refunded', $return), ['admin_notes' => 'Credit refund again'])
+            ->assertRedirect();
+
+        $this->assertSame(1, CustomerCreditTransaction::query()->count());
+        $this->assertSame(50.0, app(CustomerCreditService::class)->balance($return->customer));
+        $this->assertEquals(25.0, CashbackLedger::query()->where('customer_id', $return->customer_id)->sum('amount'));
+    }
+
+    public function test_partial_refund_uses_original_line_economics_and_excludes_delivery_charge(): void
+    {
+        [$customer, $order, $item] = $this->deliveredOrder(
+            orderOverrides: ['delivery_charge' => 100, 'grand_total' => 280],
+            itemOverrides: [
+                'quantity' => 4,
+                'unit_price' => 50,
+                'line_total' => 180,
+            ]
+        );
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('customer.returns.store'), $this->payload($order, $item, 2))
+            ->assertRedirect();
+
+        $return = ReturnRequest::query()->firstOrFail();
+        $return->update(['status' => 'approved', 'approved_at' => now()]);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.returns.mark-refunded', $return), ['admin_notes' => 'Partial credit'])
+            ->assertRedirect();
+
+        $this->assertSame('90.00', $return->fresh()->refund_amount);
+        $this->assertSame('280.00', $order->fresh()->grand_total);
+        $this->assertDatabaseHas('customer_credit_transactions', [
+            'customer_id' => $customer->id,
+            'return_request_id' => $return->id,
+            'amount' => '90.00',
+            'balance_after' => '90.00',
+        ]);
     }
 
     public function test_restock_approval_increases_inventory(): void

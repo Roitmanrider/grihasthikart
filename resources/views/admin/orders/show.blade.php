@@ -90,7 +90,8 @@
                 @forelse ($order->statusHistories as $history)
                     <div class="border-bottom pb-2 mb-2">
                         <div class="fw-semibold">{{ $history->old_status ? $orderStatusService->label($history->old_status) : 'New' }} -> {{ $orderStatusService->label($history->new_status) }}</div>
-                        <div class="small text-muted">{{ $history->note ?? 'No note' }} / {{ $history->created_at?->format('d M Y, h:i A') }}</div>
+                        <div class="small text-muted">{{ $history->created_at?->format('d M Y, h:i A') }} / {{ $history->changer?->name ?? 'System' }}</div>
+                        <div class="small text-muted">{{ $history->note ?? 'No note' }}</div>
                     </div>
                 @empty
                     <div class="text-muted">No status history.</div>
@@ -103,10 +104,10 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">Summary</div>
             <div class="card-body">
-                <div class="d-flex justify-content-between"><span>Subtotal</span><strong>Rs. {{ number_format((float) $order->subtotal, 2) }}</strong></div>
+                <div class="d-flex justify-content-between"><span>Merchandise Value</span><strong>Rs. {{ number_format((float) $order->subtotal, 2) }}</strong></div>
                 <div class="d-flex justify-content-between"><span>MRP Total</span><span>Rs. {{ number_format((float) $order->total_mrp, 2) }}</span></div>
                 <div class="d-flex justify-content-between text-success"><span>Savings</span><span>Rs. {{ number_format((float) $order->total_savings, 2) }}</span></div>
-                <div class="d-flex justify-content-between"><span>Tax</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
+                <div class="d-flex justify-content-between"><span>Tax / GST</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
                 <div class="d-flex justify-content-between"><span>Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
                 @if ($order->discount_total > 0)
                     <div class="d-flex justify-content-between text-success"><span>Coupon {{ $order->coupon_code_snapshot }}</span><span>- Rs. {{ number_format((float) $order->discount_total, 2) }}</span></div>
