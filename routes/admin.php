@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Inventory\Services\ReplenishmentService;
+use App\Http\Controllers\Admin\AdminAssociatedPartnerController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminBusinessContactSettingController;
 use App\Http\Controllers\Admin\AdminBusinessSettingController;
@@ -9,6 +10,8 @@ use App\Http\Controllers\Admin\AdminContactMessageController;
 use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
+use App\Http\Controllers\Admin\AdminHomepageBannerController;
+use App\Http\Controllers\Admin\AdminHomepageSectionController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOrderDocumentController;
@@ -459,6 +462,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
     */
 
     Route::middleware(['auth', 'can:manage-settings'])->group(function () {
+        Route::get('homepage/sections', [AdminHomepageSectionController::class, 'index'])
+            ->name('homepage.sections.index');
+        Route::get('homepage/sections/{sectionKey}/edit', [AdminHomepageSectionController::class, 'edit'])
+            ->name('homepage.sections.edit');
+        Route::put('homepage/sections/{sectionKey}', [AdminHomepageSectionController::class, 'update'])
+            ->name('homepage.sections.update');
+        Route::resource('homepage/banners', AdminHomepageBannerController::class)
+            ->except('show')
+            ->names('homepage.banners');
+        Route::resource('homepage/partners', AdminAssociatedPartnerController::class)
+            ->parameters(['partners' => 'partner'])
+            ->except('show')
+            ->names('homepage.partners');
+
         Route::get('settings/checkout', [AdminBusinessSettingController::class, 'edit'])
             ->name('settings.checkout.edit');
         Route::put('settings/checkout', [AdminBusinessSettingController::class, 'update'])

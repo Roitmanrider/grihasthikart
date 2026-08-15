@@ -134,6 +134,21 @@
 
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Settings</div>
 
+        <a class="nav-link {{ request()->routeIs('admin.homepage.sections.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.homepage.sections.index') }}">
+            Homepage Sections
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.homepage.banners.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.homepage.banners.index') }}">
+            Homepage Banners
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.homepage.partners.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.homepage.partners.index') }}">
+            Associated Partners
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.settings.checkout.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.settings.checkout.edit') }}">
             Checkout Settings

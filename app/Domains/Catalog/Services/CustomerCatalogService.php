@@ -2,6 +2,7 @@
 
 namespace App\Domains\Catalog\Services;
 
+use App\Domains\Storefront\Services\HomepageContentService;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
@@ -10,24 +11,13 @@ use Illuminate\Database\Eloquent\Builder;
 class CustomerCatalogService
 {
     public function __construct(
-        private readonly DailyOfferService $dailyOfferService
+        private readonly DailyOfferService $dailyOfferService,
+        private readonly HomepageContentService $homepageContentService
     ) {}
 
     public function homepageData(): array
     {
-        $categories = $this->activeCategories()
-            ->withCount(['children' => fn ($query) => $query->active()])
-            ->whereNull('parent_id')
-            ->take(18)
-            ->get();
-
-        return [
-            'categories' => $categories,
-            'categorySections' => $this->homepageCategorySections(),
-            'dailyOffers' => $this->dailyOfferService->currentOffers(8),
-            'trustItems' => $this->homepageTrustItems(),
-            'partners' => $this->homepagePartners(),
-        ];
+        return $this->homepageContentService->storefrontData();
     }
 
     public function productListing(array $filters = [], int $perPage = 12)
@@ -155,41 +145,6 @@ class CustomerCatalogService
                 'defaultVariant.primaryImage',
                 'primaryImage',
             ]);
-    }
-
-    private function homepageCategorySections()
-    {
-        return Category::query()
-            ->active()
-            ->whereNull('parent_id')
-            ->whereHas('children', fn ($query) => $query->active())
-            ->with(['children' => fn ($query) => $query->active()->orderBy('display_order')->orderBy('name')])
-            ->orderBy('display_order')
-            ->orderBy('name')
-            ->take(9)
-            ->get()
-            ->values();
-    }
-
-    private function homepageTrustItems(): array
-    {
-        return [
-            ['icon' => 'fa-solid fa-truck-fast', 'title' => 'Free Delivery', 'subtitle' => 'On orders above Rs.499'],
-            ['icon' => 'fa-regular fa-calendar-check', 'title' => 'Scheduled Delivery', 'subtitle' => 'Choose date & time'],
-            ['icon' => 'fa-solid fa-seedling', 'title' => 'Original Products', 'subtitle' => 'Best quality assured'],
-            ['icon' => 'fa-solid fa-rotate-left', 'title' => 'Easy Returns', 'subtitle' => 'Hassle free returns'],
-            ['icon' => 'fa-solid fa-credit-card', 'title' => 'Payment Options', 'subtitle' => '100% safe & secure'],
-        ];
-    }
-
-    private function homepagePartners(): array
-    {
-        return [
-            ['name' => 'FreshFarm', 'description' => 'Organics', 'discount' => 'UPTO 15% OFF', 'class' => 'fresh'],
-            ['name' => 'MilkyDay', 'description' => 'Dairy Products', 'discount' => 'UPTO 10% OFF', 'class' => 'dairy'],
-            ['name' => 'DailyBasket', 'description' => 'Meat & Seafood', 'discount' => 'UPTO 12% OFF', 'class' => 'basket'],
-            ['name' => 'PetWorld', 'description' => 'Pet Supplies', 'discount' => 'UPTO 8% OFF', 'class' => 'care'],
-        ];
     }
 
     private function applySort(Builder $query, string $sort): void
