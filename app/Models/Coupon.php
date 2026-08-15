@@ -14,10 +14,36 @@ class Coupon extends Model
 
     public const SOURCES = ['admin', 'cashback', 'promotion'];
 
+    public const PURPOSE_MERCHANDISE = 'MERCHANDISE';
+
+    public const PURPOSE_FREE_DELIVERY = 'FREE_DELIVERY';
+
+    public const PURPOSE_DELIVERY_FIXED = 'DELIVERY_FIXED';
+
+    public const PURPOSE_DELIVERY_PERCENT = 'DELIVERY_PERCENT';
+
+    public const PURPOSES = [
+        self::PURPOSE_MERCHANDISE,
+        self::PURPOSE_FREE_DELIVERY,
+        self::PURPOSE_DELIVERY_FIXED,
+        self::PURPOSE_DELIVERY_PERCENT,
+    ];
+
+    public const AUDIENCE_PUBLIC = 'PUBLIC';
+
+    public const AUDIENCE_CUSTOMER_SPECIFIC = 'CUSTOMER_SPECIFIC';
+
+    public const AUDIENCES = [
+        self::AUDIENCE_PUBLIC,
+        self::AUDIENCE_CUSTOMER_SPECIFIC,
+    ];
+
     protected $fillable = [
         'code',
         'name',
         'description',
+        'purpose',
+        'audience',
         'discount_type',
         'discount_value',
         'max_discount_amount',
@@ -55,5 +81,12 @@ class Coupon extends Model
     public function usages()
     {
         return $this->hasMany(CouponUsage::class);
+    }
+
+    public function assignedCustomers()
+    {
+        return $this->belongsToMany(Customer::class)
+            ->withPivot('assigned_at')
+            ->withTimestamps();
     }
 }

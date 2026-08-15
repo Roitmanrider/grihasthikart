@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domains\Customer\Contracts\CustomerRepositoryInterface;
 use App\Domains\Customer\Services\CustomerAddressService;
+use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Customer\Services\CustomerService;
 use App\Domains\Customer\Services\CustomerSessionService;
 use App\Domains\Delivery\Services\DeliveryChargeService;
@@ -22,7 +23,8 @@ class AdminCustomerController extends Controller
         private readonly CustomerRepositoryInterface $customerRepository,
         private readonly CustomerAddressService $addressService,
         private readonly CustomerSessionService $customerSessionService,
-        private readonly DeliveryChargeService $deliveryChargeService
+        private readonly DeliveryChargeService $deliveryChargeService,
+        private readonly CustomerCreditService $customerCreditService
     ) {}
 
     public function index(Request $request)
@@ -53,8 +55,10 @@ class AdminCustomerController extends Controller
     {
         $customer = $this->customerRepository->findWithDetails($customer->id);
         $deliveryRule = $this->deliveryChargeService->resolve($customer);
+        $creditBalance = $this->customerCreditService->balance($customer);
+        $creditTransactions = $this->customerCreditService->recent($customer, 10);
 
-        return view('admin.customers.show', compact('customer', 'deliveryRule'));
+        return view('admin.customers.show', compact('customer', 'deliveryRule', 'creditBalance', 'creditTransactions'));
     }
 
     public function edit(Customer $customer)

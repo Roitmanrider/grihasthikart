@@ -141,8 +141,8 @@
                                     <span class="fw-semibold text-success">Rs. {{ number_format($savings, 2) }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span>Delivery Charge</span>
-                                    <span class="fw-semibold">{{ (float) $delivery_charge > 0 ? 'Rs. '.number_format((float) $delivery_charge, 2) : 'Free' }}</span>
+                                    <span>Original Delivery Charge</span>
+                                    <span class="fw-semibold">{{ (float) $original_delivery_charge > 0 ? 'Rs. '.number_format((float) $original_delivery_charge, 2) : 'Free' }}</span>
                                 </div>
                                 @if (($delivery_rule['free_delivery_remaining'] ?? 0) > 0)
                                     <div class="small text-success mb-3">Add Rs. {{ number_format((float) $delivery_rule['free_delivery_remaining'], 2) }} more for FREE delivery</div>
@@ -154,7 +154,7 @@
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <div>
                                                 <div class="fw-semibold">{{ $applied_coupon->code }}</div>
-                                                <div class="small text-muted">Coupon discount: Rs. {{ number_format($coupon_discount, 2) }}</div>
+                                                <div class="small text-muted">{{ str($applied_coupon_purpose ?? 'MERCHANDISE')->replace('_', ' ')->headline() }}: Rs. {{ number_format($coupon_discount, 2) }}</div>
                                             </div>
                                             <form method="POST" action="{{ route('cart.coupon.remove') }}">
                                                 @csrf
@@ -162,30 +162,39 @@
                                                 <button class="btn btn-sm btn-outline-danger">Remove</button>
                                             </form>
                                         </div>
-                                    @else
-                                        <form method="POST" action="{{ route('cart.coupon.apply') }}">
-                                            @csrf
-                                            <div class="d-flex gap-2">
-                                                <input type="text" name="code" value="{{ old('code') }}" class="form-control @error('code') is-invalid @enderror @error('coupon') is-invalid @enderror" placeholder="Coupon code">
-                                                <button class="btn btn-outline-success">Apply</button>
-                                            </div>
-                                            @error('code')
-                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                            @enderror
-                                            @error('coupon')
-                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                            @enderror
-                                        </form>
                                     @endif
+                                    <form method="POST" action="{{ route('cart.coupon.apply') }}">
+                                        @csrf
+                                        <div class="d-flex gap-2">
+                                            <input type="text" name="code" value="{{ old('code') }}" class="form-control @error('code') is-invalid @enderror @error('coupon') is-invalid @enderror" placeholder="{{ $applied_coupon ? 'Replace coupon' : 'Coupon code' }}">
+                                            <button class="btn btn-outline-success">{{ $applied_coupon ? 'Replace' : 'Apply' }}</button>
+                                        </div>
+                                        @error('code')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                        @error('coupon')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </form>
                                 </div>
-                                @if ($coupon_discount > 0)
+                                @if ($merchandise_coupon_discount > 0)
                                     <div class="d-flex justify-content-between mb-3">
-                                        <span>Coupon Discount</span>
-                                        <span class="fw-semibold text-success">- Rs. {{ number_format($coupon_discount, 2) }}</span>
+                                        <span>Merchandise Coupon Discount</span>
+                                        <span class="fw-semibold text-success">- Rs. {{ number_format($merchandise_coupon_discount, 2) }}</span>
+                                    </div>
+                                @endif
+                                @if ($delivery_discount > 0)
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Delivery Discount</span>
+                                        <span class="fw-semibold text-success">- Rs. {{ number_format($delivery_discount, 2) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span>Final Delivery Charge</span>
+                                        <span class="fw-semibold">{{ (float) $delivery_charge > 0 ? 'Rs. '.number_format((float) $delivery_charge, 2) : 'Free' }}</span>
                                     </div>
                                 @endif
                                 <div class="d-flex justify-content-between h5 mb-3">
-                                    <span>Grand Total</span>
+                                    <span>Amount Before Customer Credit</span>
                                     <span>Rs. {{ number_format($grand_total, 2) }}</span>
                                 </div>
                                 <a href="{{ route('checkout.show') }}" class="btn btn-success w-100">Checkout</a>

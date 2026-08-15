@@ -108,7 +108,15 @@
                 <div class="d-flex justify-content-between"><span>MRP Total</span><span>Rs. {{ number_format((float) $order->total_mrp, 2) }}</span></div>
                 <div class="d-flex justify-content-between text-success"><span>Savings</span><span>Rs. {{ number_format((float) $order->total_savings, 2) }}</span></div>
                 <div class="d-flex justify-content-between"><span>Tax / GST</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
-                <div class="d-flex justify-content-between"><span>Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
+                <div class="d-flex justify-content-between"><span>Original Delivery Charge</span><span>{{ (float) ($order->original_delivery_charge ?: $order->delivery_charge) > 0 ? 'Rs. '.number_format((float) ($order->original_delivery_charge ?: $order->delivery_charge), 2) : 'Free' }}</span></div>
+                @if ($order->delivery_discount_total > 0)
+                    <div class="d-flex justify-content-between text-success"><span>Delivery Discount</span><span>- Rs. {{ number_format((float) $order->delivery_discount_total, 2) }}</span></div>
+                @endif
+                <div class="d-flex justify-content-between"><span>Final Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
+                <div class="d-flex justify-content-between"><span>Amount Before Customer Credit</span><span>Rs. {{ number_format((float) ($order->amount_before_customer_credit ?: ((float) $order->grand_total + (float) $order->customer_credit_used)), 2) }}</span></div>
+                @if ($order->customer_credit_used > 0)
+                    <div class="d-flex justify-content-between text-success"><span>Customer Credit Used</span><span>- Rs. {{ number_format((float) $order->customer_credit_used, 2) }}</span></div>
+                @endif
                 @if ($order->discount_total > 0)
                     <div class="d-flex justify-content-between text-success"><span>Coupon {{ $order->coupon_code_snapshot }}</span><span>- Rs. {{ number_format((float) $order->discount_total, 2) }}</span></div>
                 @endif

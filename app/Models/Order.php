@@ -27,7 +27,7 @@ class Order extends Model
 
     public const PAYMENT_STATUSES = ['pending', 'awaiting_verification', 'paid', 'failed', 'cancelled', 'refunded'];
 
-    public const PAYMENT_METHODS = ['cod', 'qr', 'razorpay'];
+    public const PAYMENT_METHODS = ['cod', 'qr', 'razorpay', 'customer_credit'];
 
     protected $fillable = [
         'order_number',
@@ -47,6 +47,7 @@ class Order extends Model
         'delivery_slot',
         'coupon_id',
         'coupon_code_snapshot',
+        'coupon_purpose_snapshot',
         'coupon_discount_amount',
         'payment_method',
         'payment_status',
@@ -56,8 +57,12 @@ class Order extends Model
         'total_savings',
         'tax_total',
         'delivery_charge',
+        'original_delivery_charge',
+        'delivery_discount_total',
         'discount_total',
         'grand_total',
+        'amount_before_customer_credit',
+        'customer_credit_used',
         'notes',
         'admin_notes',
         'placed_at',
@@ -74,8 +79,12 @@ class Order extends Model
         'total_savings' => 'decimal:2',
         'tax_total' => 'decimal:2',
         'delivery_charge' => 'decimal:2',
+        'original_delivery_charge' => 'decimal:2',
+        'delivery_discount_total' => 'decimal:2',
         'discount_total' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'amount_before_customer_credit' => 'decimal:2',
+        'customer_credit_used' => 'decimal:2',
         'placed_at' => 'datetime',
         'confirmed_at' => 'datetime',
         'delivered_at' => 'datetime',
@@ -120,5 +129,10 @@ class Order extends Model
     public function returnRequests()
     {
         return $this->hasMany(ReturnRequest::class);
+    }
+
+    public function customerCreditTransactions()
+    {
+        return $this->hasMany(CustomerCreditTransaction::class);
     }
 }

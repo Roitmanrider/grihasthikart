@@ -21,6 +21,7 @@ class CouponController extends Controller
     {
         $sessionId = $this->cartService->sessionIdentifier($request->session());
         $cart = $this->cartService->cartForSession($sessionId);
+        $previousCode = $cart->coupon_code;
 
         try {
             $this->couponService->applyCouponToCart(
@@ -32,7 +33,7 @@ class CouponController extends Controller
             return back()->withErrors(['coupon' => $exception->getMessage()]);
         }
 
-        return back()->with('success', 'Coupon applied successfully.');
+        return back()->with('success', $previousCode ? 'Coupon replaced successfully.' : 'Coupon applied successfully.');
     }
 
     public function remove()

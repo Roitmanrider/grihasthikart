@@ -130,7 +130,15 @@
                     <div class="summary-row"><span>Coupon Discount {{ $order->coupon_code_snapshot ? '('.$order->coupon_code_snapshot.')' : '' }}</span><span>- Rs. {{ number_format((float) $order->discount_total, 2) }}</span></div>
                 @endif
                 <div class="summary-row"><span>Tax / GST</span><span>Rs. {{ number_format((float) $order->tax_total, 2) }}</span></div>
-                <div class="summary-row"><span>Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
+                <div class="summary-row"><span>Original Delivery Charge</span><span>{{ (float) ($order->original_delivery_charge ?: $order->delivery_charge) > 0 ? 'Rs. '.number_format((float) ($order->original_delivery_charge ?: $order->delivery_charge), 2) : 'Free' }}</span></div>
+                @if ((float) $order->delivery_discount_total > 0)
+                    <div class="summary-row"><span>Delivery Discount</span><span>- Rs. {{ number_format((float) $order->delivery_discount_total, 2) }}</span></div>
+                @endif
+                <div class="summary-row"><span>Final Delivery Charge</span><span>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</span></div>
+                @if ((float) $order->customer_credit_used > 0)
+                    <div class="summary-row"><span>Amount Before Customer Credit</span><span>Rs. {{ number_format((float) ($order->amount_before_customer_credit ?: ((float) $order->grand_total + (float) $order->customer_credit_used)), 2) }}</span></div>
+                    <div class="summary-row"><span>Customer Credit Used</span><span>- Rs. {{ number_format((float) $order->customer_credit_used, 2) }}</span></div>
+                @endif
                 <div class="summary-row grand-total"><span>Final Amount</span><span>Rs. {{ number_format((float) $order->grand_total, 2) }}</span></div>
             </div>
         </section>

@@ -57,6 +57,7 @@ class BusinessSettingService
             'cart_employee_followup_enabled' => filter_var($this->get('checkout.cart_employee_followup_enabled', true), FILTER_VALIDATE_BOOLEAN),
             'cart_abuse_monitoring_enabled' => filter_var($this->get('checkout.cart_abuse_monitoring_enabled', true), FILTER_VALIDATE_BOOLEAN),
             'daily_offer_hold_minutes' => (int) $this->get('checkout.daily_offer_hold_minutes', 15),
+            'customer_credit_redemption_enabled' => filter_var($this->get('checkout.customer_credit_redemption_enabled', true), FILTER_VALIDATE_BOOLEAN),
             'default_state' => $this->get('checkout.default_state'),
             'default_city' => $this->get('checkout.default_city'),
             'store_contact_mobile' => $this->get('checkout.store_contact_mobile'),
@@ -154,7 +155,8 @@ class BusinessSettingService
             'cart_employee_followup_enabled' => ['boolean', 'Employee Cart Follow-up', 13],
             'cart_abuse_monitoring_enabled' => ['boolean', 'Abuse / Reservation Monitoring', 14],
             'daily_offer_hold_minutes' => ['integer', 'Daily Offer Reservation Duration', 15],
-            'return_window_days' => ['integer', 'Return Window Days', 16],
+            'customer_credit_redemption_enabled' => ['boolean', 'Customer Credit Redemption', 16],
+            'return_window_days' => ['integer', 'Return Window Days', 17],
         ];
 
         foreach ($data as $key => $value) {

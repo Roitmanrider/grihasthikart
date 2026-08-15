@@ -96,6 +96,7 @@ Route::middleware('customer.auth')->group(function () {
     Route::get('/account/orders/{order}/invoice', [CustomerOrderDocumentController::class, 'invoice'])->name('customer.orders.invoice');
     Route::patch('/account/orders/{orderNumber}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');
     Route::get('/account/orders/{orderNumber}', [CustomerDashboardController::class, 'orderShow'])->name('customer.orders.show');
+    Route::get('/account/credit', [CustomerDashboardController::class, 'credit'])->name('customer.credit.index');
     Route::get('/account/cashback', [CustomerCashbackController::class, 'index'])->name('customer.cashback.index');
     Route::post('/account/cashback/redeem', [CustomerCashbackController::class, 'redeem'])->name('customer.cashback.redeem');
     Route::get('/account/addresses', [CustomerAddressController::class, 'index'])->name('customer.addresses.index');

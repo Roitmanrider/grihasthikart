@@ -17,6 +17,22 @@
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-control" rows="3">{{ old('description', $coupon->description) }}</textarea>
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Purpose</label>
+                    <select name="purpose" class="form-select" required>
+                        @foreach (\App\Models\Coupon::PURPOSES as $purpose)
+                            <option value="{{ $purpose }}" @selected(old('purpose', $coupon->purpose ?: \App\Models\Coupon::PURPOSE_MERCHANDISE) === $purpose)>{{ str($purpose)->replace('_', ' ')->headline() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Audience</label>
+                    <select name="audience" class="form-select" required>
+                        @foreach (\App\Models\Coupon::AUDIENCES as $audience)
+                            <option value="{{ $audience }}" @selected(old('audience', $coupon->audience ?: \App\Models\Coupon::AUDIENCE_PUBLIC) === $audience)>{{ $audience === \App\Models\Coupon::AUDIENCE_PUBLIC ? 'All Eligible Customers' : 'Selected Customers' }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-4">
                     <label class="form-label">Discount Type</label>
                     <select name="discount_type" class="form-select" required>
@@ -55,13 +71,23 @@
                 <div class="col-md-4"><label class="form-label">Per Customer</label><input type="number" min="1" name="usage_limit_per_customer" value="{{ old('usage_limit_per_customer', $coupon->usage_limit_per_customer) }}" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Per Session</label><input type="number" min="1" name="usage_limit_per_session" value="{{ old('usage_limit_per_session', $coupon->usage_limit_per_session) }}" class="form-control"></div>
                 <div class="col-md-6">
-                    <label class="form-label">Customer Specific</label>
+                    <label class="form-label">Legacy Single Customer</label>
                     <select name="customer_id" class="form-select">
                         <option value="">Public coupon</option>
                         @foreach ($customers as $customer)
                             <option value="{{ $customer->id }}" @selected((string) old('customer_id', $coupon->customer_id) === (string) $customer->id)>{{ $customer->name }} / {{ $customer->mobile }}</option>
                         @endforeach
                     </select>
+                </div>
+                <div class="col-12">
+                    @php($selectedCustomerIds = collect(old('customer_ids', $coupon->assignedCustomers?->pluck('id')->all() ?? []))->map(fn ($id) => (string) $id)->all())
+                    <label class="form-label">Selected Customers</label>
+                    <select name="customer_ids[]" class="form-select" multiple size="6">
+                        @foreach ($customers as $customer)
+                            <option value="{{ $customer->id }}" @selected(in_array((string) $customer->id, $selectedCustomerIds, true))>#{{ $customer->id }} / {{ $customer->name }} / {{ $customer->mobile }}</option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">Showing the first 100 customers by name. Use the legacy single customer field for a known customer when needed.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Source</label>

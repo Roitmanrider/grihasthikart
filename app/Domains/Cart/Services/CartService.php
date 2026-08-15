@@ -3,6 +3,8 @@
 namespace App\Domains\Cart\Services;
 
 use App\Domains\Cart\Contracts\CartRepositoryInterface;
+use App\Domains\Coupon\Services\CouponService;
+use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Delivery\Services\DeliveryChargeService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Setting\Services\BusinessSettingService;
@@ -29,7 +31,9 @@ class CartService
         private readonly InventoryService $inventoryService,
         private readonly PendingOrderService $pendingOrderService,
         private readonly BusinessSettingService $settings,
-        private readonly DeliveryChargeService $deliveryChargeService
+        private readonly DeliveryChargeService $deliveryChargeService,
+        private readonly CouponService $couponService,
+        private readonly CustomerCreditService $customerCreditService
     ) {}
 
     public function getOrCreateCartForSession(string $sessionId): Cart
@@ -200,8 +204,38 @@ class CartService
         $this->pendingOrderService->triggerReminderIfDue($baseCart);
         $cart = $this->refreshCartPrices($this->repository->cartWithItems($baseCart->fresh()));
         $subtotal = $this->calculateSubtotal($cart);
-        $couponDiscount = (float) $cart->coupon_discount_amount;
-        $deliveryRule = $this->deliveryChargeService->resolve($this->customerForSession($sessionId), $subtotal);
+        $customer = $this->customerForSession($sessionId);
+        $deliveryRule = $this->deliveryChargeService->resolve($customer, $subtotal);
+        $couponEffect = [
+            'merchandise_discount' => 0.0,
+            'delivery_discount' => 0.0,
+            'total_discount' => 0.0,
+            'purpose' => null,
+        ];
+
+        if ($cart->coupon) {
+            try {
+                $couponEffect = $this->couponService->calculateEffect($cart->coupon, $cart, $customer, $deliveryRule);
+            } catch (InvalidArgumentException) {
+                $couponEffect = [
+                    'merchandise_discount' => 0.0,
+                    'delivery_discount' => 0.0,
+                    'total_discount' => 0.0,
+                    'purpose' => $cart->coupon->purpose,
+                ];
+            }
+        }
+
+        $originalDeliveryCharge = round((float) $deliveryRule['delivery_charge'], 2);
+        $deliveryDiscount = round(min((float) $couponEffect['delivery_discount'], $originalDeliveryCharge), 2);
+        $finalDeliveryCharge = round(max(0, $originalDeliveryCharge - $deliveryDiscount), 2);
+        $merchandiseCouponDiscount = round(min((float) $couponEffect['merchandise_discount'], $subtotal), 2);
+        $amountBeforeCredit = round(max(0, $subtotal - $merchandiseCouponDiscount) + $finalDeliveryCharge, 2);
+        $creditEnabled = filter_var($this->settings->get('checkout.customer_credit_redemption_enabled', true), FILTER_VALIDATE_BOOLEAN);
+        $creditBalance = $customer ? $this->customerCreditService->balance($customer) : 0.0;
+        $creditMaximum = $customer && $creditEnabled
+            ? $this->customerCreditService->maximumUsable($customer, $amountBeforeCredit)
+            : 0.0;
 
         return [
             'cart' => $cart,
@@ -210,12 +244,20 @@ class CartService
             'line_count' => $cart->items->count(),
             'subtotal' => $subtotal,
             'savings' => $this->calculateSavings($cart),
-            'coupon_discount' => $couponDiscount,
+            'coupon_discount' => (float) $couponEffect['total_discount'],
+            'merchandise_coupon_discount' => $merchandiseCouponDiscount,
+            'delivery_discount' => $deliveryDiscount,
             'applied_coupon' => $cart->coupon,
+            'applied_coupon_purpose' => $couponEffect['purpose'],
             'pending_order' => $this->pendingOrderService->activeForCart($cart),
             'delivery_rule' => $deliveryRule,
-            'delivery_charge' => $deliveryRule['delivery_charge'],
-            'grand_total' => round(max(0, $subtotal - $couponDiscount) + $deliveryRule['delivery_charge'], 2),
+            'original_delivery_charge' => $originalDeliveryCharge,
+            'delivery_charge' => $finalDeliveryCharge,
+            'amount_before_customer_credit' => $amountBeforeCredit,
+            'customer_credit_redemption_enabled' => $creditEnabled,
+            'customer_credit_balance' => $creditBalance,
+            'customer_credit_maximum' => $creditMaximum,
+            'grand_total' => $amountBeforeCredit,
         ];
     }
 

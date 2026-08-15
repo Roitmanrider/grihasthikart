@@ -29,6 +29,7 @@ class BusinessSettingSeeder extends Seeder
             ['checkout', 'cart_employee_followup_enabled', '1', 'boolean', 'Employee Cart Follow-up', 13],
             ['checkout', 'cart_abuse_monitoring_enabled', '1', 'boolean', 'Abuse / Reservation Monitoring', 14],
             ['checkout', 'daily_offer_hold_minutes', '15', 'integer', 'Daily Offer Reservation Duration', 15],
+            ['checkout', 'customer_credit_redemption_enabled', '1', 'boolean', 'Customer Credit Redemption', 16],
             ['checkout', 'default_state', null, 'string', 'Default State', 16],
             ['checkout', 'default_city', null, 'string', 'Default City', 17],
             ['checkout', 'store_contact_mobile', null, 'string', 'Store Contact Mobile', 18],

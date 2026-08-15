@@ -45,6 +45,7 @@ class SettingManagementTest extends TestCase
             'cart_employee_followup_enabled' => 1,
             'cart_abuse_monitoring_enabled' => 1,
             'daily_offer_hold_minutes' => 15,
+            'customer_credit_redemption_enabled' => 1,
             'return_window_days' => 4,
             'default_state' => 'Bihar',
             'default_city' => 'Patna',

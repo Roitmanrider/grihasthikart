@@ -13,17 +13,23 @@ class CustomerCreditTransaction extends Model
 
     public const MANUAL_CREDIT = 'MANUAL_CREDIT';
 
+    public const MANUAL_DEBIT = 'MANUAL_DEBIT';
+
     public const ORDER_REDEMPTION_DEBIT = 'ORDER_REDEMPTION_DEBIT';
+
+    public const ORDER_CANCELLATION_CREDIT = 'ORDER_CANCELLATION_CREDIT';
 
     public const MANUAL_ADJUSTMENT = 'MANUAL_ADJUSTMENT';
 
     public const CREDIT_TYPES = [
         self::RETURN_REFUND_CREDIT,
         self::MANUAL_CREDIT,
+        self::ORDER_CANCELLATION_CREDIT,
     ];
 
     public const DEBIT_TYPES = [
         self::ORDER_REDEMPTION_DEBIT,
+        self::MANUAL_DEBIT,
     ];
 
     protected $fillable = [
@@ -36,6 +42,7 @@ class CustomerCreditTransaction extends Model
         'source',
         'description',
         'created_by',
+        'idempotency_key',
     ];
 
     protected $casts = [

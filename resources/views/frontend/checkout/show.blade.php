@@ -202,6 +202,37 @@
                                     @enderror
                                 </div>
                                 <div class="col-12">
+                                    @if ($customer)
+                                        <div class="border rounded p-3 mb-3">
+                                            <div class="d-flex flex-wrap justify-content-between gap-2">
+                                                <div>
+                                                    <div class="fw-semibold">Customer Credit</div>
+                                                    <div class="small text-muted">Available Customer Credit: Rs. {{ number_format((float) $customer_credit_balance, 2) }}</div>
+                                                </div>
+                                                @if ($customer_credit_redemption_enabled && $customer_credit_maximum > 0)
+                                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="document.getElementById('customerCreditAmount').value='{{ number_format((float) $customer_credit_maximum, 2, '.', '') }}'; document.getElementById('useCustomerCredit').checked=true;">Use Maximum</button>
+                                                @endif
+                                            </div>
+                                            <div class="row g-2 mt-2">
+                                                <div class="col-md-5">
+                                                    <div class="form-check">
+                                                        <input type="hidden" name="use_customer_credit" value="0">
+                                                        <input class="form-check-input" type="checkbox" name="use_customer_credit" value="1" id="useCustomerCredit" @checked(old('use_customer_credit')) @disabled(! $customer_credit_redemption_enabled || $customer_credit_maximum <= 0)>
+                                                        <label class="form-check-label" for="useCustomerCredit">Use Customer Credit</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <input id="customerCreditAmount" type="number" step="0.01" min="0" max="{{ number_format((float) $customer_credit_maximum, 2, '.', '') }}" name="customer_credit_amount" value="{{ old('customer_credit_amount') }}" class="form-control @error('customer_credit_amount') is-invalid @enderror" placeholder="Amount up to Rs. {{ number_format((float) $customer_credit_maximum, 2) }}" @disabled(! $customer_credit_redemption_enabled || $customer_credit_maximum <= 0)>
+                                                    @error('customer_credit_amount')
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+                                                </div>
+                                            </div>
+                                            @if (! $customer_credit_redemption_enabled)
+                                                <div class="small text-muted mt-2">Customer Credit redemption is currently disabled for checkout.</div>
+                                            @endif
+                                        </div>
+                                    @endif
                                     <label class="form-label">Payment Method</label>
                                     @error('payment_method')
                                         <div class="text-danger small mb-2">{{ $message }}</div>
@@ -271,12 +302,12 @@
                             @endforeach
 
                             <div class="d-flex justify-content-between mt-3">
-                                <span>Subtotal</span>
+                                <span>Merchandise Amount</span>
                                 <strong>Rs. {{ number_format($subtotal, 2) }}</strong>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <span>Delivery Charge</span>
-                                <strong>{{ (float) $delivery_charge > 0 ? 'Rs. '.number_format((float) $delivery_charge, 2) : 'Free' }}</strong>
+                                <span>Original Delivery Charge</span>
+                                <strong>{{ (float) $original_delivery_charge > 0 ? 'Rs. '.number_format((float) $original_delivery_charge, 2) : 'Free' }}</strong>
                             </div>
                             @if (($delivery_rule['free_delivery_remaining'] ?? 0) > 0)
                                 <div class="small text-success">Add Rs. {{ number_format((float) $delivery_rule['free_delivery_remaining'], 2) }} more for FREE delivery</div>
@@ -287,17 +318,34 @@
                                 <span>Savings</span>
                                 <strong>Rs. {{ number_format($savings, 2) }}</strong>
                             </div>
-                            @if ($coupon_discount > 0)
+                            @if ($merchandise_coupon_discount > 0)
                                 <div class="d-flex justify-content-between text-success">
-                                    <span>Coupon {{ $applied_coupon?->code }}</span>
-                                    <strong>- Rs. {{ number_format($coupon_discount, 2) }}</strong>
+                                    <span>Merchandise Coupon {{ $applied_coupon?->code }}</span>
+                                    <strong>- Rs. {{ number_format($merchandise_coupon_discount, 2) }}</strong>
+                                </div>
+                            @endif
+                            @if ($delivery_discount > 0)
+                                <div class="d-flex justify-content-between text-success">
+                                    <span>Delivery Discount {{ $applied_coupon?->code }}</span>
+                                    <strong>- Rs. {{ number_format($delivery_discount, 2) }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Final Delivery Charge</span>
+                                    <strong>{{ (float) $delivery_charge > 0 ? 'Rs. '.number_format((float) $delivery_charge, 2) : 'Free' }}</strong>
                                 </div>
                             @endif
                             <hr>
+                            <div class="d-flex justify-content-between">
+                                <span>Amount Before Customer Credit</span>
+                                <strong>Rs. {{ number_format($amount_before_customer_credit, 2) }}</strong>
+                            </div>
                             <div class="d-flex justify-content-between h5">
-                                <span>Grand Total</span>
+                                <span>Final Amount Due</span>
                                 <strong>Rs. {{ number_format($grand_total, 2) }}</strong>
                             </div>
+                            @if ($customer_credit_maximum >= $amount_before_customer_credit && $amount_before_customer_credit > 0)
+                                <div class="small text-success">Can be fully covered by Customer Credit.</div>
+                            @endif
                         </div>
                     </div>
                 </div>

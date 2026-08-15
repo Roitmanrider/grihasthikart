@@ -39,6 +39,7 @@ class UpdateBusinessSettingRequest extends FormRequest
             'cart_employee_followup_enabled' => ['nullable', 'boolean'],
             'cart_abuse_monitoring_enabled' => ['nullable', 'boolean'],
             'daily_offer_hold_minutes' => ['required', 'integer', Rule::in($allowedDurations)],
+            'customer_credit_redemption_enabled' => ['nullable', 'boolean'],
             'return_window_days' => ['required', 'integer', 'min:0', 'max:30'],
             'default_state' => ['nullable', 'string', 'max:100'],
             'default_city' => ['nullable', 'string', 'max:100'],

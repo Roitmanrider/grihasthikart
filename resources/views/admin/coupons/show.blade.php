@@ -17,6 +17,11 @@
             <div class="card-header bg-white fw-semibold">Summary</div>
             <div class="card-body">
                 <div class="mb-2">Discount: <strong>{{ $coupon->discount_type }} / {{ number_format((float) $coupon->discount_value, 2) }}</strong></div>
+                <div class="mb-2">Purpose: <strong>{{ str($coupon->purpose ?? \App\Models\Coupon::PURPOSE_MERCHANDISE)->replace('_', ' ')->headline() }}</strong></div>
+                <div class="mb-2">Audience: <strong>{{ ($coupon->audience ?? \App\Models\Coupon::AUDIENCE_PUBLIC) === \App\Models\Coupon::AUDIENCE_PUBLIC ? 'All Eligible Customers' : 'Selected Customers' }}</strong></div>
+                @if (($coupon->audience ?? \App\Models\Coupon::AUDIENCE_PUBLIC) === \App\Models\Coupon::AUDIENCE_CUSTOMER_SPECIFIC)
+                    <div class="mb-2">Assigned customers: {{ $coupon->assignedCustomers->pluck('name')->join(', ') ?: ($coupon->customer?->name ?: 'None') }}</div>
+                @endif
                 <div class="mb-2">Minimum order: Rs. {{ number_format((float) $coupon->minimum_order_amount, 2) }}</div>
                 <div class="mb-2">Usage count: {{ $coupon->usages_count }}</div>
                 <div>Status: {{ $coupon->status ? 'Active' : 'Inactive' }}</div>

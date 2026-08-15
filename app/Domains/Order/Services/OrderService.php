@@ -6,6 +6,7 @@ use App\Domains\Cart\Services\CartService;
 use App\Domains\Cart\Services\PendingOrderService;
 use App\Domains\Checkout\Services\CheckoutRuleService;
 use App\Domains\Coupon\Services\CouponService;
+use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Delivery\Services\DeliveryChargeService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Notification\Services\NotificationService;
@@ -39,7 +40,8 @@ class OrderService
         private readonly OrderStatusService $orderStatusService,
         private readonly NotificationService $notificationService,
         private readonly PendingOrderService $pendingOrderService,
-        private readonly DeliveryChargeService $deliveryChargeService
+        private readonly DeliveryChargeService $deliveryChargeService,
+        private readonly CustomerCreditService $customerCreditService
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 20)
@@ -63,12 +65,23 @@ class OrderService
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
             $deliveryRule = $this->deliveryChargeService->resolve($customer, $this->cartSubtotal($cart));
-            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount'], $deliveryRule);
+            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData, $deliveryRule);
+            $totals = $this->applyCustomerCredit($totals, $customer, $checkoutData);
             $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal'], $deliveryRule);
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals);
             $this->createOrderItems($order, $cart);
             $this->createCouponUsageIfApplied($order, $couponData['coupon'], $couponData['discount']);
-            $this->paymentService->createForOrder($order, $checkoutData['payment_method'] ?? 'cod');
+            if ((float) $order->customer_credit_used > 0 && $customer) {
+                $this->customerCreditService->debitForOrder($customer, $order, (float) $order->customer_credit_used);
+            }
+            if ((float) $order->grand_total > 0) {
+                $this->paymentService->createForOrder($order, $checkoutData['payment_method'] ?? 'cod');
+            } else {
+                $order->update([
+                    'payment_method' => 'customer_credit',
+                    'payment_status' => 'paid',
+                ]);
+            }
             $this->deductInventoryForOrder($order, $lockedInventories);
             if ($pending) {
                 $this->pendingOrderService->convert($pending, $order);
@@ -100,8 +113,13 @@ class OrderService
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
             $deliveryRule = $this->deliveryChargeService->resolve($customer, $this->cartSubtotal($cart));
-            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData['discount'], $deliveryRule);
+            $totals = $this->calculateTotalsFromCartSnapshots($cart, $couponData, $deliveryRule);
+            $totals = $this->applyCustomerCredit($totals, $customer, $checkoutData);
             $this->checkoutRuleService->validateCheckout($checkoutData, $totals['subtotal'], $deliveryRule);
+
+            if ((float) $totals['grand_total'] <= 0) {
+                throw new InvalidArgumentException('This order is fully covered by Customer Credit. Please place it without online payment.');
+            }
 
             $order = $this->createOrder($cart, $sessionId, $checkoutData, $totals, 'pending');
             $this->createOrderItems($order, $cart);
@@ -126,7 +144,7 @@ class OrderService
         return DB::transaction(function () use ($order, $payload) {
             /** @var Order $lockedOrder */
             $lockedOrder = Order::query()
-                ->with(['items', 'payment'])
+                ->with(['items', 'payment', 'customer'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -141,6 +159,10 @@ class OrderService
             $completedOnlinePayment = false;
 
             if ($lockedOrder->order_status !== 'placed') {
+                if ((float) $lockedOrder->customer_credit_used > 0 && $lockedOrder->customer) {
+                    $this->customerCreditService->debitForOrder($lockedOrder->customer, $lockedOrder, (float) $lockedOrder->customer_credit_used);
+                }
+
                 $this->deductInventoryForOrder($lockedOrder);
 
                 if ($lockedOrder->coupon_id && (float) $lockedOrder->coupon_discount_amount > 0) {
@@ -198,6 +220,7 @@ class OrderService
 
             if ($this->orderStatusService->isCancellation($newStatus)) {
                 $this->restoreStockOnCancellation($lockedOrder);
+                $this->customerCreditService->restoreForCancelledOrder($lockedOrder, $note);
                 $lockedOrder->cancelled_at = now();
             }
 
@@ -271,7 +294,7 @@ class OrderService
         }
     }
 
-    public function calculateTotalsFromCartSnapshots(Cart $cart, float $couponDiscount = 0, ?array $deliveryRule = null): array
+    public function calculateTotalsFromCartSnapshots(Cart $cart, array|float $couponEffect = 0, ?array $deliveryRule = null): array
     {
         $subtotal = 0.0;
         $totalMrp = 0.0;
@@ -288,17 +311,29 @@ class OrderService
         }
 
         $deliveryRule ??= $this->deliveryChargeService->resolve($cart->customer, $subtotal);
-        $deliveryCharge = (float) $deliveryRule['delivery_charge'];
-        $couponDiscount = round(min(max(0, $couponDiscount), $subtotal), 2);
+        $originalDeliveryCharge = round((float) $deliveryRule['delivery_charge'], 2);
+        $merchandiseDiscount = is_array($couponEffect)
+            ? (float) ($couponEffect['merchandise_discount'] ?? $couponEffect['discount'] ?? 0)
+            : (float) $couponEffect;
+        $deliveryDiscount = is_array($couponEffect) ? (float) ($couponEffect['delivery_discount'] ?? 0) : 0.0;
+        $merchandiseDiscount = round(min(max(0, $merchandiseDiscount), $subtotal), 2);
+        $deliveryDiscount = round(min(max(0, $deliveryDiscount), $originalDeliveryCharge), 2);
+        $finalDeliveryCharge = round(max(0, $originalDeliveryCharge - $deliveryDiscount), 2);
+        $amountBeforeCredit = round(max(0, $subtotal - $merchandiseDiscount) + $finalDeliveryCharge, 2);
 
         return [
             'subtotal' => round($subtotal, 2),
             'total_mrp' => round($totalMrp, 2),
             'total_savings' => round(max(0, $totalMrp - $subtotal), 2),
             'tax_total' => round($taxTotal, 2),
-            'delivery_charge' => $deliveryCharge,
-            'discount_total' => $couponDiscount,
-            'grand_total' => round(max(0, $subtotal - $couponDiscount) + $deliveryCharge, 2),
+            'original_delivery_charge' => $originalDeliveryCharge,
+            'delivery_discount_total' => $deliveryDiscount,
+            'delivery_charge' => $finalDeliveryCharge,
+            'discount_total' => $merchandiseDiscount,
+            'coupon_discount_amount' => round($merchandiseDiscount + $deliveryDiscount, 2),
+            'amount_before_customer_credit' => $amountBeforeCredit,
+            'customer_credit_used' => 0.0,
+            'grand_total' => $amountBeforeCredit,
         ];
     }
 
@@ -318,14 +353,43 @@ class OrderService
             'session_id' => $sessionId,
             'coupon_id' => $cart->coupon_id,
             'coupon_code_snapshot' => $cart->coupon_code,
-            'coupon_discount_amount' => $totals['discount_total'],
+            'coupon_purpose_snapshot' => $cart->coupon?->purpose,
+            'coupon_discount_amount' => $totals['coupon_discount_amount'] ?? $totals['discount_total'],
             'payment_method' => $checkoutData['payment_method'] ?? 'cod',
-            'payment_status' => 'pending',
+            'payment_status' => (float) ($totals['grand_total'] ?? 0) <= 0 ? 'paid' : 'pending',
             'order_status' => $initialStatus,
             'placed_at' => $initialStatus === 'placed' ? now() : null,
         ]));
 
         return $order;
+    }
+
+    private function applyCustomerCredit(array $totals, ?Customer $customer, array $checkoutData): array
+    {
+        $enabled = filter_var($this->settingService->get('checkout.customer_credit_redemption_enabled', true), FILTER_VALIDATE_BOOLEAN);
+        $requested = (float) ($checkoutData['customer_credit_amount'] ?? 0);
+        $useCredit = filter_var($checkoutData['use_customer_credit'] ?? false, FILTER_VALIDATE_BOOLEAN) || $requested > 0;
+
+        if (! $enabled || ! $customer || ! $useCredit) {
+            return $totals;
+        }
+
+        if ($requested < 0) {
+            throw new InvalidArgumentException('Customer Credit amount cannot be negative.');
+        }
+
+        $payable = round((float) $totals['amount_before_customer_credit'], 2);
+        $maximum = $this->customerCreditService->maximumUsable($customer, $payable);
+        $creditUsed = $requested > 0 ? round($requested, 2) : $maximum;
+
+        if ($creditUsed > $maximum) {
+            throw new InvalidArgumentException('Customer Credit amount exceeds the usable balance for this order.');
+        }
+
+        $totals['customer_credit_used'] = $creditUsed;
+        $totals['grand_total'] = round(max(0, $payable - $creditUsed), 2);
+
+        return $totals;
     }
 
     public function createCouponUsageIfApplied(Order $order, ?Coupon $coupon, float $discountAmount): void

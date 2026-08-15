@@ -4,6 +4,7 @@ namespace App\Domains\Customer\Services;
 
 use App\Models\Customer;
 use App\Models\CustomerCreditTransaction;
+use App\Models\Order;
 use App\Models\ReturnRequest;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -88,5 +89,119 @@ class CustomerCreditService
                 throw $exception;
             }
         });
+    }
+
+    public function debitForOrder(Customer $customer, Order $order, float $amount): ?CustomerCreditTransaction
+    {
+        $amount = round($amount, 2);
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($customer, $order, $amount) {
+            $existing = CustomerCreditTransaction::query()
+                ->where('order_id', $order->id)
+                ->where('type', CustomerCreditTransaction::ORDER_REDEMPTION_DEBIT)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $balance = $this->lockedBalance($customer);
+
+            if ($amount > $balance) {
+                throw new InvalidArgumentException('Customer Credit balance is not sufficient.');
+            }
+
+            $balanceAfter = round($balance - $amount, 2);
+
+            try {
+                return CustomerCreditTransaction::query()->create([
+                    'customer_id' => $customer->id,
+                    'type' => CustomerCreditTransaction::ORDER_REDEMPTION_DEBIT,
+                    'amount' => $amount,
+                    'balance_after' => $balanceAfter,
+                    'order_id' => $order->id,
+                    'source' => 'checkout_redemption',
+                    'description' => 'Customer Credit used for order '.$order->order_number,
+                    'created_by' => Auth::id(),
+                    'idempotency_key' => CustomerCreditTransaction::ORDER_REDEMPTION_DEBIT.':'.$order->id,
+                ]);
+            } catch (QueryException $exception) {
+                if (($exception->errorInfo[0] ?? null) === '23000') {
+                    return CustomerCreditTransaction::query()
+                        ->where('order_id', $order->id)
+                        ->where('type', CustomerCreditTransaction::ORDER_REDEMPTION_DEBIT)
+                        ->firstOrFail();
+                }
+
+                throw $exception;
+            }
+        });
+    }
+
+    public function restoreForCancelledOrder(Order $order, ?string $note = null): ?CustomerCreditTransaction
+    {
+        $amount = round((float) $order->customer_credit_used, 2);
+
+        if ($amount <= 0 || ! $order->customer_id || ! $order->customer) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($order, $note, $amount) {
+            $existing = CustomerCreditTransaction::query()
+                ->where('order_id', $order->id)
+                ->where('type', CustomerCreditTransaction::ORDER_CANCELLATION_CREDIT)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $balanceAfter = round($this->lockedBalance($order->customer) + $amount, 2);
+
+            try {
+                return CustomerCreditTransaction::query()->create([
+                    'customer_id' => $order->customer_id,
+                    'type' => CustomerCreditTransaction::ORDER_CANCELLATION_CREDIT,
+                    'amount' => $amount,
+                    'balance_after' => $balanceAfter,
+                    'order_id' => $order->id,
+                    'source' => 'order_cancellation',
+                    'description' => $note ?: 'Customer Credit restored for cancelled order '.$order->order_number,
+                    'created_by' => Auth::id(),
+                    'idempotency_key' => CustomerCreditTransaction::ORDER_CANCELLATION_CREDIT.':'.$order->id,
+                ]);
+            } catch (QueryException $exception) {
+                if (($exception->errorInfo[0] ?? null) === '23000') {
+                    return CustomerCreditTransaction::query()
+                        ->where('order_id', $order->id)
+                        ->where('type', CustomerCreditTransaction::ORDER_CANCELLATION_CREDIT)
+                        ->firstOrFail();
+                }
+
+                throw $exception;
+            }
+        });
+    }
+
+    public function maximumUsable(Customer $customer, float $payable): float
+    {
+        return round(min($this->balance($customer), max(0, $payable)), 2);
+    }
+
+    private function lockedBalance(Customer $customer): float
+    {
+        CustomerCreditTransaction::query()
+            ->where('customer_id', $customer->id)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get(['id']);
+
+        return $this->balance($customer);
     }
 }

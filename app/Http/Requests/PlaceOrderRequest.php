@@ -31,6 +31,8 @@ class PlaceOrderRequest extends FormRequest
             'delivery_date' => ['nullable', 'date', 'after_or_equal:today'],
             'delivery_slot' => ['nullable', 'string', 'max:255'],
             'payment_method' => ['required', 'string', 'in:cod,qr,razorpay'],
+            'use_customer_credit' => ['nullable', 'boolean'],
+            'customer_credit_amount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

@@ -84,7 +84,7 @@
                         </td>
                         <td>Rs. {{ number_format((float) $order->subtotal, 2) }}</td>
                         <td>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</td>
-                        <td class="fw-semibold">Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
+                        <td class="fw-semibold">Rs. {{ number_format((float) $order->grand_total, 2) }}@if((float)$order->customer_credit_used > 0)<div class="small text-success">Credit: - Rs. {{ number_format((float)$order->customer_credit_used, 2) }}</div>@endif</td>
                         <td>{{ strtoupper($order->payment_method) }} / {{ $order->payment_status }}</td>
                         <td><span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span>@if($order->returnRequests->isNotEmpty())<div class="small text-muted">{{ str($order->returnRequests->sortByDesc('created_at')->first()->status)->headline() }}</div>@endif</td>
                         <td class="text-end">

@@ -78,6 +78,8 @@
                         <div class="alert alert-light border mt-4 mb-0">Pay on delivery.</div>
                     @elseif ($order->payment_method === 'razorpay')
                         <div class="alert alert-light border mt-4 mb-0">Online payment has been initiated.</div>
+                    @elseif ($order->payment_method === 'customer_credit')
+                        <div class="alert alert-success mt-4 mb-0">Fully covered by Customer Credit.</div>
                     @endif
 
                     <a href="{{ route('products.index') }}" class="btn btn-success mt-4">Continue Shopping</a>

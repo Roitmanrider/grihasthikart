@@ -18,7 +18,7 @@
     <div class="card-body row g-3">
         <div class="col-md-3"><input type="search" name="search" value="{{ request('search') }}" class="form-control" placeholder="Code, name, customer"></div>
         <div class="col-md-2"><select name="status" class="form-select"><option value="">All status</option><option value="1" @selected(request('status') === '1')>Active</option><option value="0" @selected(request('status') === '0')>Inactive</option></select></div>
-        <div class="col-md-2"><select name="discount_type" class="form-select"><option value="">All types</option><option value="fixed" @selected(request('discount_type') === 'fixed')>Fixed</option><option value="percentage" @selected(request('discount_type') === 'percentage')>Percentage</option></select></div>
+        <div class="col-md-2"><select name="purpose" class="form-select"><option value="">All purposes</option>@foreach (\App\Models\Coupon::PURPOSES as $purpose)<option value="{{ $purpose }}" @selected(request('purpose') === $purpose)>{{ str($purpose)->replace('_', ' ')->headline() }}</option>@endforeach</select></div>
         <div class="col-md-2"><select name="validity" class="form-select"><option value="">Any validity</option><option value="active" @selected(request('validity') === 'active')>Current</option><option value="expired" @selected(request('validity') === 'expired')>Expired</option><option value="upcoming" @selected(request('validity') === 'upcoming')>Upcoming</option></select></div>
         <div class="col-md-2"><select name="trashed" class="form-select"><option value="">Without deleted</option><option value="with" @selected(request('trashed') === 'with')>With deleted</option><option value="only" @selected(request('trashed') === 'only')>Deleted only</option></select></div>
         <div class="col-md-1"><button class="btn btn-outline-success w-100">Filter</button></div>
@@ -39,8 +39,8 @@
                     @forelse ($coupons as $coupon)
                         <tr @class(['table-warning' => $coupon->trashed()])>
                             <td><input type="checkbox" name="ids[]" value="{{ $coupon->id }}" class="form-check-input coupon-check"></td>
-                            <td><div class="fw-semibold">{{ $coupon->code }}</div><div class="small text-muted">{{ $coupon->name }}</div></td>
-                            <td>{{ str($coupon->discount_type)->headline() }} / {{ number_format((float) $coupon->discount_value, 2) }}</td>
+                            <td><div class="fw-semibold">{{ $coupon->code }}</div><div class="small text-muted">{{ $coupon->name }}</div><div class="small text-muted">{{ ($coupon->audience ?? \App\Models\Coupon::AUDIENCE_PUBLIC) === \App\Models\Coupon::AUDIENCE_PUBLIC ? 'Public' : 'Selected customers' }}</div></td>
+                            <td>{{ str($coupon->purpose ?? \App\Models\Coupon::PURPOSE_MERCHANDISE)->replace('_', ' ')->headline() }} / {{ str($coupon->discount_type)->headline() }} / {{ number_format((float) $coupon->discount_value, 2) }}</td>
                             <td>Rs. {{ number_format((float) $coupon->minimum_order_amount, 2) }}</td>
                             <td>{{ $coupon->usages_count }}</td>
                             <td><span class="badge {{ $coupon->status ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $coupon->status ? 'Active' : 'Inactive' }}</span></td>

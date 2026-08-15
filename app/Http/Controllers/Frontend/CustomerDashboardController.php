@@ -44,6 +44,17 @@ class CustomerDashboardController extends Controller
         return view('frontend.customer.orders.index', compact('customer', 'orders'));
     }
 
+    public function credit()
+    {
+        $customer = $this->requireCustomer();
+        $creditBalance = $this->customerCreditService->balance($customer);
+        $creditTransactions = $customer->creditTransactions()
+            ->with(['order', 'returnRequest'])
+            ->paginate(15);
+
+        return view('frontend.customer.credit.index', compact('customer', 'creditBalance', 'creditTransactions'));
+    }
+
     public function orderShow(string $orderNumber)
     {
         $customer = $this->requireCustomer();

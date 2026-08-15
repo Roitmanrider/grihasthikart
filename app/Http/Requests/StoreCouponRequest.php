@@ -14,6 +14,11 @@ class StoreCouponRequest extends FormRequest
         if ($this->has('code')) {
             $this->merge(['code' => str($this->input('code'))->upper()->replaceMatches('/\s+/', '')->toString()]);
         }
+
+        $this->merge([
+            'purpose' => $this->input('purpose', Coupon::PURPOSE_MERCHANDISE),
+            'audience' => $this->input('audience', Coupon::AUDIENCE_PUBLIC),
+        ]);
     }
 
     public function authorize(): bool
@@ -28,6 +33,8 @@ class StoreCouponRequest extends FormRequest
             'code' => ['required', 'string', 'max:50', Rule::unique('coupons', 'code')],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'purpose' => ['required', 'string', Rule::in(Coupon::PURPOSES)],
+            'audience' => ['required', 'string', Rule::in(Coupon::AUDIENCES)],
             'discount_type' => ['required', 'string', Rule::in(Coupon::DISCOUNT_TYPES)],
             'discount_value' => ['required', 'numeric', 'min:0.01'],
             'max_discount_amount' => ['nullable', 'numeric', 'min:0'],
@@ -36,6 +43,8 @@ class StoreCouponRequest extends FormRequest
             'usage_limit_per_customer' => ['nullable', 'integer', 'min:1'],
             'usage_limit_per_session' => ['nullable', 'integer', 'min:1'],
             'customer_id' => ['nullable', 'exists:customers,id'],
+            'customer_ids' => ['nullable', 'array'],
+            'customer_ids.*' => ['integer', 'exists:customers,id'],
             'starts_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['nullable', 'boolean'],

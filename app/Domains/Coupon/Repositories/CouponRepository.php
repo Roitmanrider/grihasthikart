@@ -28,7 +28,7 @@ class CouponRepository extends BaseRepository implements CouponRepositoryInterfa
     public function findWithDetails(int $id): Coupon
     {
         return $this->model->newQuery()
-            ->with(['customer', 'usages.order'])
+            ->with(['customer', 'assignedCustomers', 'usages.order'])
             ->withCount('usages')
             ->withTrashed()
             ->findOrFail($id);
@@ -37,7 +37,7 @@ class CouponRepository extends BaseRepository implements CouponRepositoryInterfa
     private function baseQuery(array $filters)
     {
         $query = $this->model->newQuery()
-            ->with('customer')
+            ->with(['customer', 'assignedCustomers'])
             ->withCount('usages');
 
         if (($filters['trashed'] ?? null) === 'with') {
@@ -58,7 +58,7 @@ class CouponRepository extends BaseRepository implements CouponRepositoryInterfa
             });
         }
 
-        foreach (['discount_type', 'source'] as $filter) {
+        foreach (['discount_type', 'source', 'purpose', 'audience'] as $filter) {
             if (($filters[$filter] ?? null) !== null && $filters[$filter] !== '') {
                 $query->where($filter, $filters[$filter]);
             }
@@ -71,9 +71,9 @@ class CouponRepository extends BaseRepository implements CouponRepositoryInterfa
         }
 
         if (($filters['customer_specific'] ?? null) === '1') {
-            $query->whereNotNull('customer_id');
+            $query->where(fn ($query) => $query->whereNotNull('customer_id')->orWhere('audience', Coupon::AUDIENCE_CUSTOMER_SPECIFIC));
         } elseif (($filters['customer_specific'] ?? null) === '0') {
-            $query->whereNull('customer_id');
+            $query->whereNull('customer_id')->where('audience', Coupon::AUDIENCE_PUBLIC);
         }
 
         if (($filters['validity'] ?? null) === 'expired') {

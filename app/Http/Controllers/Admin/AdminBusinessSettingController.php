@@ -27,6 +27,7 @@ class AdminBusinessSettingController extends Controller
         $data['cart_whatsapp_reminder_enabled'] = (bool) ($data['cart_whatsapp_reminder_enabled'] ?? false);
         $data['cart_employee_followup_enabled'] = (bool) ($data['cart_employee_followup_enabled'] ?? false);
         $data['cart_abuse_monitoring_enabled'] = (bool) ($data['cart_abuse_monitoring_enabled'] ?? false);
+        $data['customer_credit_redemption_enabled'] = (bool) ($data['customer_credit_redemption_enabled'] ?? false);
         $data['customer_invoice_enabled'] = (bool) ($data['customer_invoice_enabled'] ?? false);
 
         $this->settingService->updateCheckoutSettings($data);

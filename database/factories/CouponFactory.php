@@ -16,6 +16,8 @@ class CouponFactory extends Factory
             'code' => strtoupper(fake()->unique()->bothify('GK####')),
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),
+            'purpose' => Coupon::PURPOSE_MERCHANDISE,
+            'audience' => Coupon::AUDIENCE_PUBLIC,
             'discount_type' => 'fixed',
             'discount_value' => 50,
             'max_discount_amount' => null,

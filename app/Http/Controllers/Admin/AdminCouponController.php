@@ -24,7 +24,7 @@ class AdminCouponController extends Controller
     public function index(Request $request)
     {
         $coupons = $this->couponService->paginate(
-            $request->only(['search', 'status', 'discount_type', 'is_cashback_coupon', 'source', 'validity', 'customer_specific', 'trashed']),
+            $request->only(['search', 'status', 'discount_type', 'purpose', 'audience', 'is_cashback_coupon', 'source', 'validity', 'customer_specific', 'trashed']),
             (int) $request->input('per_page', 20)
         );
 
@@ -58,6 +58,7 @@ class AdminCouponController extends Controller
 
     public function edit(Coupon $coupon)
     {
+        $coupon->load('assignedCustomers');
         $customers = Customer::query()->orderBy('name')->limit(100)->get();
 
         return view('admin.coupons.edit', compact('coupon', 'customers'));

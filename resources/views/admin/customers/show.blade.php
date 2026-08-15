@@ -57,6 +57,34 @@
                 </dl>
             </div>
         </div>
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white fw-semibold">Customer Credit</div>
+            <div class="card-body">
+                <div class="h4 mb-3">Rs. {{ number_format((float) $creditBalance, 2) }}</div>
+                @forelse ($creditTransactions as $transaction)
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div>
+                                <div class="fw-semibold">{{ str($transaction->type)->headline() }}</div>
+                                <div class="small text-muted">{{ $transaction->description ?: $transaction->source }}</div>
+                                @if ($transaction->order)
+                                    <a class="small" href="{{ route('admin.orders.show', $transaction->order) }}">{{ $transaction->order->order_number }}</a>
+                                @endif
+                                @if ($transaction->returnRequest)
+                                    <a class="small" href="{{ route('admin.returns.show', $transaction->returnRequest) }}">{{ $transaction->returnRequest->return_number }}</a>
+                                @endif
+                            </div>
+                            <div class="text-end">
+                                <strong>Rs. {{ number_format((float) $transaction->amount, 2) }}</strong>
+                                <div class="small text-muted">Balance: Rs. {{ number_format((float) $transaction->balance_after, 2) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-muted">No Customer Credit transactions yet.</div>
+                @endforelse
+            </div>
+        </div>
     </div>
 
     <div class="col-lg-7">
@@ -122,6 +150,7 @@
                         <th>Order Date/Time</th>
                         <th>Merchandise Amount</th>
                         <th>Delivery Charge</th>
+                        <th>Customer Credit</th>
                         <th>Final Amount</th>
                         <th>Fulfillment</th>
                         <th>Return Status</th>
@@ -136,13 +165,14 @@
                             <td>{{ $order->placed_at?->format('d M Y, h:i A') ?: '-' }}</td>
                             <td>Rs. {{ number_format((float) $order->subtotal, 2) }}</td>
                             <td>{{ (float) $order->delivery_charge > 0 ? 'Rs. '.number_format((float) $order->delivery_charge, 2) : 'Free' }}</td>
+                            <td>{{ (float) $order->customer_credit_used > 0 ? '- Rs. '.number_format((float) $order->customer_credit_used, 2) : '-' }}</td>
                             <td>Rs. {{ number_format((float) $order->grand_total, 2) }}</td>
                             <td><span class="badge text-bg-light">{{ str($order->order_status)->headline() }}</span></td>
                             <td>{{ $latestReturn ? str($latestReturn->status)->headline() : '-' }}</td>
                             <td>{{ $order->delivered_at?->format('d M Y, h:i A') ?: '-' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-muted">No orders.</td></tr>
+                        <tr><td colspan="9" class="text-muted">No orders.</td></tr>
                     @endforelse
                 </tbody>
             </table>
