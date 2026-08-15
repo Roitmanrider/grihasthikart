@@ -3,6 +3,7 @@
 @section('content')
 <section class="py-5">
     <div class="container">
+        @include('frontend.customer.account-nav')
         <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
             <div>
                 <h1 class="h3 mb-1">Customer Credit</h1>

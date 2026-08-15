@@ -26,6 +26,10 @@ class CustomerAddressFactory extends Factory
             'landmark' => null,
             'is_default' => false,
             'is_approved' => true,
+            'approval_status' => fn (array $attributes) => ($attributes['is_approved'] ?? false)
+                ? 'APPROVED'
+                : 'PENDING',
+            'approval_status_changed_at' => now(),
             'status' => true,
         ];
     }

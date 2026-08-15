@@ -11,10 +11,13 @@ use App\Http\Controllers\Frontend\CouponController;
 use App\Http\Controllers\Frontend\CustomerAddressController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
 use App\Http\Controllers\Frontend\CustomerCashbackController;
+use App\Http\Controllers\Frontend\CustomerCouponController;
 use App\Http\Controllers\Frontend\CustomerDashboardController;
 use App\Http\Controllers\Frontend\CustomerNotificationController;
 use App\Http\Controllers\Frontend\CustomerOrderDocumentController;
+use App\Http\Controllers\Frontend\CustomerProfileController;
 use App\Http\Controllers\Frontend\CustomerReturnController;
+use App\Http\Controllers\Frontend\CustomerSecurityController;
 use App\Http\Controllers\Frontend\DailyOfferCatalogController;
 use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
@@ -89,6 +92,8 @@ Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name
 
 Route::middleware('customer.auth')->group(function () {
     Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
+    Route::get('/account/profile', [CustomerProfileController::class, 'edit'])->name('customer.profile.edit');
+    Route::patch('/account/profile', [CustomerProfileController::class, 'update'])->name('customer.profile.update');
     Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');
     Route::patch('/account/notifications/read-all', [CustomerNotificationController::class, 'readAll'])->name('customer.notifications.read-all');
     Route::get('/account/notifications/{notification}/open', [CustomerNotificationController::class, 'open'])->name('customer.notifications.open');
@@ -104,6 +109,9 @@ Route::middleware('customer.auth')->group(function () {
     Route::get('/account/credit', [CustomerDashboardController::class, 'credit'])->name('customer.credit.index');
     Route::get('/account/cashback', [CustomerCashbackController::class, 'index'])->name('customer.cashback.index');
     Route::post('/account/cashback/redeem', [CustomerCashbackController::class, 'redeem'])->name('customer.cashback.redeem');
+    Route::get('/account/coupons', [CustomerCouponController::class, 'index'])->name('customer.coupons.index');
+    Route::get('/account/security', [CustomerSecurityController::class, 'index'])->name('customer.security.index');
+    Route::delete('/account/security/sessions/others', [CustomerSecurityController::class, 'destroyOtherSessions'])->name('customer.security.sessions.destroy-others');
     Route::get('/account/addresses', [CustomerAddressController::class, 'index'])->name('customer.addresses.index');
     Route::post('/account/addresses', [CustomerAddressController::class, 'store'])->name('customer.addresses.store');
     Route::get('/account/addresses/{address}/edit', [CustomerAddressController::class, 'edit'])->name('customer.addresses.edit');

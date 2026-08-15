@@ -108,7 +108,9 @@ class AdminCustomerController extends Controller
     {
         Gate::authorize('manage-customers');
         abort_unless($address->customer_id === $customer->id, 404);
-        $this->addressService->approve($address, ! $address->is_approved);
+        $reason = trim((string) request('rejection_reason', '')) ?: null;
+        $approved = request()->input('decision') === 'reject' ? false : ! $address->is_approved;
+        $this->addressService->approve($address, $approved, $approved ? null : $reason);
 
         return back()->with('success', 'Address approval updated successfully.');
     }

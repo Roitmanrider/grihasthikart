@@ -6,9 +6,11 @@ use App\Domains\Customer\Services\CustomerAddressService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\CustomerLoginOtp;
+use App\Models\CustomerSession;
 use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
@@ -104,10 +106,12 @@ class CustomerAccountTest extends TestCase
             ->assertRedirect(route('customer.addresses.index'));
 
         $first = CustomerAddress::query()->where('customer_id', $customer->id)->firstOrFail();
-        $this->assertTrue($first->is_default);
+        $this->assertFalse($first->is_default);
+        $this->assertFalse($first->is_approved);
+        $this->assertSame('PENDING', $first->approval_status);
 
         $this->withSession(['customer_id' => $customer->id])->post(route('customer.addresses.store'), $this->addressPayload(['label' => 'Office', 'is_default' => 1]));
-        $this->assertSame(1, CustomerAddress::query()->where('customer_id', $customer->id)->where('is_default', true)->count());
+        $this->assertSame(0, CustomerAddress::query()->where('customer_id', $customer->id)->where('is_default', true)->count());
 
         $this->withSession(['customer_id' => $customer->id])->get(route('customer.addresses.edit', $otherAddress))->assertNotFound();
     }
@@ -260,6 +264,42 @@ class CustomerAccountTest extends TestCase
         $this->assertSame('Approved Checkout Street', $order->delivery_address_line1);
         $this->assertSame('Patna', $order->delivery_city);
         $this->assertSame('Approved Landmark', $order->delivery_landmark);
+    }
+
+    public function test_editing_saved_address_does_not_change_historic_order_address_snapshot(): void
+    {
+        $customer = Customer::factory()->create(['mobile' => '9876543210']);
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'address_line1' => 'Historic Street',
+            'city' => 'Patna',
+            'state' => 'Bihar',
+            'pincode' => '800001',
+            'is_approved' => true,
+            'approval_status' => 'APPROVED',
+            'status' => true,
+        ]);
+        [, $variant] = $this->purchasableVariant();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('cart.items.store'), ['product_variant_id' => $variant->id, 'quantity' => 1]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->post(route('checkout.place'), array_merge($this->checkoutPayload(), [
+                'customer_address_id' => $address->id,
+            ]))
+            ->assertRedirect();
+
+        $order = Order::query()->firstOrFail();
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.addresses.update', $address), $this->addressPayload([
+                'address_line1' => 'Edited Later Street',
+            ]))
+            ->assertRedirect(route('customer.addresses.index'));
+
+        $this->assertSame('Historic Street', $order->fresh()->delivery_address_line1);
+        $this->assertSame('Patna', $order->fresh()->delivery_city);
     }
 
     public function test_logged_in_checkout_rejects_foreign_unapproved_and_missing_approved_addresses(): void
@@ -434,9 +474,203 @@ class CustomerAccountTest extends TestCase
         $this->assertDatabaseHas('notifications', [
             'audience' => Notification::AUDIENCE_CUSTOMER,
             'customer_id' => $customer->id,
-            'type' => 'address.unapproved',
-            'message' => 'Your Home delivery address is no longer approved for delivery.',
+            'type' => 'address.pending',
+            'message' => 'Your Home delivery address is pending approval.',
         ]);
+    }
+
+    public function test_customer_can_update_profile_but_not_mobile_or_admin_fields(): void
+    {
+        $customer = Customer::factory()->create([
+            'name' => 'Old Name',
+            'mobile' => '9876543210',
+            'email' => null,
+            'is_premium' => false,
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.profile.edit'))
+            ->assertOk()
+            ->assertSee('9876543210')
+            ->assertSee('Account Type');
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.profile.update'), [
+                'name' => 'New Name',
+                'email' => 'new@example.com',
+                'mobile' => '9000000000',
+                'is_premium' => true,
+                'status' => false,
+            ])
+            ->assertRedirect(route('customer.profile.edit'));
+
+        $customer->refresh();
+        $this->assertSame('New Name', $customer->name);
+        $this->assertSame('new@example.com', $customer->email);
+        $this->assertSame('9876543210', $customer->mobile);
+        $this->assertFalse($customer->is_premium);
+        $this->assertTrue($customer->status);
+    }
+
+    public function test_account_overview_shows_key_customer_summaries(): void
+    {
+        $customer = Customer::factory()->create(['is_premium' => true, 'cashback_enabled' => true]);
+        CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'is_approved' => true,
+            'approval_status' => 'APPROVED',
+        ]);
+        Order::factory()->create(['customer_id' => $customer->id, 'order_number' => 'GKOVERVIEW']);
+        Coupon::factory()->create(['code' => 'OVERVIEW50']);
+        Notification::query()->create([
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'type' => 'test',
+            'title' => 'Unread dashboard message',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.dashboard'))
+            ->assertOk()
+            ->assertSee('Premium')
+            ->assertSee('Approved addresses')
+            ->assertSee('Available Coupons')
+            ->assertSee('Unread Notifications')
+            ->assertSee('Cashback Points')
+            ->assertSee('GKOVERVIEW');
+    }
+
+    public function test_editing_approved_default_address_resets_it_to_pending_and_non_default(): void
+    {
+        $customer = Customer::factory()->create();
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'address_line1' => 'Old Street',
+            'is_default' => true,
+            'is_approved' => true,
+            'approval_status' => 'APPROVED',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.addresses.update', $address), $this->addressPayload([
+                'address_line1' => 'New Street',
+                'is_default' => 1,
+            ]))
+            ->assertRedirect(route('customer.addresses.index'));
+
+        $address->refresh();
+        $this->assertSame('New Street', $address->address_line1);
+        $this->assertFalse($address->is_approved);
+        $this->assertFalse($address->is_default);
+        $this->assertSame('PENDING', $address->approval_status);
+    }
+
+    public function test_rejected_address_reason_is_visible_and_cannot_be_default(): void
+    {
+        $customer = Customer::factory()->create();
+        $address = CustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'label' => 'Office',
+            'is_approved' => false,
+            'approval_status' => 'REJECTED',
+            'rejection_reason' => 'Outside delivery area',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.addresses.index'))
+            ->assertOk()
+            ->assertSee('Rejected')
+            ->assertSee('Outside delivery area')
+            ->assertSee('disabled', false);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.addresses.default', $address))
+            ->assertSessionHasErrors('address');
+
+        $this->assertFalse($address->fresh()->is_default);
+    }
+
+    public function test_customer_coupon_page_shows_public_and_assigned_coupons_only(): void
+    {
+        $customer = Customer::factory()->create();
+        $other = Customer::factory()->create();
+        $public = Coupon::factory()->create(['code' => 'PUBLIC50', 'discount_value' => 50]);
+        $assigned = Coupon::factory()->percentage()->create([
+            'code' => 'ONLYYOU',
+            'audience' => Coupon::AUDIENCE_CUSTOMER_SPECIFIC,
+            'customer_id' => $customer->id,
+            'discount_value' => 10,
+        ]);
+        Coupon::factory()->create([
+            'code' => 'OTHERONLY',
+            'audience' => Coupon::AUDIENCE_CUSTOMER_SPECIFIC,
+            'customer_id' => $other->id,
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.coupons.index'))
+            ->assertOk()
+            ->assertSee($public->code)
+            ->assertSee('Rs. 50 off eligible merchandise')
+            ->assertSee($assigned->code)
+            ->assertSee('10% off eligible merchandise')
+            ->assertDontSee('OTHERONLY')
+            ->assertSee('Only one coupon can be applied per order.');
+    }
+
+    public function test_notifications_are_read_only_after_explicit_action(): void
+    {
+        $customer = Customer::factory()->create();
+        $notification = Notification::query()->create([
+            'audience' => Notification::AUDIENCE_CUSTOMER,
+            'customer_id' => $customer->id,
+            'type' => 'test',
+            'title' => 'Unread message',
+            'message' => 'Please review this update.',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.notifications.index'))
+            ->assertOk()
+            ->assertSee('Unread');
+
+        $this->assertNull($notification->fresh()->read_at);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.notifications.read', $notification))
+            ->assertRedirect();
+
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_security_page_hides_session_hash_and_can_revoke_other_sessions(): void
+    {
+        $customer = Customer::factory()->create();
+        $token = 'current-session-token';
+        $current = CustomerSession::factory()->create([
+            'customer_id' => $customer->id,
+            'session_token_hash' => hash('sha256', $token),
+            'device_label' => 'Current Browser',
+        ]);
+        $other = CustomerSession::factory()->create([
+            'customer_id' => $customer->id,
+            'device_label' => 'Old Browser',
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id, 'customer_session_token' => $token])
+            ->get(route('customer.security.index'))
+            ->assertOk()
+            ->assertSee('Current Browser')
+            ->assertSee('Old Browser')
+            ->assertDontSee($current->session_token_hash)
+            ->assertSee('Current Session');
+
+        $this->withSession(['customer_id' => $customer->id, 'customer_session_token' => $token])
+            ->delete(route('customer.security.sessions.destroy-others'))
+            ->assertRedirect();
+
+        $this->assertNull($current->fresh()->revoked_at);
+        $this->assertNotNull($other->fresh()->revoked_at);
     }
 
     public function test_unchanged_address_approval_status_does_not_duplicate_notification(): void

@@ -17,11 +17,6 @@ class CustomerNotificationController extends Controller
     {
         $customer = $this->requireCustomer();
 
-        Notification::query()
-            ->forCustomer($customer)
-            ->unread()
-            ->update(['read_at' => now()]);
-
         $notifications = Notification::query()
             ->forCustomer($customer)
             ->latest()

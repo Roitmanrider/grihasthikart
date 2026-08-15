@@ -104,6 +104,21 @@ class CustomerSessionService
             ->update(['revoked_at' => now()]);
     }
 
+    public function revokeOtherSessions(Customer $customer, Store $session): int
+    {
+        $token = $session->get(self::SESSION_TOKEN_KEY);
+
+        if (! $token) {
+            return 0;
+        }
+
+        return CustomerSession::query()
+            ->where('customer_id', $customer->id)
+            ->where('session_token_hash', '!=', $this->hashToken($token))
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => now()]);
+    }
+
     private function hashToken(string $token): string
     {
         return hash('sha256', $token);

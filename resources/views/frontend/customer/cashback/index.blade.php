@@ -4,6 +4,7 @@
 
 @section('content')
 <section class="py-5"><div class="container">
+@include('frontend.customer.account-nav')
 <div class="d-flex justify-content-between mb-4"><div><h1 class="h3 mb-1">My Cashback Points</h1><div class="text-muted">Cashback Points are processed after {{ $rule->processing_delay_days }} days from delivery.</div></div><span class="badge {{ $customer->is_premium ? 'text-bg-success' : 'text-bg-secondary' }} rounded-pill px-3 py-2 align-self-start">{{ $customer->is_premium ? 'Premium' : 'Standard' }}</span></div>
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif

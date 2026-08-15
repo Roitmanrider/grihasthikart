@@ -44,7 +44,12 @@ class CustomerAddressController extends Controller
     {
         $customer = $this->customer();
         $this->ensureOwn($customer, $address);
-        $this->addressService->update($address, $request->validated());
+
+        try {
+            $this->addressService->update($address, $request->validated());
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->withErrors(['address' => $exception->getMessage()]);
+        }
 
         return redirect()->route('customer.addresses.index')->with('success', 'Address updated successfully.');
     }
@@ -62,7 +67,12 @@ class CustomerAddressController extends Controller
     {
         $customer = $this->customer();
         $this->ensureOwn($customer, $address);
-        $this->addressService->setDefault($address);
+
+        try {
+            $this->addressService->setDefault($address);
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['address' => $exception->getMessage()]);
+        }
 
         return back()->with('success', 'Default address updated successfully.');
     }

@@ -149,6 +149,12 @@ class NotificationCenterTest extends TestCase
             ->assertOk()
             ->assertSee('Customer alert');
 
+        $this->assertSame(1, $service->customerUnreadCount($customer));
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->patch(route('customer.notifications.read-all'))
+            ->assertRedirect();
+
         $this->assertSame(0, $service->customerUnreadCount($customer));
     }
 
@@ -236,7 +242,7 @@ class NotificationCenterTest extends TestCase
             ->assertDontSee('Your Address 11 delivery address has been approved.');
     }
 
-    public function test_opening_customer_notification_page_marks_customer_notifications_read_only(): void
+    public function test_customer_notification_page_lists_customer_notifications_read_only(): void
     {
         $customer = Customer::factory()->create();
         $other = Customer::factory()->create();
@@ -261,10 +267,10 @@ class NotificationCenterTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('customer.notifications.index'))
             ->assertOk()
-            ->assertSee('Read')
-            ->assertSee('text-bg-secondary', false);
+            ->assertSee('Unread')
+            ->assertSee('text-bg-success', false);
 
-        $this->assertSame(0, Notification::query()->forCustomer($customer)->unread()->count());
+        $this->assertSame(1, Notification::query()->forCustomer($customer)->unread()->count());
         $this->assertNull($otherNotification->fresh()->read_at);
         $this->assertNull($adminNotification->fresh()->read_at);
     }

@@ -17,12 +17,14 @@ class CustomerAddressService
         return DB::transaction(function () use ($customer, $data) {
             $data['customer_id'] = $customer->id;
             $data['status'] = (bool) ($data['status'] ?? true);
-            $data['is_default'] = (bool) ($data['is_default'] ?? false);
             $data['is_approved'] = (bool) ($data['is_approved'] ?? false);
+            $data['approval_status'] = $data['is_approved'] ? 'APPROVED' : 'PENDING';
+            $data['approval_status_changed_at'] = now();
+            $data['rejection_reason'] = null;
+            $requestedDefault = (bool) ($data['is_default'] ?? false);
 
-            if ($customer->addresses()->count() === 0) {
-                $data['is_default'] = true;
-            }
+            $data['is_default'] = $data['is_approved']
+                && ($requestedDefault || ! $customer->addresses()->where('is_default', true)->exists());
 
             if ($data['is_default']) {
                 $this->clearDefault($customer);
@@ -35,10 +37,23 @@ class CustomerAddressService
     public function update(CustomerAddress $address, array $data): CustomerAddress
     {
         return DB::transaction(function () use ($address, $data) {
+            $significantChanged = $address->is_approved && $this->changesDeliveryData($address, $data);
             $data['status'] = (bool) ($data['status'] ?? $address->status);
             $data['is_default'] = (bool) ($data['is_default'] ?? $address->is_default);
 
+            if ($significantChanged) {
+                $data['is_approved'] = false;
+                $data['approval_status'] = 'PENDING';
+                $data['rejection_reason'] = null;
+                $data['approval_status_changed_at'] = now();
+                $data['is_default'] = false;
+            }
+
             if ($data['is_default']) {
+                if (! $address->is_approved && ! ($data['is_approved'] ?? false)) {
+                    throw new InvalidArgumentException('Only approved addresses can be set as default.');
+                }
+
                 $this->clearDefault($address->customer, $address->id);
             }
 
@@ -56,6 +71,10 @@ class CustomerAddressService
     public function setDefault(CustomerAddress $address): CustomerAddress
     {
         return DB::transaction(function () use ($address) {
+            if (! $address->is_approved || ! $address->status) {
+                throw new InvalidArgumentException('Only approved active addresses can be set as default.');
+            }
+
             $this->clearDefault($address->customer, $address->id);
             $address->update(['is_default' => true]);
 
@@ -63,12 +82,18 @@ class CustomerAddressService
         });
     }
 
-    public function approve(CustomerAddress $address, bool $approved): CustomerAddress
+    public function approve(CustomerAddress $address, bool $approved, ?string $reason = null): CustomerAddress
     {
         $wasApproved = (bool) $address->is_approved;
-        $address->update(['is_approved' => $approved]);
+        $address->update([
+            'is_approved' => $approved,
+            'approval_status' => $approved ? 'APPROVED' : ($reason ? 'REJECTED' : 'PENDING'),
+            'rejection_reason' => $approved ? null : $reason,
+            'approval_status_changed_at' => now(),
+            'is_default' => $approved ? $address->is_default : false,
+        ]);
 
-        if ($wasApproved !== $approved) {
+        if ($wasApproved !== $approved || $reason) {
             $this->notificationService->notifyCustomerAddressApprovalChanged($address->fresh('customer'), $approved);
         }
 
@@ -91,5 +116,16 @@ class CustomerAddressService
         }
 
         $query->update(['is_default' => false]);
+    }
+
+    private function changesDeliveryData(CustomerAddress $address, array $data): bool
+    {
+        foreach (['recipient_name', 'mobile', 'address_line1', 'address_line2', 'city', 'state', 'pincode', 'landmark'] as $field) {
+            if (array_key_exists($field, $data) && (string) ($data[$field] ?? '') !== (string) ($address->{$field} ?? '')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

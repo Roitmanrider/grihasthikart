@@ -23,12 +23,16 @@ class CustomerAddress extends Model
         'landmark',
         'is_default',
         'is_approved',
+        'approval_status',
+        'rejection_reason',
+        'approval_status_changed_at',
         'status',
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
         'is_approved' => 'boolean',
+        'approval_status_changed_at' => 'datetime',
         'status' => 'boolean',
     ];
 

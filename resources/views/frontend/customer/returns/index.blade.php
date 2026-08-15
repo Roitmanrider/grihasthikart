@@ -5,6 +5,7 @@
 @section('content')
 <section class="py-5">
     <div class="container">
+        @include('frontend.customer.account-nav')
         <h1 class="h3 mb-4">My Returns</h1>
 
         <div class="card border-0 shadow-sm">

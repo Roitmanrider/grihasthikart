@@ -3,6 +3,7 @@
 @section('content')
 <section class="py-5">
     <div class="container">
+        @include('frontend.customer.account-nav')
         <h1 class="h3 mb-4">My Orders</h1>
         <div class="card border-0 shadow-sm">
             <div class="table-responsive">
@@ -11,6 +12,7 @@
                         <tr>
                             <th>Order ID</th>
                             <th>Status</th>
+                            <th>Payment</th>
                             <th>Merchandise Amount</th>
                             <th>Delivery Charge</th>
                             <th>Customer Credit</th>
@@ -29,6 +31,7 @@
                                     @endif
                                 </td>
                                 <td>{{ str($order->order_status)->headline() }}</td>
+                                <td>{{ str($order->payment_status)->headline() }}</td>
                                 <td>Rs. {{ number_format((float)$order->subtotal,2) }}</td>
                                 <td>{{ (float)$order->delivery_charge > 0 ? 'Rs. '.number_format((float)$order->delivery_charge,2) : 'Free' }}</td>
                                 <td>{{ (float)$order->customer_credit_used > 0 ? '- Rs. '.number_format((float)$order->customer_credit_used,2) : '-' }}</td>
@@ -37,7 +40,7 @@
                                 <td><a href="{{ route('customer.orders.show',$order->order_number) }}" class="btn btn-sm btn-outline-success">View</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="8" class="text-center text-muted py-4">No orders.</td></tr>
+                            <tr><td colspan="9" class="text-center text-muted py-4">No orders.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

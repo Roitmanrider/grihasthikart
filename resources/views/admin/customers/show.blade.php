@@ -100,8 +100,8 @@
                                 <span class="badge text-bg-success rounded-pill px-3 py-2">Default</span>
                             @endif
 
-                            <span class="badge {{ $address->is_approved ? 'text-bg-primary' : 'text-bg-warning' }} rounded-pill px-3 py-2">
-                                {{ $address->is_approved ? 'Approved' : 'Pending approval' }}
+                            <span class="badge {{ $address->is_approved ? 'text-bg-primary' : (($address->approval_status ?? 'PENDING') === 'REJECTED' ? 'text-bg-danger' : 'text-bg-warning') }} rounded-pill px-3 py-2">
+                                {{ $address->is_approved ? 'Approved' : str(strtolower($address->approval_status ?? 'PENDING'))->headline() }}
                             </span>
 
                             @if (! $address->status)
@@ -123,12 +123,21 @@
                             @endif
 
                             <div>{{ $address->city }}, {{ $address->state }} - {{ $address->pincode }}</div>
+                            @if (($address->approval_status ?? null) === 'REJECTED' && $address->rejection_reason)
+                                <div class="text-danger mt-1"><span class="text-muted">Reason:</span> {{ $address->rejection_reason }}</div>
+                            @endif
                         </div>
 
                         <form method="POST" action="{{ route('admin.customers.addresses.approve', [$customer, $address]) }}" class="mt-2">
                             @csrf
                             @method('PATCH')
-                            <button class="btn btn-sm btn-outline-success">{{ $address->is_approved ? 'Unapprove' : 'Approve' }}</button>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-sm btn-outline-success" name="decision" value="approve">{{ $address->is_approved ? 'Unapprove' : 'Approve' }}</button>
+                                @unless ($address->is_approved)
+                                    <input name="rejection_reason" class="form-control form-control-sm" style="max-width: 280px;" placeholder="Rejection reason">
+                                    <button class="btn btn-sm btn-outline-danger" name="decision" value="reject">Reject</button>
+                                @endunless
+                            </div>
                         </form>
                     </div>
                 @empty

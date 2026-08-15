@@ -35,12 +35,14 @@ class NotificationService
         $label = $address->label ?: 'delivery';
         $message = $approved
             ? 'Your '.$label.' delivery address has been approved.'
-            : 'Your '.$label.' delivery address is no longer approved for delivery.';
+            : ($address->approval_status === 'REJECTED'
+                ? 'Your '.$label.' delivery address was rejected.'.($address->rejection_reason ? ' Reason: '.$address->rejection_reason : '')
+                : 'Your '.$label.' delivery address is pending approval.');
 
         $this->customer(
             $address->customer,
-            $approved ? 'address.approved' : 'address.unapproved',
-            $approved ? 'Address approved' : 'Address approval removed',
+            $approved ? 'address.approved' : ($address->approval_status === 'REJECTED' ? 'address.rejected' : 'address.pending'),
+            $approved ? 'Address approved' : ($address->approval_status === 'REJECTED' ? 'Address rejected' : 'Address pending approval'),
             $message,
             route('customer.addresses.index'),
             $address,

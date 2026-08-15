@@ -6,6 +6,7 @@
 @section('content')
     <section class="py-5 gk-wishlist-page">
         <div class="container">
+            @include('frontend.customer.account-nav')
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
                     <h1 class="h3 mb-1">Wishlist</h1>
