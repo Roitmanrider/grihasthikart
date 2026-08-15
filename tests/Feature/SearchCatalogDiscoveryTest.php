@@ -178,8 +178,11 @@ class SearchCatalogDiscoveryTest extends TestCase
         $response->assertOk()
             ->assertSee('quickViewProduct', false)
             ->assertSee('Add to Cart')
+            ->assertSee('pagination', false)
+            ->assertSee('page-item', false)
             ->assertSee('q=staples', false)
-            ->assertSee('sort=name', false);
+            ->assertSee('sort=name', false)
+            ->assertDontSee('w-5 h-5', false);
     }
 
     public function test_search_and_filter_pages_are_noindexed(): void

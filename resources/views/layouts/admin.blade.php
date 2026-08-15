@@ -2,11 +2,11 @@
 
 @section('content')
 
-<div class="d-flex min-vh-100 bg-light">
+<div class="d-flex flex-column flex-lg-row min-vh-100 bg-light admin-shell">
 
     @include('partials.sidebar')
 
-    <div class="flex-grow-1">
+    <div class="flex-grow-1 min-w-0 admin-content" style="flex-basis: 0; overflow-x: hidden;">
 
         @include('partials.topbar')
 

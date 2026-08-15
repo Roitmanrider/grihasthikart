@@ -532,12 +532,19 @@ class CustomerAccountTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('customer.dashboard'))
             ->assertOk()
+            ->assertSee('d-flex flex-wrap align-items-center gap-2', false)
             ->assertSee('Premium')
             ->assertSee('Approved addresses')
             ->assertSee('Available Coupons')
             ->assertSee('Unread Notifications')
             ->assertSee('Cashback Points')
             ->assertSee('GKOVERVIEW');
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.cashback.index'))
+            ->assertOk()
+            ->assertSee('d-flex flex-wrap justify-content-between gap-3 mb-4', false)
+            ->assertSee('Premium');
     }
 
     public function test_editing_approved_default_address_resets_it_to_pending_and_non_default(): void

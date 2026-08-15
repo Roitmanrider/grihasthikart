@@ -67,6 +67,20 @@ class AdminAuthHotfixTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_admin_layout_uses_responsive_shell_and_scroll_safe_content(): void
+    {
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.products.index'))
+            ->assertOk()
+            ->assertSee('admin-shell', false)
+            ->assertSee('admin-sidebar', false)
+            ->assertSee('admin-content', false)
+            ->assertSee('overflow-x: hidden', false)
+            ->assertSee('table-responsive', false);
+    }
+
     public function test_customer_session_does_not_grant_admin_access(): void
     {
         $customer = Customer::factory()->create();

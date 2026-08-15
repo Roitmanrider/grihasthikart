@@ -1,4 +1,4 @@
-<aside class="bg-white border-end p-3" style="width: 260px;">
+<aside class="bg-white border-end p-3 admin-sidebar" style="flex: 0 0 260px; width: 260px;">
 
     <h2 class="h5 mb-4">GrihasthiKart</h2>
 
