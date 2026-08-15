@@ -4,8 +4,10 @@ use App\Console\Commands\CheckLowStock;
 use App\Console\Commands\CleanupCartActivity;
 use App\Console\Commands\GenerateMonthlyCartRisk;
 use App\Console\Commands\ProcessPendingOrders;
+use App\Console\Commands\RecordSchedulerHeartbeat;
 use App\Http\Middleware\EnsureCustomerAuthenticated;
 use App\Http\Middleware\EnsureStorefrontAccess;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -34,8 +36,12 @@ return Application::configure(basePath: dirname(__DIR__))
         CheckLowStock::class,
         GenerateMonthlyCartRisk::class,
         ProcessPendingOrders::class,
+        RecordSchedulerHeartbeat::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            SecurityHeaders::class,
+        ]);
         $middleware->redirectGuestsTo('/admin/login');
         $middleware->validateCsrfTokens(except: [
             'checkout/razorpay/webhook',

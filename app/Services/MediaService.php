@@ -8,9 +8,14 @@ use Illuminate\Support\Str;
 
 class MediaService
 {
+    private const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+
+    private const BLOCKED_EXTENSIONS = ['php', 'phtml', 'phar', 'shtml', 'cgi', 'pl', 'exe', 'sh', 'bat', 'cmd', 'js', 'html', 'htm', 'svg'];
+
     public function store(UploadedFile $file, string $directory, string $disk = 'uploads'): string
     {
-        $extension = $file->extension();
+        $extension = strtolower((string) ($file->extension() ?: $file->getClientOriginalExtension()));
+        $this->ensureSafeExtension($extension);
         $safeDirectory = $this->normalizeDirectory($directory);
         $filename = Str::uuid().($extension ? '.'.$extension : '');
         $this->ensureUploadDirectories($safeDirectory, $disk);
@@ -25,7 +30,7 @@ class MediaService
         }
 
         if ($currentPath) {
-            Storage::disk($disk)->delete($currentPath);
+            Storage::disk($disk)->delete($this->normalizePath($currentPath));
         }
 
         return $this->store($file, $directory, $disk);
@@ -34,7 +39,7 @@ class MediaService
     public function delete(?string $path, string $disk = 'uploads'): void
     {
         if ($path) {
-            Storage::disk($disk)->delete($path);
+            Storage::disk($disk)->delete($this->normalizePath($path));
         }
     }
 
@@ -59,9 +64,37 @@ class MediaService
     {
         $directory = trim(str_replace('\\', '/', $directory), '/');
 
-        return Str::startsWith($directory, 'uploads/')
+        $directory = Str::startsWith($directory, 'uploads/')
             ? $directory
             : 'uploads/'.$directory;
+
+        return $this->normalizePath($directory);
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $path = trim(str_replace('\\', '/', $path), '/');
+        $segments = array_values(array_filter(explode('/', $path), fn (string $segment) => $segment !== ''));
+
+        if (
+            $path === ''
+            || str_contains($path, "\0")
+            || str_starts_with($path, '/')
+            || preg_match('/^[A-Za-z]:\//', $path)
+            || in_array('..', $segments, true)
+            || ! Str::startsWith($path, 'uploads/')
+        ) {
+            throw new \InvalidArgumentException('Unsafe upload path.');
+        }
+
+        return implode('/', $segments);
+    }
+
+    private function ensureSafeExtension(string $extension): void
+    {
+        if ($extension === '' || in_array($extension, self::BLOCKED_EXTENSIONS, true) || ! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
+            throw new \InvalidArgumentException('Unsupported upload file type.');
+        }
     }
 
     private function ensureUploadDirectories(string $targetDirectory, string $disk): void

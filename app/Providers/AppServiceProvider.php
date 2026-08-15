@@ -5,7 +5,10 @@ namespace App\Providers;
 use App\Domains\Messaging\Contracts\WhatsAppMessagingServiceInterface;
 use App\Domains\Messaging\Services\NullWhatsAppMessagingService;
 use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureRateLimiters();
+
         Gate::define('manage-admin', function (User $user): bool {
             if (method_exists($user, 'hasPermissionTo')) {
                 return $user->hasPermissionTo('admin.manage');
@@ -182,5 +187,40 @@ class AppServiceProvider extends ServiceProvider
 
             return in_array($user->email, config('grihasthikart.admin_emails', []), true);
         });
+    }
+
+    private function configureRateLimiters(): void
+    {
+        RateLimiter::for('admin-login', fn (Request $request) => [
+            Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
+        ]);
+
+        RateLimiter::for('customer-login', fn (Request $request) => [
+            Limit::perMinute(5)->by((string) $request->input('mobile').'|'.$request->ip()),
+        ]);
+
+        RateLimiter::for('customer-otp', fn (Request $request) => [
+            Limit::perMinute(8)->by((string) $request->input('mobile').'|'.$request->ip()),
+        ]);
+
+        RateLimiter::for('catalog-autocomplete', fn (Request $request) => [
+            Limit::perMinute(60)->by($request->ip()),
+        ]);
+
+        RateLimiter::for('contact-form', fn (Request $request) => [
+            Limit::perMinute(3)->by($request->ip()),
+        ]);
+
+        RateLimiter::for('coupon-apply', fn (Request $request) => [
+            Limit::perMinute(10)->by($request->session()->getId() ?: $request->ip()),
+        ]);
+
+        RateLimiter::for('payment-retry', fn (Request $request) => [
+            Limit::perMinute(6)->by($request->session()->getId() ?: $request->ip()),
+        ]);
+
+        RateLimiter::for('customer-sensitive', fn (Request $request) => [
+            Limit::perMinute(12)->by($request->session()->getId() ?: $request->ip()),
+        ]);
     }
 }

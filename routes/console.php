@@ -23,3 +23,7 @@ Schedule::command('cart-activity:generate-monthly-risk')
 Schedule::command('inventory:check-low-stock')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
+
+Schedule::command('ops:scheduler-heartbeat')
+    ->everyMinute()
+    ->withoutOverlapping();

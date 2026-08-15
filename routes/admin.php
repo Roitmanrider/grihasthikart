@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\AdminStockAdjustmentController;
 use App\Http\Controllers\Admin\AdminStockVerificationController;
 use App\Http\Controllers\Admin\AdminStorefrontSeoSettingController;
 use App\Http\Controllers\Admin\AdminSupplierController;
+use App\Http\Controllers\Admin\AdminSystemHealthController;
 use App\Http\Controllers\Admin\AdminTaxReportController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
@@ -51,6 +52,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('login', [AdminAuthController::class, 'showLogin'])
         ->name('login');
     Route::post('login', [AdminAuthController::class, 'login'])
+        ->middleware('throttle:admin-login')
         ->name('login.submit');
 
     Route::post('logout', [AdminAuthController::class, 'logout'])
@@ -494,6 +496,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.site-media.edit');
         Route::patch('settings/site-media', [AdminSiteMediaController::class, 'update'])
             ->name('settings.site-media.update');
+        Route::get('system-health', AdminSystemHealthController::class)
+            ->name('system-health.index');
     });
 
     Route::middleware(['auth', 'can:manage-payment-settings'])->group(function () {
