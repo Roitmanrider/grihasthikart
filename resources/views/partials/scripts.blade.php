@@ -1,4 +1,5 @@
 <script src="{{ asset('assets/js/main.js') }}"></script>
+<script src="{{ asset('assets/js/catalog-search.js') }}"></script>
 <script>
     document.addEventListener('submit', function (event) {
         const form = event.target;

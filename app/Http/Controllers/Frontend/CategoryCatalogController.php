@@ -21,6 +21,17 @@ class CategoryCatalogController extends Controller
 
     public function show(string $slug, Request $request)
     {
-        return view('frontend.categories.show', $this->catalogService->categoryDetail($slug, $request->only(['sort'])));
+        return view('frontend.categories.show', $this->catalogService->categoryDetail($slug, $request->only([
+            'q',
+            'search',
+            'brand',
+            'brands',
+            'min_price',
+            'max_price',
+            'weight',
+            'weights',
+            'discount_min',
+            'sort',
+        ])));
     }
 }

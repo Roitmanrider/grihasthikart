@@ -14,10 +14,32 @@ class ProductCatalogController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only([
+            'q',
+            'search',
+            'category',
+            'brand',
+            'brands',
+            'min_price',
+            'max_price',
+            'weight',
+            'weights',
+            'discount_min',
+            'is_featured',
+            'is_new_arrival',
+            'is_popular',
+            'is_trending',
+            'sort',
+        ]);
+        $meta = $this->catalogService->listingMeta($filters);
+
         return view('frontend.products.index', [
-            'products' => $this->catalogService->productListing($request->only(['search', 'category', 'brand', 'is_featured', 'is_new_arrival', 'is_popular', 'is_trending', 'sort'])),
+            'products' => $this->catalogService->productListing($filters),
             'categories' => $this->catalogService->activeCategories()->get(),
             'brands' => $this->catalogService->activeBrands()->get(),
+            'filters' => $meta['filters'],
+            'filterOptions' => $meta['filterOptions'],
+            'categorySuggestions' => $meta['categorySuggestions'],
         ]);
     }
 

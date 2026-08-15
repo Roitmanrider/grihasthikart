@@ -71,6 +71,12 @@ class StorefrontAccessService
 
     public function shouldNoindex(Request $request): bool
     {
+        if ($request->routeIs('products.index', 'categories.show', 'brands.show')
+            && collect(['q', 'search', 'brand', 'brands', 'min_price', 'max_price', 'weight', 'weights', 'discount_min', 'sort', 'page'])
+                ->contains(fn (string $key) => $request->query->has($key))) {
+            return true;
+        }
+
         return $this->mode() === self::MEMBERS_ONLY_STOREFRONT
             && $request->routeIs('products.*', 'categories.*', 'brands.*', 'daily-offers.*');
     }

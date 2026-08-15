@@ -21,6 +21,15 @@ class BrandCatalogController extends Controller
 
     public function show(string $slug, Request $request)
     {
-        return view('frontend.brands.show', $this->catalogService->brandDetail($slug, $request->only(['sort'])));
+        return view('frontend.brands.show', $this->catalogService->brandDetail($slug, $request->only([
+            'q',
+            'search',
+            'min_price',
+            'max_price',
+            'weight',
+            'weights',
+            'discount_min',
+            'sort',
+        ])));
     }
 }

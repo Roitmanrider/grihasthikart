@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Frontend\BrandCatalogController;
 use App\Http\Controllers\Frontend\CartController;
+use App\Http\Controllers\Frontend\CatalogAutocompleteController;
 use App\Http\Controllers\Frontend\CatalogHomeController;
 use App\Http\Controllers\Frontend\CategoryCatalogController;
 use App\Http\Controllers\Frontend\CheckoutController;
@@ -112,6 +113,7 @@ Route::middleware('customer.auth')->group(function () {
 });
 
 Route::get('/products', [ProductCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('products.index');
+Route::get('/products/autocomplete', CatalogAutocompleteController::class)->middleware('storefront.access:catalog')->name('products.autocomplete');
 Route::get('/products/{slug}', [ProductCatalogController::class, 'show'])->middleware('storefront.access:catalog')->name('products.show');
 
 Route::get('/categories', [CategoryCatalogController::class, 'index'])->middleware('storefront.access:catalog')->name('categories.index');

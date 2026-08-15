@@ -21,16 +21,13 @@
                         <p class="text-muted mb-0">{{ $brand->description }}</p>
                     @endif
                 </div>
-                <form method="GET" class="d-flex gap-2">
-                    <select name="sort" class="form-select">
-                        <option value="latest" @selected(request('sort', 'latest') === 'latest')>Latest</option>
-                        <option value="name" @selected(request('sort') === 'name')>Name</option>
-                        <option value="price_asc" @selected(request('sort') === 'price_asc')>Price low to high</option>
-                        <option value="price_desc" @selected(request('sort') === 'price_desc')>Price high to low</option>
-                    </select>
-                    <button type="submit" class="btn btn-success">Sort</button>
-                </form>
             </div>
+
+            @include('frontend.products.partials.catalog-filters', [
+                'filters' => $filters,
+                'filterOptions' => $filterOptions,
+                'baseRoute' => route('brands.show', $brand->slug),
+            ])
 
             @if ($products->isNotEmpty())
                 <div class="row g-4">
@@ -42,7 +39,7 @@
                 </div>
                 <div class="mt-4">{{ $products->links() }}</div>
             @else
-                <div class="alert alert-light border">No active products are available for this brand yet.</div>
+                <div class="alert alert-light border">No active products match this brand and filter combination.</div>
             @endif
         </div>
     </section>

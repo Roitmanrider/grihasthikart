@@ -20,15 +20,20 @@
             <form class="gk-search gk-search-desktop"
                   action="{{ route('products.index') }}"
                   method="GET"
-                  role="search">
+                  role="search"
+                  data-catalog-search
+                  data-autocomplete-url="{{ route('products.autocomplete') }}">
                 <input type="search"
-                       name="search"
-                       value="{{ request('search') }}"
+                       name="q"
+                       value="{{ request('q', request('search')) }}"
                        placeholder="Search for products, categories, subcategories..."
-                       aria-label="Search products, categories, brands">
+                       aria-label="Search products, categories, brands"
+                       autocomplete="off"
+                       data-catalog-search-input>
                 <button type="submit" aria-label="Search">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
+                <div class="gk-search-suggestions d-none" data-catalog-suggestions></div>
             </form>
 
             <div class="gk-header-actions">
@@ -84,15 +89,20 @@
         <form class="gk-search gk-search-mobile"
               action="{{ route('products.index') }}"
               method="GET"
-              role="search">
+              role="search"
+              data-catalog-search
+              data-autocomplete-url="{{ route('products.autocomplete') }}">
             <input type="search"
-                   name="search"
-                   value="{{ request('search') }}"
+                   name="q"
+                   value="{{ request('q', request('search')) }}"
                    placeholder="Search for products, categories, subcategories..."
-                   aria-label="Search products, categories, brands">
+                   aria-label="Search products, categories, brands"
+                   autocomplete="off"
+                   data-catalog-search-input>
             <button type="submit" aria-label="Search">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
+            <div class="gk-search-suggestions d-none" data-catalog-suggestions></div>
         </form>
     </div>
 </header>
