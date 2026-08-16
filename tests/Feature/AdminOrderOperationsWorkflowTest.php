@@ -130,6 +130,18 @@ class AdminOrderOperationsWorkflowTest extends TestCase
             ->assertSee('Stock unavailable');
     }
 
+    public function test_admin_order_detail_renders_single_success_alert_source(): void
+    {
+        $order = Order::factory()->create(['order_status' => 'placed']);
+
+        $response = $this->actingAs($this->admin)
+            ->withSession(['success' => 'Order status updated successfully.'])
+            ->get(route('admin.orders.show', $order));
+
+        $response->assertOk();
+        $this->assertSame(1, substr_count($response->getContent(), 'alert alert-success'));
+    }
+
     public function test_admin_order_page_shows_document_buttons_and_valid_actions(): void
     {
         $order = $this->orderWithItem(['order_status' => 'confirmed']);

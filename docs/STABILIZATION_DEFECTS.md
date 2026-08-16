@@ -66,3 +66,22 @@ Release blocker summary at 4.22C audit time:
 | --- | --- | --- | --- | --- | --- | --- |
 | GK-422D-006 | Historical Order Brand | P2 | Live request asked for brand display in order item detail. | Existing `order_items` schema has product/variant/SKU snapshots but no brand snapshot. Current catalog brand was not shown as historical order data because it could become inaccurate after catalog edits. | Decide whether to add an additive brand snapshot field in a future scoped migration. | DEFERRED |
 | GK-422D-007 | Print Invoice | P2 | Print invoice behavior must remain untouched. | No print invoice Blade/service/controller changes were made in this batch. | Browser print preview remains a manual release gate from 4.22C. | VERIFIED STATICALLY |
+
+## Milestone 4.22E Live Acceptance Hotfix Batch 2
+
+| ID | Module | Severity | Description | Root Cause | Fix | Automated Test | Manual Verification Required | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GK-422E-001 | Admin Customers | P1 | Admin could view customer addresses but could not create/edit addresses for offline/phone orders. | Admin customer controller exposed approval toggle only. | Added authorized admin create/update/default address routes and forms; admin-created/admin-edited addresses can remain approved. | `Address` filter. | Create/edit/default/reject one address in admin. | FIXED |
+| GK-422E-002 | Cart Activity Monitor | P2 | Oldest or soonest-expiring rows appeared first by default. | Default sort was `expires_soonest`. | Changed default to `most_recently_active` and kept explicit special sorts. | `Cart` filter. | Check live-like pending order list ordering. | FIXED |
+| GK-422E-003 | Inventory Reservations | P1 | Active customer carts did not affect Inventory Reserved Quantity. | Pending cart activity tracked holds but did not reconcile `inventories.reserved_quantity`. | Added referenced inventory reservation/release movements for active pending carts and checkout release-before-deduct behavior. | `Cart`, `Inventory`, `Order` filters. | Add/remove cart item and inspect Inventory reserved quantity. | FIXED |
+| GK-422E-004 | Admin Buttons/Tables | P2 | Admin buttons and table rows were visually inconsistent and oversized in places. | Button sizing was mostly page-local Bootstrap defaults. | Added scoped `.admin-shell` compact button/table spacing rules. | Source/CSS plus full suite. | Browser spot check representative admin pages. | FIXED |
+| GK-422E-005 | Admin Order Alerts | P2 | Admin order detail could show duplicate success alerts. | Global admin flash partial and local order-detail success block both rendered the same session key. | Removed local success block from order detail; global flash remains authoritative. | `Order` filter. | Trigger admin status update. | FIXED |
+| GK-422E-006 | Checkout Mobile | P2 | Checkout sections needed safer mobile spacing and controls. | Dense form controls wrapped unevenly on small viewports. | Added presentation-only checkout hooks/CSS for headings, address chip rail, payment cards, and Place Order button. | Existing checkout/order tests and full suite. | Browser check 360/390/430/768. | FIXED |
+| GK-422E-007 | Catalog Filters | P2 | Large filters appeared before product content, especially on mobile. | Filter form was a large always-visible card. | Added compact sticky filter/sort shell, active chips, and mobile off-canvas filter panel while preserving query names. | `Catalog` filter. | Browser check sticky and off-canvas behavior. | FIXED |
+| GK-422E-008 | Scheduler Heartbeat | P1 | System Health could show no scheduler heartbeat when cache did not retain the timestamp. | Heartbeat was cache-only. | Scheduler command now writes cache plus persistent `storage/framework/scheduler-heartbeat.json`; System Health reads file fallback. | `SystemHealth` filter. | Confirm cron updates heartbeat after deployment. | FIXED |
+
+## Milestone 4.22E Findings With No Code Change
+
+| ID | Module | Severity | Description | Outcome | Manual Verification Required | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| GK-422E-009 | Razorpay Provider E2E | P1/P2 | Razorpay Test Mode could not be run without keys. | Left as MANUAL REQUIRED / NOT TESTED. | Yes. | MANUAL REQUIRED |

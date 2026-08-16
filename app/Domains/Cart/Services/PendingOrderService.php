@@ -2,11 +2,14 @@
 
 namespace App\Domains\Cart\Services;
 
+use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Messaging\Contracts\WhatsAppMessagingServiceInterface;
 use App\Domains\Notification\Services\NotificationService;
 use App\Domains\Setting\Services\BusinessSettingService;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Inventory;
+use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\PendingOrder;
 use Illuminate\Database\QueryException;
@@ -18,6 +21,7 @@ class PendingOrderService
     public function __construct(
         private readonly BusinessSettingService $settings,
         private readonly NotificationService $notifications,
+        private readonly InventoryService $inventoryService,
         private readonly WhatsAppMessagingServiceInterface $whatsApp
     ) {}
 
@@ -68,6 +72,7 @@ class PendingOrderService
         }
 
         $this->syncActivity($pending, $cart);
+        $this->syncReservedStock($pending, $cart);
 
         return $pending->fresh(['cart.items.productVariant.inventories', 'customer']);
     }
@@ -88,12 +93,14 @@ class PendingOrderService
         }
 
         if ($cart->items->isEmpty()) {
+            $this->releaseReservedStock($pending, 'Cart cleared');
             $this->close($pending, PendingOrder::CLOSE_CART_CLEARED);
 
             return;
         }
 
         $this->syncActivity($pending, $cart, $removedItem);
+        $this->syncReservedStock($pending, $cart);
     }
 
     public function afterCartCleared(Cart $cart): void
@@ -104,6 +111,7 @@ class PendingOrderService
             return;
         }
 
+        $this->releaseReservedStock($pending, 'Cart cleared');
         $this->close($pending, PendingOrder::CLOSE_CART_CLEARED);
     }
 
@@ -221,6 +229,8 @@ class PendingOrderService
 
     public function convert(PendingOrder $pending, Order $order): void
     {
+        $this->releaseReservedStock($pending, 'Converted to order '.$order->order_number);
+
         $pending->update([
             'status' => PendingOrder::STATUS_CONVERTED,
             'converted_order_id' => $order->id,
@@ -266,6 +276,8 @@ class PendingOrderService
 
     public function close(PendingOrder $pending, string $reason): void
     {
+        $this->releaseReservedStock($pending, str_replace('_', ' ', strtolower($reason)));
+
         $pending->update([
             'status' => PendingOrder::STATUS_NOT_ORDERED,
             'closed_at' => now(),
@@ -278,6 +290,8 @@ class PendingOrderService
         if ($pending->status !== PendingOrder::STATUS_ACTIVE || $pending->expires_at->isFuture()) {
             return;
         }
+
+        $this->releaseReservedStock($pending, 'Cart expired');
 
         CartItem::query()
             ->where('cart_id', $cart->id)
@@ -339,6 +353,123 @@ class PendingOrderService
     {
         return ($exception->errorInfo[0] ?? null) === '23000'
             && str_contains($exception->getMessage(), $indexName);
+    }
+
+    public function releaseReservedStock(PendingOrder $pending, string $note): void
+    {
+        foreach ($this->reservedAllocations($pending) as $allocation) {
+            $quantity = (float) $allocation->reserved_quantity;
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $this->inventoryService->releaseReservedStock(
+                (int) $allocation->product_variant_id,
+                (int) $allocation->stock_location_id,
+                $quantity,
+                $note,
+                PendingOrder::class,
+                $pending->id
+            );
+        }
+    }
+
+    private function syncReservedStock(PendingOrder $pending, Cart $cart): void
+    {
+        $desiredByVariant = $cart->items
+            ->groupBy('product_variant_id')
+            ->map(fn ($items) => (float) $items->sum('quantity'));
+        $allocations = $this->reservedAllocations($pending)
+            ->groupBy('product_variant_id');
+
+        foreach ($allocations as $variantId => $variantAllocations) {
+            $desired = (float) ($desiredByVariant[$variantId] ?? 0);
+            $current = (float) $variantAllocations->sum('reserved_quantity');
+
+            if ($current > $desired) {
+                $this->releaseVariantReservation($pending, (int) $variantId, $current - $desired, $variantAllocations);
+            }
+        }
+
+        foreach ($desiredByVariant as $variantId => $desired) {
+            $current = (float) ($allocations[(int) $variantId] ?? collect())->sum('reserved_quantity');
+
+            if ($desired > $current) {
+                $this->reserveVariantStock($pending, (int) $variantId, $desired - $current);
+            }
+        }
+    }
+
+    private function reserveVariantStock(PendingOrder $pending, int $productVariantId, float $quantity): void
+    {
+        $remaining = $quantity;
+        $inventories = Inventory::query()
+            ->active()
+            ->where('product_variant_id', $productVariantId)
+            ->orderBy('stock_location_id')
+            ->get();
+
+        foreach ($inventories as $inventory) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $reserve = min($remaining, (float) $inventory->available_quantity);
+
+            if ($reserve <= 0) {
+                continue;
+            }
+
+            $this->inventoryService->reserveStock(
+                $productVariantId,
+                $inventory->stock_location_id,
+                $reserve,
+                'Cart '.$pending->reference.' reservation',
+                PendingOrder::class,
+                $pending->id
+            );
+            $remaining -= $reserve;
+        }
+    }
+
+    private function releaseVariantReservation(PendingOrder $pending, int $productVariantId, float $quantity, $allocations): void
+    {
+        $remaining = $quantity;
+
+        foreach ($allocations->sortByDesc('stock_location_id') as $allocation) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $release = min($remaining, (float) $allocation->reserved_quantity);
+
+            if ($release <= 0) {
+                continue;
+            }
+
+            $this->inventoryService->releaseReservedStock(
+                $productVariantId,
+                (int) $allocation->stock_location_id,
+                $release,
+                'Cart '.$pending->reference.' reservation adjusted',
+                PendingOrder::class,
+                $pending->id
+            );
+            $remaining -= $release;
+        }
+    }
+
+    private function reservedAllocations(PendingOrder $pending)
+    {
+        return InventoryMovement::query()
+            ->selectRaw("product_variant_id, stock_location_id, SUM(CASE WHEN movement_type = 'reservation' THEN quantity ELSE -quantity END) as reserved_quantity")
+            ->where('reference_type', PendingOrder::class)
+            ->where('reference_id', $pending->id)
+            ->whereIn('movement_type', ['reservation', 'reservation_release'])
+            ->groupBy('product_variant_id', 'stock_location_id')
+            ->havingRaw('reserved_quantity > 0')
+            ->get();
     }
 
     private function sendInAppReminderIfDue(PendingOrder $pending, Cart $cart): bool

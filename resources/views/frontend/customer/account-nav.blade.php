@@ -37,3 +37,8 @@
         @endforeach
     </div>
 </nav>
+
+<a href="{{ route('home') }}" class="gk-floating-shop" aria-label="Shop storefront">
+    <i class="fa-solid fa-store" aria-hidden="true"></i>
+    <span>Shop</span>
+</a>

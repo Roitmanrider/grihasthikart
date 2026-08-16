@@ -115,3 +115,20 @@ No deployment, ZIP, production SQL, migration, or print-invoice change was perfo
 | Addresses/Returns | Customer-facing statuses use consistent compact badges and compact action/back buttons. | PASS | `Address` and `Return` filters passed. | Mobile visual check for wrapping. |
 | Orders | Customer order list/detail use compact status badges, readable timeline, MRP/GK price/GST/customer-credit breakdown. | PASS | `Order` filter covers updated order detail assertions. | Browser-check long product names and timeline wrapping. |
 | Order Item Brand | Historical brand name on old order items. | NOT CHANGED | `order_items` does not store a brand snapshot; showing current catalog brand would be historically unsafe. | Add an additive historical brand snapshot in a future scoped migration if required. |
+
+## Milestone 4.22E Live Acceptance Hotfix Batch 2
+
+No deployment, ZIP, production SQL, migration, or multi-store schema change was performed.
+
+| Area | Scenario | Result | Evidence | Manual Requirement |
+| --- | --- | --- | --- | --- |
+| Admin Customers | Staff can create/edit customer addresses, approve/reject, keep admin edits approved, set default, and deactivate with existing schema. | PASS | `Address` filter includes admin address management regression. | Smoke one offline phone-order address in admin. |
+| Cart Activity | Default list order shows most recently active carts first while special sorts remain available. | PASS | `Cart` filter covers newest-first ordering. | Check `/admin/pending-orders` in browser with live-like rows. |
+| Reservations | Active customer cart items increment `inventories.reserved_quantity`; removal/expiry/order conversion release reservations through referenced inventory movements. | PASS | `Cart`, `Inventory`, `Order` filters passed. | Verify Inventory reserved quantity changes after adding/removing a cart item. |
+| Admin UI | Shared compact admin button/table spacing rules apply under `.admin-shell`. | PASS SOURCE | CSS scoped to admin shell. | Browser spot check replenishment, orders, customers, pending orders at 390/768/1024/1366. |
+| Admin Order Detail Alerts | One success flash renders from the global admin flash partial. | PASS | `Order` filter includes alert-count regression. | Trigger an order status update in admin. |
+| Checkout Mobile | Checkout gets mobile-safe heading/actions, address chip rail, payment choice focus, and full-width mobile Place Order button. | PASS SOURCE | Presentation-only Blade/CSS changes; financial tests pass via `Order`/full suite. | Browser check 360/390/430/768. |
+| Catalog Filters | Desktop has compact sticky filter/sort shell; mobile/tablet opens filter panel and keeps URL query-state. | PASS | `Catalog` filter covers shell, offcanvas, chips, and query names. | Browser check sticky/offcanvas behavior. |
+| Account Floating Shop | Customer account pages include persistent accessible floating Shop link without JS. | PASS | `Customer`/`Address` coverage includes account nav shell. | Check overlap with mobile bottom nav. |
+| Scheduler Heartbeat | Heartbeat is written to cache and persistent `storage/framework/scheduler-heartbeat.json`; System Health reads file fallback. | PASS | `SystemHealth` filter passed. | After deployment, confirm cron `php artisan schedule:run` updates within 10 minutes. |
+| Razorpay Provider | Real provider test mode E2E remains unavailable. | NOT TESTED | No keys available; no provider flow run. | Manual required before final release. |

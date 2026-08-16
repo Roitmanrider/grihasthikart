@@ -63,6 +63,42 @@ class CustomerAddressService
         });
     }
 
+    public function createByAdmin(Customer $customer, array $data): CustomerAddress
+    {
+        $data['is_approved'] = (bool) ($data['is_approved'] ?? true);
+        $data['status'] = (bool) ($data['status'] ?? true);
+
+        return $this->create($customer, $data);
+    }
+
+    public function updateByAdmin(CustomerAddress $address, array $data): CustomerAddress
+    {
+        return DB::transaction(function () use ($address, $data) {
+            $data['status'] = (bool) ($data['status'] ?? $address->status);
+            $data['is_default'] = (bool) ($data['is_default'] ?? $address->is_default);
+            $data['is_approved'] = (bool) ($data['is_approved'] ?? $address->is_approved);
+            $data['approval_status'] = $data['is_approved'] ? 'APPROVED' : ($data['rejection_reason'] ?? null ? 'REJECTED' : 'PENDING');
+            $data['rejection_reason'] = $data['is_approved'] ? null : ($data['rejection_reason'] ?? $address->rejection_reason);
+            $data['approval_status_changed_at'] = now();
+
+            if ($data['is_default']) {
+                if (! $data['is_approved'] || ! $data['status']) {
+                    throw new InvalidArgumentException('Only approved active addresses can be set as default.');
+                }
+
+                $this->clearDefault($address->customer, $address->id);
+            }
+
+            if (! $data['is_approved'] || ! $data['status']) {
+                $data['is_default'] = false;
+            }
+
+            $address->update($data);
+
+            return $address;
+        });
+    }
+
     public function delete(CustomerAddress $address): bool
     {
         return (bool) $address->delete();

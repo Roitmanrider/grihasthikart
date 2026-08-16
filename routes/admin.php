@@ -452,8 +452,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('customers.restore');
         Route::patch('customers/{customer}/status', [AdminCustomerController::class, 'status'])
             ->name('customers.status');
+        Route::post('customers/{customer}/addresses', [AdminCustomerController::class, 'storeAddress'])
+            ->name('customers.addresses.store');
+        Route::patch('customers/{customer}/addresses/{address}', [AdminCustomerController::class, 'updateAddress'])
+            ->name('customers.addresses.update');
         Route::patch('customers/{customer}/addresses/{address}/approve', [AdminCustomerController::class, 'approveAddress'])
             ->name('customers.addresses.approve');
+        Route::patch('customers/{customer}/addresses/{address}/default', [AdminCustomerController::class, 'setDefaultAddress'])
+            ->name('customers.addresses.default');
         Route::resource('customers', AdminCustomerController::class);
     });
 

@@ -69,7 +69,7 @@ class AdminPendingOrderController extends Controller
             });
         }
 
-        $this->applySort($query, (string) $request->string('sort', 'expires_soonest'));
+        $this->applySort($query, (string) $request->string('sort', 'most_recently_active'));
 
         $followUpBase = PendingOrder::query()
             ->where('status', PendingOrder::STATUS_ACTIVE)

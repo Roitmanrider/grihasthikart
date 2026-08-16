@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
@@ -80,10 +81,18 @@ class SecurityOperationsTest extends TestCase
     public function test_scheduler_heartbeat_records_timestamp(): void
     {
         Cache::forget('ops.scheduler_last_seen_at');
+        File::delete(storage_path('framework/scheduler-heartbeat.json'));
 
         Artisan::call('ops:scheduler-heartbeat');
 
         $this->assertNotEmpty(Cache::get('ops.scheduler_last_seen_at'));
+        $this->assertFileExists(storage_path('framework/scheduler-heartbeat.json'));
+
+        Cache::forget('ops.scheduler_last_seen_at');
+        $this->actingAs(User::factory()->create(['email' => 'admin@example.com']))
+            ->get(route('admin.system-health.index'))
+            ->assertOk()
+            ->assertDontSee('No heartbeat recorded yet');
     }
 
     public function test_media_service_rejects_executable_extensions_and_traversal_paths(): void

@@ -18,6 +18,7 @@ use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\Inventory;
+use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
@@ -61,7 +62,7 @@ class OrderService
             $cart = $this->cartService->refreshCartPrices($cart);
             $this->validateCartItemsStillPurchasable($cart);
             $lockedInventories = $this->lockInventoryRowsForCart($cart);
-            $this->validateInventoryAvailabilityForEveryCartItem($cart, $lockedInventories);
+            $this->validateInventoryAvailabilityForEveryCartItem($cart, $lockedInventories, $pending);
 
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
@@ -82,6 +83,10 @@ class OrderService
                     'payment_method' => 'customer_credit',
                     'payment_status' => 'paid',
                 ]);
+            }
+            if ($pending) {
+                $this->pendingOrderService->releaseReservedStock($pending, 'Order '.$order->order_number.' placed');
+                $lockedInventories = $this->lockInventoryRowsForCart($cart);
             }
             $this->deductInventoryForOrder($order, $lockedInventories);
             if ($pending) {
@@ -110,7 +115,7 @@ class OrderService
             $this->cartService->validateDailyOfferHold($cart);
             $cart = $this->cartService->refreshCartPrices($cart);
             $this->validateCartItemsStillPurchasable($cart);
-            $this->validateInventoryAvailabilityForEveryCartItem($cart);
+            $this->validateInventoryAvailabilityForEveryCartItem($cart, null, $this->lockedActivePendingForCart($cart));
 
             $customer = isset($checkoutData['customer_id']) ? Customer::query()->find($checkoutData['customer_id']) : null;
             $couponData = $this->couponService->revalidateAppliedCoupon($cart, $customer);
@@ -297,7 +302,7 @@ class OrderService
         }
     }
 
-    public function validateInventoryAvailabilityForEveryCartItem(Cart $cart, ?iterable $lockedInventories = null): void
+    public function validateInventoryAvailabilityForEveryCartItem(Cart $cart, ?iterable $lockedInventories = null, ?PendingOrder $pending = null): void
     {
         $inventories = $lockedInventories ? collect($lockedInventories) : null;
 
@@ -305,6 +310,7 @@ class OrderService
             $available = $inventories
                 ? (float) $inventories->where('product_variant_id', $item->product_variant_id)->sum('available_quantity')
                 : $this->inventoryService->getAvailableQuantity($item->product_variant_id);
+            $available += $pending ? $this->pendingReservedQuantityForVariant($pending, (int) $item->product_variant_id) : 0.0;
 
             if ($available < (float) $item->quantity) {
                 if ($available <= 0) {
@@ -526,6 +532,17 @@ class OrderService
         }
     }
 
+    private function pendingReservedQuantityForVariant(PendingOrder $pending, int $productVariantId): float
+    {
+        return (float) InventoryMovement::query()
+            ->where('reference_type', PendingOrder::class)
+            ->where('reference_id', $pending->id)
+            ->where('product_variant_id', $productVariantId)
+            ->whereIn('movement_type', ['reservation', 'reservation_release'])
+            ->selectRaw("SUM(CASE WHEN movement_type = 'reservation' THEN quantity ELSE -quantity END) as reserved_quantity")
+            ->value('reserved_quantity');
+    }
+
     private function validateOrderItemsStillPurchasable(Order $order): void
     {
         foreach ($order->items as $item) {
@@ -544,6 +561,14 @@ class OrderService
         }
 
         $this->validateOrderItemsStillPurchasable($lockedOrder);
+
+        $pending = $lockedOrder->cart_id
+            ? PendingOrder::query()->active()->where('cart_id', $lockedOrder->cart_id)->lockForUpdate()->first()
+            : null;
+
+        if ($pending) {
+            $this->pendingOrderService->releaseReservedStock($pending, 'Order '.$lockedOrder->order_number.' paid');
+        }
 
         if ((float) $lockedOrder->customer_credit_used > 0 && $lockedOrder->customer) {
             $this->customerCreditService->debitForOrder($lockedOrder->customer, $lockedOrder, (float) $lockedOrder->customer_credit_used);

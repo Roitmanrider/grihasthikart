@@ -479,6 +479,64 @@ class CustomerAccountTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_edit_approve_and_default_customer_address_without_customer_pending_workflow(): void
+    {
+        $customer = Customer::factory()->create(['name' => 'Offline Customer', 'mobile' => '9876543210']);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.customers.addresses.store', $customer), $this->addressPayload([
+                'label' => 'Phone Order',
+                'is_approved' => 1,
+                'status' => 1,
+                'is_default' => 1,
+            ]))
+            ->assertRedirect(route('admin.customers.show', $customer));
+
+        $address = CustomerAddress::query()->where('customer_id', $customer->id)->firstOrFail();
+        $this->assertTrue($address->is_approved);
+        $this->assertTrue($address->is_default);
+        $this->assertSame('APPROVED', $address->approval_status);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.customers.addresses.update', [$customer, $address]), $this->addressPayload([
+                'address_line1' => 'Updated by Admin',
+                'is_approved' => 1,
+                'status' => 1,
+                'is_default' => 1,
+            ]))
+            ->assertRedirect(route('admin.customers.show', $customer));
+
+        $address->refresh();
+        $this->assertSame('Updated by Admin', $address->address_line1);
+        $this->assertTrue($address->is_approved);
+        $this->assertSame('APPROVED', $address->approval_status);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.customers.addresses.approve', [$customer, $address]), [
+                'decision' => 'reject',
+                'rejection_reason' => 'Outside area',
+            ])
+            ->assertRedirect();
+
+        $this->assertFalse($address->fresh()->is_approved);
+        $this->assertSame('REJECTED', $address->fresh()->approval_status);
+        $this->assertSame('Outside area', $address->fresh()->rejection_reason);
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.customers.addresses.update', [$customer, $address]), $this->addressPayload([
+                'is_approved' => 1,
+                'status' => 1,
+                'is_default' => 1,
+            ]))
+            ->assertRedirect();
+
+        $this->actingAs($this->admin)
+            ->patch(route('admin.customers.addresses.default', [$customer, $address]))
+            ->assertRedirect();
+
+        $this->assertTrue($address->fresh()->is_default);
+    }
+
     public function test_customer_can_update_profile_but_not_mobile_or_admin_fields(): void
     {
         $customer = Customer::factory()->create([
@@ -559,12 +617,18 @@ class CustomerAccountTest extends TestCase
             ->assertSee('data-account-nav-row', false)
             ->assertSee('data-account-nav-active', false)
             ->assertSee('data-account-notice-strip', false)
+            ->assertSee('gk-floating-shop', false)
+            ->assertSee('aria-label="Shop storefront"', false)
             ->assertSee(route('customer.cashback.index'), false)
             ->getContent();
 
+        $navStart = strpos($cashbackContent, 'data-account-nav-row');
+        $navEnd = strpos($cashbackContent, '</nav>', $navStart);
+        $navContent = substr($cashbackContent, $navStart, $navEnd - $navStart);
+
         $this->assertLessThan(
-            strpos($cashbackContent, 'Overview'),
-            strpos($cashbackContent, '>Shop<'),
+            strpos($navContent, 'Overview'),
+            strpos($navContent, 'Shop'),
             'Shop should be the first account navigation item.'
         );
     }

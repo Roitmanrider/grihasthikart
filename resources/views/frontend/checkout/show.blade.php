@@ -4,18 +4,18 @@
 @section('description', 'Place your GrihasthiKart order.')
 
 @section('content')
-    <section class="py-5 js-cart-sync" data-cart-revision="{{ $cart->revision }}" data-cart-status-url="{{ route('cart.status') }}">
+    <section class="py-5 js-cart-sync gk-checkout-page" data-cart-revision="{{ $cart->revision }}" data-cart-status-url="{{ route('cart.status') }}">
         <div class="container">
             <div id="cartRemoteUpdateBanner" class="alert alert-info d-none">Your cart was updated from another device.</div>
             @if ($cart_expired ?? false)
                 <div class="alert alert-warning">Your cart expired because it was not ordered within the allowed time.</div>
             @endif
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
                 <div>
                     <h1 class="h3 mb-1">Checkout</h1>
                     <p class="text-muted mb-0">Choose a delivery slot and payment option.</p>
                 </div>
-                <a href="{{ route('cart.show') }}" class="btn btn-outline-secondary">Back to Cart</a>
+                <a href="{{ route('cart.show') }}" class="btn btn-outline-secondary btn-sm">Back to Cart</a>
             </div>
 
             @if ($errors->has('checkout') || $errors->has('cart') || $errors->has('payment'))
@@ -67,7 +67,7 @@
                                         @if ($approvedAddresses->isNotEmpty())
                                             <label class="form-label d-block">Delivery Address</label>
                                             @if ($approvedAddresses->count() > 1)
-                                                <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Approved delivery addresses">
+                                                <div class="gk-checkout-address-options mb-3" role="group" aria-label="Approved delivery addresses">
                                                     @foreach ($approvedAddresses as $address)
                                                         <input type="radio"
                                                                class="btn-check js-address-choice"
@@ -84,7 +84,7 @@
                                                                data-landmark="{{ $address->landmark }}"
                                                                autocomplete="off"
                                                                @checked((int) old('customer_address_id', $preferredAddress?->id) === (int) $address->id)>
-                                                        <label class="btn btn-outline-success rounded-pill px-3" for="customerAddress{{ $address->id }}">
+                                                        <label class="btn btn-outline-success rounded-pill px-3 btn-sm" for="customerAddress{{ $address->id }}">
                                                             {{ $address->label ?: 'Address' }}
                                                         </label>
                                                     @endforeach
@@ -240,7 +240,7 @@
                                     <div class="row g-2">
                                         @foreach ($enabledPaymentMethods as $method)
                                             <div class="col-md-4">
-                                                <label class="border rounded p-3 d-block h-100">
+                                                <label class="border rounded p-3 d-block h-100 gk-payment-choice">
                                                     <input class="form-check-input me-2" type="radio" name="payment_method" value="{{ $method }}" @checked(old('payment_method', $enabledPaymentMethods[0] ?? 'cod') === $method) required>
                                                     <span class="fw-semibold">
                                                         @if ($method === 'cod')
@@ -269,7 +269,7 @@
                                     @endif
                                 </div>
                                 <div class="col-12">
-                                    <button class="btn btn-success btn-lg" type="submit" @disabled(empty($enabledPaymentMethods) || ($customer && $approvedAddresses->isEmpty()))>Place Order</button>
+                                    <button class="btn btn-success btn-lg gk-place-order-button" type="submit" @disabled(empty($enabledPaymentMethods) || ($customer && $approvedAddresses->isEmpty()))>Place Order</button>
                                 </div>
                             </form>
                         </div>

@@ -240,6 +240,70 @@ class CartActivityManagementTest extends TestCase
             ->assertSee($this->customer->mobile);
     }
 
+    public function test_admin_cart_activity_defaults_to_most_recent_activity_first(): void
+    {
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $olderCart = Cart::factory()->create(['customer_id' => $this->customer->id, 'status' => 'active']);
+        $newerCustomer = Customer::factory()->create(['name' => 'Newest Cart Customer']);
+        $newerCart = Cart::factory()->create(['customer_id' => $newerCustomer->id, 'status' => 'active']);
+        PendingOrder::query()->create([
+            'customer_id' => $this->customer->id,
+            'cart_id' => $olderCart->id,
+            'reference' => 'PND-2026-000101',
+            'status' => PendingOrder::STATUS_ACTIVE,
+            'started_at' => now()->subHours(2),
+            'last_activity_at' => now()->subHours(2),
+            'expires_at' => now()->addHour(),
+        ]);
+        PendingOrder::query()->create([
+            'customer_id' => $newerCustomer->id,
+            'cart_id' => $newerCart->id,
+            'reference' => 'PND-2026-000202',
+            'status' => PendingOrder::STATUS_ACTIVE,
+            'started_at' => now()->subHour(),
+            'last_activity_at' => now()->subMinute(),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $content = $this->actingAs($admin)
+            ->get(route('admin.pending-orders.index'))
+            ->assertOk()
+            ->assertSee('Most Recently Active')
+            ->getContent();
+
+        $this->assertLessThan(strpos($content, 'PND-2026-000101'), strpos($content, 'PND-2026-000202'));
+    }
+
+    public function test_cart_activity_reserves_inventory_and_releases_on_remove_and_expiry(): void
+    {
+        [, $variant] = $this->purchasableVariant(inventoryQuantity: 5);
+
+        $this->asCustomer()->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+        ])->assertRedirect(route('cart.show'));
+
+        $inventory = Inventory::query()->where('product_variant_id', $variant->id)->firstOrFail();
+        $this->assertSame('2.000', $inventory->fresh()->reserved_quantity);
+        $this->assertSame(3.0, $inventory->fresh()->available_quantity);
+
+        $item = CartItem::query()->firstOrFail();
+        $this->asCustomer()->delete(route('cart.items.destroy', $item))->assertRedirect(route('cart.show'));
+        $this->assertSame('0.000', $inventory->fresh()->reserved_quantity);
+
+        $this->asCustomer()->post(route('cart.items.store'), [
+            'product_variant_id' => $variant->id,
+            'quantity' => 1,
+        ])->assertRedirect(route('cart.show'));
+        $pending = PendingOrder::query()->active()->firstOrFail();
+        $pending->update(['expires_at' => now()->subMinute()]);
+
+        Artisan::call('pending-orders:process');
+
+        $this->assertSame('0.000', $inventory->fresh()->reserved_quantity);
+        $this->assertSame(PendingOrder::STATUS_NOT_ORDERED, $pending->fresh()->status);
+    }
+
     public function test_followup_queue_uses_in_app_reminder_stage_and_assignment_without_whatsapp(): void
     {
         $admin = User::factory()->create(['email' => 'admin@example.com']);

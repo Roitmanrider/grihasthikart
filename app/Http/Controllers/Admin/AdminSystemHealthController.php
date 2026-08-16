@@ -18,7 +18,7 @@ class AdminSystemHealthController extends Controller
     {
         $db = $this->databaseStatus();
         $uploadPath = config('filesystems.disks.uploads.root');
-        $schedulerLastSeen = Cache::get('ops.scheduler_last_seen_at');
+        $schedulerLastSeen = $this->schedulerLastSeen();
 
         return view('admin.system-health.index', [
             'checks' => [
@@ -74,5 +74,26 @@ class AdminSystemHealthController extends Controller
         }
 
         return now(config('app.timezone'))->diffInMinutes($timestamp) <= 10;
+    }
+
+    private function schedulerLastSeen(): ?string
+    {
+        $cached = Cache::get('ops.scheduler_last_seen_at');
+
+        if ($cached) {
+            return (string) $cached;
+        }
+
+        $path = storage_path('framework/scheduler-heartbeat.json');
+
+        if (! File::exists($path)) {
+            return null;
+        }
+
+        $payload = json_decode((string) File::get($path), true);
+
+        return is_array($payload) && isset($payload['last_seen_at'])
+            ? (string) $payload['last_seen_at']
+            : null;
     }
 }

@@ -160,13 +160,13 @@ class InventoryService
         $inventory->increment('damaged_quantity', $quantity);
     }
 
-    public function reserveStock(int $productVariantId, int $stockLocationId, float $quantity, ?string $note = null): Inventory
+    public function reserveStock(int $productVariantId, int $stockLocationId, float $quantity, ?string $note = null, ?string $referenceType = null, ?int $referenceId = null): Inventory
     {
         if ($quantity <= 0) {
             throw new InvalidArgumentException('Reservation quantity must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($productVariantId, $stockLocationId, $quantity, $note) {
+        return DB::transaction(function () use ($productVariantId, $stockLocationId, $quantity, $note, $referenceType, $referenceId) {
             /** @var Inventory $inventory */
             $inventory = $this->repository->lockForVariantLocation($productVariantId, $stockLocationId);
 
@@ -178,7 +178,7 @@ class InventoryService
             $this->ensureSufficientAvailableStock($inventory, $quantity);
             $inventory->increment('reserved_quantity', $quantity);
             $inventory->refresh();
-            $this->writeMovement($inventory, 'reservation', $quantity, $note);
+            $this->writeMovement($inventory, 'reservation', $quantity, $note, $referenceType, $referenceId);
 
             $updated = $inventory->fresh(['productVariant.product', 'stockLocation']);
             $this->replenishmentService->checkTransitions(collect([$updated]));
@@ -187,13 +187,13 @@ class InventoryService
         });
     }
 
-    public function releaseReservedStock(int $productVariantId, int $stockLocationId, float $quantity, ?string $note = null): Inventory
+    public function releaseReservedStock(int $productVariantId, int $stockLocationId, float $quantity, ?string $note = null, ?string $referenceType = null, ?int $referenceId = null): Inventory
     {
         if ($quantity <= 0) {
             throw new InvalidArgumentException('Release quantity must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($productVariantId, $stockLocationId, $quantity, $note) {
+        return DB::transaction(function () use ($productVariantId, $stockLocationId, $quantity, $note, $referenceType, $referenceId) {
             /** @var Inventory $inventory */
             $inventory = $this->repository->lockForVariantLocation($productVariantId, $stockLocationId);
 
@@ -207,7 +207,7 @@ class InventoryService
 
             $inventory->decrement('reserved_quantity', $quantity);
             $inventory->refresh();
-            $this->writeMovement($inventory, 'reservation_release', $quantity, $note);
+            $this->writeMovement($inventory, 'reservation_release', $quantity, $note, $referenceType, $referenceId);
 
             $updated = $inventory->fresh(['productVariant.product', 'stockLocation']);
             $this->replenishmentService->checkTransitions(collect([$updated]));

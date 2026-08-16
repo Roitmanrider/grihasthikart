@@ -114,4 +114,57 @@ class AdminCustomerController extends Controller
 
         return back()->with('success', 'Address approval updated successfully.');
     }
+
+    public function storeAddress(Customer $customer, Request $request)
+    {
+        Gate::authorize('manage-customers');
+        $data = $this->validateAddress($request);
+        $data['is_approved'] = $request->boolean('is_approved', true);
+        $data['status'] = $request->boolean('status', true);
+
+        $this->addressService->createByAdmin($customer, $data);
+
+        return redirect()->route('admin.customers.show', $customer)->with('success', 'Customer address created successfully.');
+    }
+
+    public function updateAddress(Customer $customer, CustomerAddress $address, Request $request)
+    {
+        Gate::authorize('manage-customers');
+        abort_unless($address->customer_id === $customer->id, 404);
+        $data = $this->validateAddress($request);
+        $data['is_approved'] = $request->boolean('is_approved', $address->is_approved);
+        $data['status'] = $request->boolean('status', $address->status);
+
+        $this->addressService->updateByAdmin($address, $data);
+
+        return redirect()->route('admin.customers.show', $customer)->with('success', 'Customer address updated successfully.');
+    }
+
+    public function setDefaultAddress(Customer $customer, CustomerAddress $address)
+    {
+        Gate::authorize('manage-customers');
+        abort_unless($address->customer_id === $customer->id, 404);
+        $this->addressService->setDefault($address);
+
+        return redirect()->route('admin.customers.show', $customer)->with('success', 'Default address updated successfully.');
+    }
+
+    private function validateAddress(Request $request): array
+    {
+        return $request->validate([
+            'label' => ['nullable', 'string', 'max:100'],
+            'recipient_name' => ['required', 'string', 'max:255'],
+            'mobile' => ['required', 'string', 'min:10', 'max:15'],
+            'address_line1' => ['required', 'string', 'max:255'],
+            'address_line2' => ['nullable', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:100'],
+            'state' => ['required', 'string', 'max:100'],
+            'pincode' => ['required', 'string', 'max:10'],
+            'landmark' => ['nullable', 'string', 'max:255'],
+            'is_default' => ['nullable', 'boolean'],
+            'is_approved' => ['nullable', 'boolean'],
+            'status' => ['nullable', 'boolean'],
+            'rejection_reason' => ['nullable', 'string', 'max:255'],
+        ]);
+    }
 }

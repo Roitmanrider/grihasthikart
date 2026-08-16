@@ -4,75 +4,75 @@
     $selectedBrands = collect($filters['brand_ids'] ?? [])->map(fn ($id) => (string) $id)->all();
     $selectedWeights = collect($filters['weights'] ?? [])->map(fn ($weight) => (string) $weight)->all();
     $baseRoute = $baseRoute ?? url()->current();
+    $sortOptions = ['relevance' => 'Relevance', 'latest' => 'Newest', 'name' => 'Name A-Z', 'price_asc' => 'Price: Low to High', 'price_desc' => 'Price: High to Low', 'discount_desc' => 'Discount: High to Low'];
+    $hasFilters = ($filters['q'] ?? '') !== ''
+        || $selectedBrands !== []
+        || $selectedWeights !== []
+        || ($filters['min_price'] ?? '') !== ''
+        || ($filters['max_price'] ?? '') !== ''
+        || ($filters['discount_min'] ?? '') !== '';
 @endphp
 
-<form method="GET" action="{{ $baseRoute }}" class="card border-0 shadow-sm mb-4" data-no-loader="true">
-    <div class="card-body">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label" for="q">Search</label>
-                <input id="q" name="q" value="{{ $filters['q'] ?? '' }}" maxlength="150" class="form-control" placeholder="Search catalog">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label" for="sort">Sort</label>
-                <select id="sort" name="sort" class="form-select">
-                    @foreach (['relevance' => 'Relevance', 'latest' => 'Newest', 'name' => 'Name A-Z', 'price_asc' => 'Price: Low to High', 'price_desc' => 'Price: High to Low', 'discount_desc' => 'Discount: High to Low'] as $value => $label)
+<div class="gk-catalog-filter-shell mb-4">
+    <div class="gk-catalog-filter-bar">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button class="btn btn-outline-success btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#catalogFilterPanel" aria-controls="catalogFilterPanel">
+                <i class="fa-solid fa-filter me-1" aria-hidden="true"></i> Filter
+            </button>
+            <form method="GET" action="{{ $baseRoute }}" class="d-flex align-items-center gap-2" data-no-loader="true">
+                @foreach (request()->except(['sort', 'page']) as $key => $value)
+                    @if (is_array($value))
+                        @foreach ($value as $item)
+                            <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
+                        @endforeach
+                    @else
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endif
+                @endforeach
+                <label class="small text-muted" for="catalogSort">Sort</label>
+                <select id="catalogSort" name="sort" class="form-select form-select-sm gk-sort-select" onchange="this.form.submit()">
+                    @foreach ($sortOptions as $value => $label)
                         <option value="{{ $value }}" @selected(($filters['sort'] ?? '') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label" for="min_price">Min Price</label>
-                <input id="min_price" name="min_price" type="number" min="0" step="1" value="{{ $filters['min_price'] ?? '' }}" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label" for="max_price">Max Price</label>
-                <input id="max_price" name="max_price" type="number" min="0" step="1" value="{{ $filters['max_price'] ?? '' }}" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label" for="discount_min">Discount</label>
-                <select id="discount_min" name="discount_min" class="form-select">
-                    <option value="">Any discount</option>
-                    @foreach ($filterOptions['discounts'] ?? [10, 20, 30] as $discount)
-                        <option value="{{ $discount }}" @selected((string) ($filters['discount_min'] ?? '') === (string) $discount)>{{ $discount }}%+</option>
-                    @endforeach
-                </select>
-            </div>
+            </form>
         </div>
 
-        <div class="row g-3 mt-1">
-            @if (($filterOptions['brands'] ?? collect())->isNotEmpty())
-                <div class="col-md-6">
-                    <div class="form-label">Brand</div>
-                    <div class="d-flex flex-wrap gap-3">
-                        @foreach ($filterOptions['brands'] as $brand)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="brand[]" value="{{ $brand->id }}" id="brand_{{ $brand->id }}" @checked(in_array((string) $brand->id, $selectedBrands, true))>
-                                <label class="form-check-label" for="brand_{{ $brand->id }}">{{ $brand->name }}</label>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-
-            @if (($filterOptions['weights'] ?? collect())->isNotEmpty())
-                <div class="col-md-6">
-                    <div class="form-label">Weight / Pack</div>
-                    <div class="d-flex flex-wrap gap-3">
-                        @foreach ($filterOptions['weights'] as $weight)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="weight[]" value="{{ $weight }}" id="weight_{{ md5($weight) }}" @checked(in_array((string) $weight, $selectedWeights, true))>
-                                <label class="form-check-label" for="weight_{{ md5($weight) }}">{{ $weight }}</label>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-        </div>
-
-        <div class="d-flex flex-wrap gap-2 mt-3">
-            <button class="btn btn-success" type="submit">Apply Filters</button>
-            <a href="{{ $baseRoute }}{{ ($filters['q'] ?? '') !== '' ? '?q='.urlencode($filters['q']) : '' }}" class="btn btn-outline-secondary">Clear Filters</a>
-        </div>
+        @if ($hasFilters)
+            <div class="gk-filter-chip-row">
+                @if (($filters['q'] ?? '') !== '')
+                    <span class="gk-filter-chip">Search: {{ $filters['q'] }}</span>
+                @endif
+                @foreach (($filterOptions['brands'] ?? collect())->whereIn('id', array_map('intval', $selectedBrands)) as $brand)
+                    <span class="gk-filter-chip">{{ $brand->name }}</span>
+                @endforeach
+                @foreach ($selectedWeights as $weight)
+                    <span class="gk-filter-chip">{{ $weight }}</span>
+                @endforeach
+                @if (($filters['discount_min'] ?? '') !== '')
+                    <span class="gk-filter-chip">{{ $filters['discount_min'] }}%+ off</span>
+                @endif
+                @if (($filters['min_price'] ?? '') !== '' || ($filters['max_price'] ?? '') !== '')
+                    <span class="gk-filter-chip">Rs. {{ $filters['min_price'] ?? '0' }} - {{ $filters['max_price'] ?? 'Any' }}</span>
+                @endif
+                <a class="gk-filter-chip gk-filter-chip-clear" href="{{ $baseRoute }}{{ ($filters['q'] ?? '') !== '' ? '?q='.urlencode($filters['q']) : '' }}">Clear</a>
+            </div>
+        @endif
     </div>
-</form>
+
+    <form method="GET" action="{{ $baseRoute }}" class="gk-catalog-filter-form d-none d-lg-block" data-no-loader="true">
+        @include('frontend.products.partials.catalog-filter-fields', compact('filters', 'filterOptions', 'selectedBrands', 'selectedWeights', 'sortOptions', 'baseRoute'))
+    </form>
+</div>
+
+<div class="offcanvas offcanvas-bottom gk-catalog-filter-offcanvas" tabindex="-1" id="catalogFilterPanel" aria-labelledby="catalogFilterPanelLabel">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title h5" id="catalogFilterPanelLabel">Filter Products</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="GET" action="{{ $baseRoute }}" data-no-loader="true">
+            @include('frontend.products.partials.catalog-filter-fields', compact('filters', 'filterOptions', 'selectedBrands', 'selectedWeights', 'sortOptions', 'baseRoute'))
+        </form>
+    </div>
+</div>

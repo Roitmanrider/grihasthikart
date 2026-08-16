@@ -89,8 +89,22 @@
 
     <div class="col-lg-7">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold">Addresses</div>
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center gap-2">
+                <span>Addresses</span>
+                <span class="badge text-bg-light border">{{ $customer->addresses->count() }}</span>
+            </div>
             <div class="card-body">
+                <details class="border rounded p-3 mb-4">
+                    <summary class="fw-semibold">Add address for customer</summary>
+                    <form method="POST" action="{{ route('admin.customers.addresses.store', $customer) }}" class="row g-3 mt-1">
+                        @csrf
+                        @include('admin.customers.address-form', ['address' => null, 'customer' => $customer])
+                        <div class="col-12">
+                            <button class="btn btn-success btn-sm">Save Approved Address</button>
+                        </div>
+                    </form>
+                </details>
+
                 @forelse ($customer->addresses as $address)
                     <div class="border-bottom pb-3 mb-3">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -139,6 +153,26 @@
                                 @endunless
                             </div>
                         </form>
+
+                        @if ($address->is_approved && $address->status && ! $address->is_default)
+                            <form method="POST" action="{{ route('admin.customers.addresses.default', [$customer, $address]) }}" class="mt-2">
+                                @csrf
+                                @method('PATCH')
+                                <button class="btn btn-sm btn-outline-primary">Set as Default</button>
+                            </form>
+                        @endif
+
+                        <details class="mt-3">
+                            <summary class="small fw-semibold text-success">Edit address</summary>
+                            <form method="POST" action="{{ route('admin.customers.addresses.update', [$customer, $address]) }}" class="row g-3 mt-1">
+                                @csrf
+                                @method('PATCH')
+                                @include('admin.customers.address-form', ['address' => $address, 'customer' => $customer])
+                                <div class="col-12">
+                                    <button class="btn btn-sm btn-success">Update Address</button>
+                                </div>
+                            </form>
+                        </details>
                     </div>
                 @empty
                     <div class="text-muted">No addresses.</div>

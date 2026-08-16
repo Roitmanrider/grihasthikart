@@ -170,6 +170,32 @@ class SearchCatalogDiscoveryTest extends TestCase
             ->assertDontSee($tooExpensive->name);
     }
 
+    public function test_catalog_filter_sort_ui_uses_sticky_bar_and_mobile_panel_without_losing_query_state(): void
+    {
+        $brand = Brand::factory()->create(['name' => 'Filter Brand', 'status' => true]);
+        $this->catalogProduct(['name' => 'Filter Rice', 'slug' => 'filter-rice', 'brand_id' => $brand->id], [
+            'variant_name' => '5kg',
+            'weight' => 5,
+            'unit' => 'kg',
+        ]);
+
+        $this->get(route('products.index', [
+            'q' => 'rice',
+            'brand' => [$brand->id],
+            'weight' => ['5kg'],
+            'sort' => 'price_asc',
+        ]))
+            ->assertOk()
+            ->assertSee('gk-catalog-filter-shell', false)
+            ->assertSee('data-bs-target="#catalogFilterPanel"', false)
+            ->assertSee('offcanvas offcanvas-bottom gk-catalog-filter-offcanvas', false)
+            ->assertSee('Filter Brand')
+            ->assertSee('5kg')
+            ->assertSee('sort', false)
+            ->assertSee('brand[]', false)
+            ->assertSee('weight[]', false);
+    }
+
     public function test_sort_options_are_deterministic(): void
     {
         $cheap = $this->catalogProduct(['name' => 'Alpha Rice', 'slug' => 'alpha-rice'], ['mrp' => 100, 'selling_price' => 90]);

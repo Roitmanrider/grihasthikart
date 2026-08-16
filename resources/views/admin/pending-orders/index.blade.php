@@ -35,13 +35,13 @@
         'assigned_me' => 'Assigned to Me',
     ];
     $sortOptions = [
+        'most_recently_active' => 'Most Recently Active',
         'expires_soonest' => 'Expires Soonest',
         'highest_cart_value' => 'Highest Cart Value',
         'oldest_waiting' => 'Oldest Waiting',
         'highest_risk' => 'Highest Risk',
         'premium_first' => 'Premium First',
         'most_scarce_stock' => 'Most Scarce Stock',
-        'most_recently_active' => 'Most Recently Active',
     ];
 @endphp
 
@@ -76,7 +76,7 @@
 <div class="row g-3 mb-4">
     @foreach ($quickCards as $filter => $card)
         <div class="col-6 col-md-3 col-xl">
-            <a class="text-decoration-none" href="{{ route('admin.pending-orders.index', ['filters' => array_values(array_unique(array_merge(['call_followup'], [$filter]))), 'sort' => request('sort', 'expires_soonest')]) }}">
+            <a class="text-decoration-none" href="{{ route('admin.pending-orders.index', ['filters' => array_values(array_unique(array_merge(['call_followup'], [$filter]))), 'sort' => request('sort', 'most_recently_active')]) }}">
                 <div class="border rounded bg-white p-3 h-100">
                     <div class="text-muted small">{{ $card['label'] }}</div>
                     <div class="h4 mb-0 text-dark">{{ $card['count'] }}</div>
@@ -119,7 +119,7 @@
                 <label class="form-label">Sort By</label>
                 <select name="sort" class="form-select">
                     @foreach ($sortOptions as $value => $label)
-                        <option value="{{ $value }}" @selected(request('sort', 'expires_soonest') === $value)>{{ $label }}</option>
+                        <option value="{{ $value }}" @selected(request('sort', 'most_recently_active') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
