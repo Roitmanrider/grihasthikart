@@ -33,3 +33,19 @@ These are intentionally outside Milestone 4.22A implementation scope unless prom
 | Razorpay live-mode production validation | Requires live credentials/production-like environment. |
 | Major analytics/search-engine upgrades | New feature scope, not defect resolution. |
 | Full ERP/test-data reset | Explicitly postponed until final MVP testing. |
+
+## Milestone 4.22C Release Candidate Findings
+
+| ID | Module | Severity | Description | Outcome | Manual Verification Required | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| GK-422C-001 | Release packaging | P3 | Release script did not emit a non-secret manifest with commit/timestamp/migration list. | Added `release-manifest.json` generation to package staging. No ZIP was created. | Confirm manifest contents when package is eventually created. | FIXED |
+| GK-422C-002 | Razorpay provider E2E | P1/P2 | Real Test Mode success/failure/cancel/retry/webhook race still requires provider credentials and browser transaction. | Static code/tests pass; not claimed as real provider pass. | Yes, run the manual Razorpay Test Mode script. | MANUAL REQUIRED |
+| GK-422C-003 | Print media | P2 | Invoice, packing slip, picking slip, and purchase print need A4 preview validation with representative data. | Static audit found no obvious chrome/sidebar blocker. | Yes, run browser print preview checks. | MANUAL REQUIRED |
+| GK-422C-004 | Scheduler runtime | P2 | Scheduler registration is clean, but production heartbeat advancement requires runtime observation. | Source/schedule audit passed. | Yes, verify System Health heartbeat after deployment. | MANUAL REQUIRED |
+| GK-422C-005 | Production backup/restore | P1 | Backup/restore cannot be executed from this non-deployment milestone. | Added backup gate to release checklist. | Yes, perform backup before release deployment. | MANUAL REQUIRED |
+
+Release blocker summary at 4.22C audit time:
+
+- P0 blockers: 0
+- P1 blockers: 0 automated/static blockers; Razorpay provider E2E and backup gate remain manual pre-release requirements.
+- P2 blockers: 0 code blockers; print/scheduler/responsive production smoke remain manual validation items.

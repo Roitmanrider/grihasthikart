@@ -1,6 +1,7 @@
 param(
     [switch] $IncludeVendor,
-    [switch] $IncludeDocs
+    [switch] $IncludeDocs,
+    [string] $ReleaseLabel = 'release-candidate'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -95,6 +96,23 @@ if (-not (Test-Path (Join-Path $packageRoot 'public\build'))) {
 if ((Test-Path (Join-Path $packageRoot '.env')) -or (Test-Path (Join-Path $packageRoot '.env.production'))) {
     throw 'Unsafe package detected: real environment file was copied.'
 }
+
+$gitCommit = try {
+    (& git -C $projectRoot rev-parse HEAD 2>$null)
+}
+catch {
+    'unknown'
+}
+
+$manifest = [ordered]@{
+    app = 'GrihasthiKart'
+    release_label = $ReleaseLabel
+    generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    git_commit = if ($gitCommit) { $gitCommit.Trim() } else { 'unknown' }
+    migrations = @(Get-ChildItem -Path (Join-Path $packageRoot 'database\migrations') -Filter '*.php' | Sort-Object Name | Select-Object -ExpandProperty Name)
+}
+
+$manifest | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $packageRoot 'release-manifest.json') -Encoding UTF8
 
 New-Item -ItemType Directory -Path (Split-Path $zipPath -Parent) -Force | Out-Null
 

@@ -72,3 +72,32 @@ Browser: Chromium via Codex in-app browser against a local-only QA database (`gr
 - E. Print: verify invoice, packing slip, picking slip, purchase print, page breaks, totals, and browser print dialog rendering.
 - F. Payments: verify Razorpay disabled states, retry/cancel behavior, webhook/payment reconciliation, and COD fallback.
 - G. Scheduler/Operations: verify pending order expiry/reminders, WhatsApp abstraction behavior, cleanup commands, system health, backup/restore pages, and logs.
+
+## Milestone 4.22C Release Candidate Gate
+
+Status: READY FOR RELEASE CANDIDATE, subject to the manual production-like gates below. No P0/P1 automated or static blocker was found during the RC audit.
+
+| Gate | Result | Evidence | Manual Requirement |
+| --- | --- | --- | --- |
+| Repository hygiene | PASS | `.env` remains untracked; no migration diff; no debug stopper matches; no tracked secret-shaped matches from redacted scan. | Recheck before packaging. |
+| Routes | PASS | `php artisan route:list --json` parsed 291 routes, no duplicate route names, no unexpected public admin endpoints except login. | Smoke admin/customer navigation after deploy. |
+| Migrations | PASS | Recent six migration files are present and unchanged in current diff. | Verify production registration rows in phpMyAdmin before code deployment. |
+| Schema assumptions | PASS | Recent table/column references map to existing migrations; homepage service keeps runtime `Schema::hasTable` fallbacks. | Run read-only schema verification SQL before release. |
+| Checkout reconciliation | PASS | Existing tests cover COD, delivery tiers, customer overrides, coupon purposes, Customer Credit, Razorpay residual, Daily Offer, and free-delivery threshold boundary. | Run smoke checkout scenarios against production-like data. |
+| Payment/Razorpay static | PASS | Server amount, exact paise conversion, signature verification, webhook idempotency, retry ownership, and Customer Credit bypass are covered by code/tests. | Razorpay Test Mode provider E2E is MANUAL REQUIRED. |
+| Customer Credit/Coupons/Cashback | PASS | Idempotent credit/debit/restore, coupon replacement/assignment/purpose, and cashback separation are covered by targeted tests. | Smoke partial/full credit and coupon usage. |
+| Inventory/Daily Offer | PASS | Locked inventory deduction, no negative-stock test paths, Daily Offer sale source/hold/allocation tests remain covered. | Smoke Daily Offer checkout and stock impact. |
+| Orders/Returns/Addresses/Account | PASS | Status, historical totals, returns, address approval, account routes, and notifications are covered by targeted tests. | Smoke customer order/account pages. |
+| Homepage/Search/Responsive | PASS | 4.22B browser QA plus Homepage/Search tests; Bootstrap pagination remains configured. | Production visual spot check still required. |
+| Security/System Health | PASS | Security tests cover headers/access/secret display; System Health displays configured/missing statuses, not secret values. | Verify production env values and heartbeat. |
+| Scheduler | PASS SOURCE AUDIT | `schedule:list` shows five commands with expected cadences and no duplicates. | Runtime heartbeat observation is MANUAL REQUIRED. |
+| Print | PASS STATIC AUDIT | Order documents hide print actions in print media; purchase print is standalone without admin chrome. | A4 browser print preview is MANUAL REQUIRED. |
+| Release packaging | PASS WITH POLISH | Package script excludes env/runtime/Git/test data and now writes a non-secret `release-manifest.json`. | Create ZIP only after user approval. |
+
+Remaining MANUAL REQUIRED items before final live acceptance:
+
+- Razorpay Test Mode browser transaction and webhook delivery.
+- Print preview for invoice, packing slip, picking slip, and purchase print.
+- Scheduler heartbeat/runtime observation.
+- Backup/restore execution.
+- Full production data smoke test.
