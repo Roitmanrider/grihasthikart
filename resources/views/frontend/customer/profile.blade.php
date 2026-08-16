@@ -7,10 +7,7 @@
     <div class="container">
         @include('frontend.customer.account-nav')
 
-        <div class="mb-4">
-            <h1 class="h3 mb-1">My Profile</h1>
-            <div class="text-muted">Mobile number and account entitlements are managed securely.</div>
-        </div>
+        <x-customer-page-header title="My Profile" subtitle="Mobile number and account entitlements are managed securely." />
 
         @if (session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>

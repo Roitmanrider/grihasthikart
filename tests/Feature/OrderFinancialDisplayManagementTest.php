@@ -71,7 +71,10 @@ class OrderFinancialDisplayManagementTest extends TestCase
             'product_name_snapshot' => 'Display Rice',
             'variant_name_snapshot' => '5kg',
             'quantity' => 2,
+            'mrp' => 125,
             'unit_price' => 100,
+            'line_mrp_total' => 250,
+            'line_savings' => 50,
             'line_total' => 200,
             'gst_rate_snapshot' => 5,
             'tax_amount' => 10,
@@ -81,20 +84,58 @@ class OrderFinancialDisplayManagementTest extends TestCase
             ->get(route('customer.orders.show', $order->order_number))
             ->assertOk()
             ->assertSee('Display Rice')
-            ->assertSee('Unit price: Rs. 100.00 / Merchandise: Rs. 200.00')
-            ->assertSee('GST 5.00% / Tax: Rs. 10.00')
+            ->assertSee('Unit MRP: Rs. 125.00')
+            ->assertSee('MRP Total: Rs. 250.00')
+            ->assertSee('GK Unit Price: Rs. 100.00')
+            ->assertSee('GK Merchandise: Rs. 200.00')
+            ->assertSee('20% OFF')
+            ->assertSee('Included GST: 5.00% / Rs. 10.00')
             ->assertSee('Merchandise Amount')
             ->assertSee('Rs. 200.00')
             ->assertSee('MRP Total')
             ->assertSee('Rs. 250.00')
-            ->assertSee('Coupon Discount')
+            ->assertSee('Merchandise Coupon Discount')
             ->assertSee('- Rs. 20.00')
-            ->assertSee('Delivery Charge')
+            ->assertSee('Final Delivery Charge')
             ->assertSee('Rs. 30.00')
-            ->assertSee('Final Amount')
+            ->assertSee('Customer Credit Used')
+            ->assertSee('Rs. 0.00')
+            ->assertSee('Final Amount Paid / Due')
             ->assertSee('Rs. 210.00');
 
         $this->assertSame(210.0, round((float) $order->subtotal - (float) $order->discount_total + (float) $order->delivery_charge, 2));
+    }
+
+    public function test_customer_order_detail_shows_status_timeline_and_customer_credit_usage(): void
+    {
+        $customer = Customer::factory()->create();
+        $order = $this->orderWithItem($customer, [
+            'order_number' => 'GK-FIN-2002',
+            'order_status' => 'packed',
+            'payment_status' => 'paid',
+            'subtotal' => 500,
+            'delivery_charge' => 40,
+            'amount_before_customer_credit' => 540,
+            'customer_credit_used' => 120,
+            'grand_total' => 420,
+        ]);
+
+        $this->withSession(['customer_id' => $customer->id])
+            ->get(route('customer.orders.show', $order->order_number))
+            ->assertOk()
+            ->assertSee('Order Timeline')
+            ->assertSee('Placed')
+            ->assertSee('Confirmed')
+            ->assertSee('Picking')
+            ->assertSee('Packed')
+            ->assertSee('Out for Delivery')
+            ->assertSee('Delivered')
+            ->assertSee('gk-status-badge', false)
+            ->assertSee('Amount Before Customer Credit')
+            ->assertSee('Rs. 540.00')
+            ->assertSee('Customer Credit Used')
+            ->assertSee('- Rs. 120.00')
+            ->assertSee('Rs. 420.00');
     }
 
     public function test_admin_order_surfaces_show_financial_composition(): void

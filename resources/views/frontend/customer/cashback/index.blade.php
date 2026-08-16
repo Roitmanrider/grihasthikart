@@ -5,7 +5,11 @@
 @section('content')
 <section class="py-5"><div class="container">
 @include('frontend.customer.account-nav')
-<div class="d-flex flex-wrap justify-content-between gap-3 mb-4"><div class="min-w-0"><h1 class="h3 mb-1">My Cashback Points</h1><div class="text-muted">Cashback Points are processed after {{ $rule->processing_delay_days }} days from delivery.</div></div><span class="badge {{ $customer->is_premium ? 'text-bg-success' : 'text-bg-secondary' }} rounded-pill px-3 py-2 align-self-start">{{ $customer->is_premium ? 'Premium' : 'Standard' }}</span></div>
+<x-customer-page-header title="My Cashback Points" :subtitle="'Cashback Points are processed after '.$rule->processing_delay_days.' days from delivery.'">
+    <x-slot:actions>
+        <x-premium-badge :premium="$customer->is_premium" />
+    </x-slot:actions>
+</x-customer-page-header>
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 <div class="row g-4 mb-4"><div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Available Cashback Points</div><div class="h4">Rs. {{ number_format($balance,2) }}</div></div></div></div><div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Pending Cashback Points</div><div class="h4">Rs. {{ number_format($pendingAmount,2) }}</div></div></div></div><div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Redeemable Cashback Points</div><div class="h4">Rs. {{ number_format($availableAmount,2) }}</div></div></div></div></div>

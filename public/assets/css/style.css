@@ -42,6 +42,8 @@ html {
 
 .gk-search {
     display: flex;
+    min-width: 0;
+    position: relative;
     width: 100%;
 }
 
@@ -69,8 +71,11 @@ html {
     border-radius: 0 8px 8px 0;
     color: #fff;
     display: inline-flex;
+    flex: 0 0 52px;
+    height: 46px;
     justify-content: center;
-    width: 58px;
+    padding: 0;
+    width: 52px;
 }
 
 .gk-search-mobile {
@@ -78,10 +83,235 @@ html {
     padding-bottom: 14px;
 }
 
+.gk-search-suggestions {
+    background: #fff;
+    border: 1px solid rgba(31, 41, 55, .12);
+    border-radius: 8px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, .14);
+    left: 0;
+    max-height: min(420px, calc(100vh - 120px));
+    overflow-y: auto;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    width: min(100%, calc(100vw - 24px));
+    z-index: 1080;
+}
+
+.gk-search-suggestion-group + .gk-search-suggestion-group {
+    border-top: 1px solid #edf2ea;
+}
+
+.gk-search-suggestion-heading {
+    background: #f7fbf3;
+    color: #56645a;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    padding: 8px 12px 6px;
+    text-transform: uppercase;
+}
+
+.gk-search-suggestion {
+    align-items: flex-start;
+    color: #1f2937;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 10px 12px;
+    text-decoration: none;
+}
+
+.gk-search-suggestion:hover,
+.gk-search-suggestion:focus {
+    background: #f3f7ef;
+    color: #198754;
+}
+
+.gk-search-suggestion-main {
+    flex: 1;
+    font-weight: 700;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.gk-search-suggestion-meta {
+    color: #6b7280;
+    flex: 0 0 auto;
+    font-size: 12px;
+    max-width: 38%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .gk-header-actions {
     align-items: center;
     display: flex;
     gap: 18px;
+}
+
+.gk-premium-badge,
+.gk-status-badge,
+.gk-discount-pill {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    max-width: 100%;
+    padding: 5px 10px;
+    white-space: normal;
+}
+
+.gk-premium-badge {
+    background: #e7f6ec;
+    color: #0f6b1d;
+}
+
+.gk-status-badge-success {
+    background: #e7f6ec;
+    color: #0f6b1d;
+}
+
+.gk-status-badge-warning {
+    background: #fff7dc;
+    color: #806000;
+}
+
+.gk-status-badge-danger {
+    background: #fdecec;
+    color: #a12525;
+}
+
+.gk-status-badge-info {
+    background: #eef3f8;
+    color: #35526a;
+}
+
+.gk-discount-pill {
+    background: #e7f6ec;
+    color: #0f6b1d;
+}
+
+.gk-account-notice-strip {
+    margin: 0 0 10px;
+}
+
+.gk-account-nav {
+    margin-bottom: 18px;
+}
+
+.gk-account-nav-row {
+    display: flex;
+    gap: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 2px 0 8px;
+    scrollbar-width: none;
+    white-space: nowrap;
+}
+
+.gk-account-nav-row::-webkit-scrollbar {
+    display: none;
+}
+
+.gk-account-nav-link {
+    border: 1px solid #d8dfd6;
+    border-radius: 999px;
+    color: #344238;
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 12px;
+    text-decoration: none;
+}
+
+.gk-account-nav-link:hover,
+.gk-account-nav-link:focus {
+    border-color: #0f6b1d;
+    color: #0f6b1d;
+}
+
+.gk-account-nav-link.active {
+    background: #0f6b1d;
+    border-color: #0f6b1d;
+    color: #fff;
+}
+
+.gk-account-page-header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: space-between;
+    margin-bottom: 22px;
+}
+
+.gk-account-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gk-account-page-actions .btn,
+.gk-compact-action {
+    min-width: 0;
+    padding-left: 14px;
+    padding-right: 14px;
+    width: auto;
+}
+
+.gk-order-timeline {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.gk-order-timeline-step {
+    border: 1px solid #dfeade;
+    border-radius: 8px;
+    min-width: 0;
+    padding: 10px;
+}
+
+.gk-order-timeline-step.completed {
+    background: #f3fbf5;
+    border-color: #b8dfc1;
+}
+
+.gk-order-timeline-step.current {
+    background: #fff8df;
+    border-color: #ead37e;
+}
+
+.gk-order-timeline-step.inactive {
+    background: #fafafa;
+    color: #6c757d;
+}
+
+.gk-order-timeline-name {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.gk-order-item-price-grid {
+    display: grid;
+    gap: 4px 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gk-gst-info {
+    align-items: center;
+    border: 1px solid #cfd9cf;
+    border-radius: 50%;
+    color: #0f6b1d;
+    display: inline-flex;
+    height: 24px;
+    justify-content: center;
+    text-decoration: none;
+    width: 24px;
 }
 
 .gk-account {
@@ -1334,6 +1564,21 @@ html {
 
     .gk-search-mobile {
         display: flex;
+        margin: 0 auto;
+        max-width: 100%;
+    }
+
+    .gk-search-mobile input {
+        font-size: 14px;
+        height: 42px;
+        min-width: 0;
+        padding: 0 12px;
+    }
+
+    .gk-search-mobile button {
+        flex-basis: 44px;
+        height: 42px;
+        width: 44px;
     }
 
     .gk-hero-card {
@@ -1374,6 +1619,20 @@ html {
     .gk-footer-main {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         overflow-x: visible;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .gk-order-timeline {
+        grid-template-columns: 1fr;
+    }
+
+    .gk-order-item-price-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gk-account-page-actions {
+        width: 100%;
     }
 }
 

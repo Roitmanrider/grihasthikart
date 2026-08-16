@@ -27,4 +27,12 @@
             delete button.dataset.loadingDisabled;
         });
     });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.bootstrap && typeof window.bootstrap.Tooltip === 'function') {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                window.bootstrap.Tooltip.getOrCreateInstance(element);
+            });
+        }
+    });
 </script>

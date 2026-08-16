@@ -8,23 +8,19 @@
 
 <section class="py-5">
     <div class="container">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">{{ $order->order_number }}</h1>
-                <div class="text-muted">{{ $order->placed_at?->format('d M Y') }}</div>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
+        <x-customer-page-header :title="$order->order_number" :subtitle="$order->placed_at?->format('d M Y')">
+            <x-slot:actions>
                 @if ($customerInvoiceEnabled)
-                    <a href="{{ route('customer.orders.invoice', $order->order_number) }}" class="btn btn-outline-success" target="_blank">View/Print Invoice</a>
+                    <a href="{{ route('customer.orders.invoice', $order->order_number) }}" class="btn btn-outline-success gk-compact-action" target="_blank">View/Print Invoice</a>
                 @endif
                 @if ($canCancel)
-                    <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#customerCancelOrderModal">Cancel Order</button>
+                    <button class="btn btn-outline-danger gk-compact-action" type="button" data-bs-toggle="modal" data-bs-target="#customerCancelOrderModal">Cancel Order</button>
                 @endif
                 @if ($returnService->isEligible($order))
-                    <a href="{{ route('customer.returns.create', $order) }}" class="btn btn-outline-success">Request Return</a>
+                    <a href="{{ route('customer.returns.create', $order) }}" class="btn btn-outline-success gk-compact-action">Request Return</a>
                 @endif
                 @if ($order->payment_method === 'razorpay' && $order->payment_status !== 'paid' && $order->order_status === 'pending')
-                    <button class="btn btn-success"
+                    <button class="btn btn-success gk-compact-action"
                             type="button"
                             id="retryRazorpayPayment"
                             data-retry-url="{{ route('checkout.razorpay.retry', $order->order_number) }}"
@@ -34,9 +30,9 @@
                         Retry Payment
                     </button>
                 @endif
-                <a href="{{ route('customer.orders.index') }}" class="btn btn-outline-secondary">Back</a>
-            </div>
-        </div>
+                <a href="{{ route('customer.orders.index') }}" class="btn btn-outline-secondary gk-compact-action">Back</a>
+            </x-slot:actions>
+        </x-customer-page-header>
 
         @if (session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
@@ -59,29 +55,19 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white fw-semibold">Order Timeline</div>
             <div class="card-body">
-                <div class="row g-2">
+                <div class="gk-order-timeline">
                     @foreach($statusTimeline['steps'] as $step)
-                        @php
-                            $badgeClass = match ($step['state']) {
-                                'completed' => 'text-bg-success',
-                                'current' => 'text-bg-warning',
-                                default => 'text-bg-light border',
-                            };
-                        @endphp
-                        <div class="col-6 col-md-4 col-lg-2">
-                            <div class="border rounded p-2 h-100 text-center">
-                                <span class="badge {{ $badgeClass }} w-100 text-wrap py-2">{{ $step['label'] }}</span>
-                                @if ($step['completed_at'])
-                                    <div class="small text-muted mt-1">{{ $step['completed_at'] }}</div>
-                                @endif
+                        <div class="gk-order-timeline-step {{ $step['state'] === 'upcoming' ? 'inactive' : $step['state'] }}">
+                            <div class="gk-order-timeline-name">{{ $step['label'] }}</div>
+                            <div class="small text-muted mt-1">
+                                {{ $step['completed_at'] ?: 'Not reached yet' }}
                             </div>
                         </div>
                     @endforeach
                     @if($statusTimeline['final_state'])
-                        <div class="col-12 col-md-4 col-lg-2">
-                            <div class="border rounded p-2 h-100 text-center">
-                                <span class="badge text-bg-danger w-100 text-wrap py-2">{{ $statusTimeline['final_state'] }}</span>
-                            </div>
+                        <div class="gk-order-timeline-step current">
+                            <div class="gk-order-timeline-name">{{ $statusTimeline['final_state'] }}</div>
+                            <div class="small text-muted mt-1">Final status</div>
                         </div>
                     @endif
                 </div>
@@ -97,20 +83,48 @@
 
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="badge text-bg-light border">{{ $orderStatusService->label($order->order_status) }}</span>
-                    <span class="badge text-bg-light border">{{ strtoupper($order->payment_method) }} / {{ str($order->payment_status)->headline() }}</span>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4"><div class="border rounded p-2 h-100"><div class="small text-muted">Order Status</div><x-customer-status-badge :status="$order->order_status" :label="$orderStatusService->label($order->order_status)" /></div></div>
+                    <div class="col-md-4"><div class="border rounded p-2 h-100"><div class="small text-muted">Payment Method</div><div class="fw-semibold">{{ strtoupper($order->payment_method) }}</div></div></div>
+                    <div class="col-md-4"><div class="border rounded p-2 h-100"><div class="small text-muted">Payment Status</div><x-customer-status-badge :status="$order->payment_status" /></div></div>
                     @if ($latestReturn = $order->returnRequests->sortByDesc('created_at')->first())
-                        <span class="badge text-bg-info">{{ str($latestReturn->status)->headline() }}</span>
+                        <div class="col-md-4"><div class="border rounded p-2 h-100"><div class="small text-muted">Return Status</div><x-customer-status-badge :status="$latestReturn->status" /></div></div>
                     @endif
                 </div>
 
                 @foreach($order->items as $item)
-                    <div class="border-bottom pb-2 mb-2">
+                    @php
+                        $quantity = (float) $item->quantity;
+                        $unitMrp = (float) $item->mrp;
+                        $unitPrice = (float) $item->unit_price;
+                        $discountPercent = $unitMrp > 0 && $unitMrp > $unitPrice
+                            ? round((($unitMrp - $unitPrice) / $unitMrp) * 100)
+                            : 0;
+                        $includedGst = 'Included GST: '.number_format((float) ($item->gst_rate_snapshot ?? 0), 2).'% / Rs. '.number_format((float) $item->tax_amount, 2);
+                    @endphp
+                    <div class="border-bottom pb-3 mb-3">
                         <div class="fw-semibold">{{ $item->product_name_snapshot }}</div>
                         <div class="small text-muted">{{ $item->variant_name_snapshot }} x {{ rtrim(rtrim(number_format((float)$item->quantity,3),'0'),'.') }}</div>
-                        <div class="small">Unit price: Rs. {{ number_format((float)$item->unit_price,2) }} / Merchandise: Rs. {{ number_format((float)$item->line_total,2) }}</div>
-                        <div class="small text-muted">GST {{ number_format((float)($item->gst_rate_snapshot ?? 0),2) }}% / Tax: Rs. {{ number_format((float)$item->tax_amount,2) }}</div>
+                        <div class="gk-order-item-price-grid small mt-2">
+                            <div>Unit MRP: Rs. {{ number_format($unitMrp, 2) }}</div>
+                            <div>MRP Total: Rs. {{ number_format((float) ($item->line_mrp_total ?: ($unitMrp * $quantity)), 2) }}</div>
+                            <div>GK Unit Price: Rs. {{ number_format($unitPrice, 2) }}</div>
+                            <div>GK Merchandise: Rs. {{ number_format((float) $item->line_total, 2) }}</div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                            @if ($discountPercent > 0)
+                                <span class="gk-discount-pill">{{ $discountPercent }}% OFF</span>
+                            @endif
+                            <button class="gk-gst-info"
+                                    type="button"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-title="{{ $includedGst }}"
+                                    title="{{ $includedGst }}"
+                                    aria-label="{{ $includedGst }}">
+                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                            </button>
+                            <span class="small text-muted">{{ $includedGst }}</span>
+                        </div>
                     </div>
                 @endforeach
 
@@ -160,11 +174,11 @@
                     <span>Amount Before Customer Credit</span>
                     <span>Rs. {{ number_format((float)($order->amount_before_customer_credit ?: ((float)$order->grand_total + (float)$order->customer_credit_used)),2) }}</span>
                 </div>
+                <div class="d-flex justify-content-between {{ (float)$order->customer_credit_used > 0 ? 'text-success' : '' }}">
+                    <span>Customer Credit Used</span>
+                    <span>{{ (float)$order->customer_credit_used > 0 ? '- ' : '' }}Rs. {{ number_format((float)$order->customer_credit_used,2) }}</span>
+                </div>
                 @if((float)$order->customer_credit_used > 0)
-                    <div class="d-flex justify-content-between text-success">
-                        <span>Customer Credit Used</span>
-                        <span>- Rs. {{ number_format((float)$order->customer_credit_used,2) }}</span>
-                    </div>
                     @if((float)$order->grand_total <= 0)
                         <div class="alert alert-success py-2 mt-2 mb-0">Paid using Customer Credit</div>
                     @endif

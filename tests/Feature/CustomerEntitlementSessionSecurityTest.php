@@ -39,9 +39,10 @@ class CustomerEntitlementSessionSecurityTest extends TestCase
         $this->withSession(['customer_id' => $standard->id])
             ->get(route('customer.dashboard'))
             ->assertOk()
-            ->assertSee('Standard')
-            ->assertDontSee('Premium')
-            ->assertDontSee('Cashback Points');
+            ->assertDontSee('Premium Member')
+            ->assertDontSee('gk-premium-badge', false)
+            ->assertDontSee('Cashback Points')
+            ->assertDontSee(route('customer.cashback.index'), false);
 
         $this->withSession(['customer_id' => $standard->id])
             ->get(route('customer.cashback.index'))
@@ -53,8 +54,10 @@ class CustomerEntitlementSessionSecurityTest extends TestCase
         $this->withSession(['customer_id' => $premium->id])
             ->get(route('customer.dashboard'))
             ->assertOk()
-            ->assertSee('Premium')
+            ->assertSee('Premium Member')
+            ->assertSee('gk-premium-badge', false)
             ->assertSee('Cashback Points')
+            ->assertSee(route('customer.cashback.index'), false)
             ->assertDontSee('Standard');
     }
 

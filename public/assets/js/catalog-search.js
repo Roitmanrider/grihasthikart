@@ -1,4 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    })[character]);
+
+    const escapeAttribute = (value) => escapeHtml(value).replace(/`/g, '&#096;');
+    const typeLabels = {
+        product: 'Products',
+        category: 'Categories/Subcategories',
+        brand: 'Brands',
+    };
+
     document.querySelectorAll('[data-catalog-search]').forEach((form) => {
         const input = form.querySelector('[data-catalog-search-input]');
         const panel = form.querySelector('[data-catalog-suggestions]');
@@ -41,23 +56,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                panel.innerHTML = suggestions.map((suggestion) => {
-                    const label = String(suggestion.label || '').replace(/[&<>"']/g, (character) => ({
-                        '&': '&amp;',
-                        '<': '&lt;',
-                        '>': '&gt;',
-                        '"': '&quot;',
-                        "'": '&#039;',
-                    })[character]);
-                    const meta = String(suggestion.meta || '').replace(/[&<>"']/g, (character) => ({
-                        '&': '&amp;',
-                        '<': '&lt;',
-                        '>': '&gt;',
-                        '"': '&quot;',
-                        "'": '&#039;',
-                    })[character]);
+                const groups = suggestions.reduce((carry, suggestion) => {
+                    const type = suggestion.type || 'product';
+                    carry[type] = carry[type] || [];
+                    carry[type].push(suggestion);
+                    return carry;
+                }, {});
 
-                    return `<a href="${suggestion.url}" class="gk-search-suggestion"><strong>${label}</strong><span>${meta}</span></a>`;
+                panel.innerHTML = Object.keys(groups).map((type) => {
+                    const rows = groups[type].map((suggestion) => {
+                        const label = escapeHtml(suggestion.label);
+                        const meta = escapeHtml(suggestion.meta || typeLabels[type] || 'Suggestion');
+                        const url = escapeAttribute(suggestion.url || '#');
+
+                        return `<a href="${url}" class="gk-search-suggestion">
+                            <span class="gk-search-suggestion-main">${label}</span>
+                            <span class="gk-search-suggestion-meta">${meta}</span>
+                        </a>`;
+                    }).join('');
+
+                    return `<div class="gk-search-suggestion-group">
+                        <div class="gk-search-suggestion-heading">${escapeHtml(typeLabels[type] || 'Suggestions')}</div>
+                        ${rows}
+                    </div>`;
                 }).join('');
                 panel.classList.remove('d-none');
             }, 300);

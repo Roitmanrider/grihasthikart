@@ -49,3 +49,20 @@ Release blocker summary at 4.22C audit time:
 - P0 blockers: 0
 - P1 blockers: 0 automated/static blockers; Razorpay provider E2E and backup gate remain manual pre-release requirements.
 - P2 blockers: 0 code blockers; print/scheduler/responsive production smoke remain manual validation items.
+
+## Milestone 4.22D Live Acceptance Hotfix Batch 1
+
+| ID | Module | Severity | Description | Root Cause | Fix | Automated Test | Manual Verification Required | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GK-422D-001 | Search/Header | P2 | Header autocomplete lacked grouped customer-facing metadata and mobile search submit could consume too much width. | Autocomplete rendered a flat list and mobile search button sizing was not explicitly constrained. | Grouped suggestions by product/category/brand, constrained suggestion panel and mobile icon button sizing. | Extended `SearchCatalogDiscoveryTest`. | Verify dropdown and mobile button in real browser at 360px/390px/tablet/desktop. | FIXED |
+| GK-422D-002 | Customer Account Navigation | P2 | Account navigation did not prioritize Shop first and needed a mobile-friendly horizontal scroll path. | Account nav was a wrapping link set without an overflow rail or active-item scroll behavior. | Added Shop-first account rail, active metadata, notice-strip placeholder, and lightweight vanilla JS auto-scroll that pauses on user interaction/reduced motion. | Extended `CustomerAccountTest`. | Verify auto-scroll timing and pause behavior in a browser. | FIXED |
+| GK-422D-003 | Entitlement Badges/Cashback | P2 | Standard customers could see non-actionable badge language, and cashback surfaces needed to stay hidden unless enabled. | Badge copy did not distinguish premium-only display from standard state; dashboard/nav needed entitlement consistency. | Added premium-only badge component and kept cashback nav/dashboard visibility conditional on `cashback_enabled`. | Updated `CustomerEntitlementSessionSecurityTest`, `CustomerAccountTest`, `Cashback` filter. | Smoke standard and premium accounts. | FIXED |
+| GK-422D-004 | Customer Orders | P2 | Order detail needed clearer timeline, status badges, item financial breakdown, included GST, and Customer Credit visibility. | Older detail copy compressed item economics and status display into less scannable text. | Added compact status badges, timeline cards, per-item Unit MRP/MRP Total/GK price/GK Merchandise/discount/GST text, and always-visible Customer Credit Used row. | Updated `OrderFinancialDisplayManagementTest`; `Order` filter passed. | Check long item names and timeline wrapping in browser. | FIXED |
+| GK-422D-005 | Account Status/Actions | P2 | Address, return, profile, credit, cashback, and security pages needed consistent compact headers/status badges/back actions. | Pages used locally styled headings/actions and mixed badge classes. | Added shared customer page header/status badge components and compact action styles across customer account pages. | Updated `CustomerAccountTest` and `ReturnRequestManagementTest`; `Address`, `Return`, `CustomerCredit`, `Notification` filters passed. | Mobile account visual pass. | FIXED |
+
+## Milestone 4.22D Findings With No Code Change
+
+| ID | Module | Severity | Description | Outcome | Manual Verification Required | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| GK-422D-006 | Historical Order Brand | P2 | Live request asked for brand display in order item detail. | Existing `order_items` schema has product/variant/SKU snapshots but no brand snapshot. Current catalog brand was not shown as historical order data because it could become inaccurate after catalog edits. | Decide whether to add an additive brand snapshot field in a future scoped migration. | DEFERRED |
+| GK-422D-007 | Print Invoice | P2 | Print invoice behavior must remain untouched. | No print invoice Blade/service/controller changes were made in this batch. | Browser print preview remains a manual release gate from 4.22C. | VERIFIED STATICALLY |

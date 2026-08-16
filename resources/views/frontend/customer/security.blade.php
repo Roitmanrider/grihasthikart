@@ -7,17 +7,15 @@
     <div class="container">
         @include('frontend.customer.account-nav')
 
-        <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">Account Security</h1>
-                <div class="text-muted">Signed-in devices for {{ $customer->mobile }}.</div>
-            </div>
+        <x-customer-page-header title="Account Security" :subtitle="'Signed-in devices for '.$customer->mobile.'.'">
+            <x-slot:actions>
             <form method="POST" action="{{ route('customer.security.sessions.destroy-others') }}">
                 @csrf
                 @method('DELETE')
-                <button class="btn btn-outline-danger">Logout Other Sessions</button>
+                <button class="btn btn-outline-danger gk-compact-action">Logout Other Sessions</button>
             </form>
-        </div>
+            </x-slot:actions>
+        </x-customer-page-header>
 
         @if (session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
@@ -39,11 +37,9 @@
                             </div>
                             <div class="d-flex flex-wrap gap-2 align-items-start">
                                 @if ($currentSession && $currentSession->id === $session->id)
-                                    <span class="badge text-bg-success rounded-pill px-3 py-2">Current Session</span>
+                                    <span class="gk-status-badge gk-status-badge-success">Current Session</span>
                                 @endif
-                                <span class="badge {{ $session->revoked_at ? 'text-bg-secondary' : 'text-bg-light border' }} rounded-pill px-3 py-2">
-                                    {{ $session->revoked_at ? 'Signed Out' : 'Active' }}
-                                </span>
+                                <x-customer-status-badge :status="$session->revoked_at ? 'inactive' : 'active'" :label="$session->revoked_at ? 'Signed Out' : 'Active'" />
                             </div>
                         </div>
                     </div>

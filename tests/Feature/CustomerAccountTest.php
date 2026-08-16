@@ -133,7 +133,7 @@ class CustomerAccountTest extends TestCase
             ->get(route('customer.addresses.index'))
             ->assertOk()
             ->assertSee('Default Address')
-            ->assertSee('badge text-bg-success rounded-pill px-3 py-2', false)
+            ->assertSee('gk-status-badge gk-status-badge-success', false)
             ->assertSee('Set Default');
     }
 
@@ -532,19 +532,41 @@ class CustomerAccountTest extends TestCase
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('customer.dashboard'))
             ->assertOk()
-            ->assertSee('d-flex flex-wrap align-items-center gap-2', false)
-            ->assertSee('Premium')
+            ->assertSee('gk-account-page-header', false)
+            ->assertSee('Premium Member')
+            ->assertSee('gk-premium-badge', false)
             ->assertSee('Approved addresses')
             ->assertSee('Available Coupons')
             ->assertSee('Unread Notifications')
             ->assertSee('Cashback Points')
+            ->assertSee('Wishlist')
             ->assertSee('GKOVERVIEW');
 
         $this->withSession(['customer_id' => $customer->id])
             ->get(route('customer.cashback.index'))
             ->assertOk()
-            ->assertSee('d-flex flex-wrap justify-content-between gap-3 mb-4', false)
-            ->assertSee('Premium');
+            ->assertSee('gk-account-page-header', false)
+            ->assertSee('Premium Member');
+    }
+
+    public function test_account_nav_prioritizes_shop_and_cashback_only_for_entitled_customers(): void
+    {
+        $cashbackCustomer = Customer::factory()->create(['cashback_enabled' => true]);
+
+        $cashbackContent = $this->withSession(['customer_id' => $cashbackCustomer->id])
+            ->get(route('customer.dashboard'))
+            ->assertOk()
+            ->assertSee('data-account-nav-row', false)
+            ->assertSee('data-account-nav-active', false)
+            ->assertSee('data-account-notice-strip', false)
+            ->assertSee(route('customer.cashback.index'), false)
+            ->getContent();
+
+        $this->assertLessThan(
+            strpos($cashbackContent, 'Overview'),
+            strpos($cashbackContent, '>Shop<'),
+            'Shop should be the first account navigation item.'
+        );
     }
 
     public function test_editing_approved_default_address_resets_it_to_pending_and_non_default(): void

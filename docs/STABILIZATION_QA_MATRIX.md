@@ -101,3 +101,17 @@ Remaining MANUAL REQUIRED items before final live acceptance:
 - Scheduler heartbeat/runtime observation.
 - Backup/restore execution.
 - Full production data smoke test.
+
+## Milestone 4.22D Live Acceptance Hotfix Batch 1
+
+No deployment, ZIP, production SQL, migration, or print-invoice change was performed.
+
+| Area | Scenario | Result | Evidence | Manual Requirement |
+| --- | --- | --- | --- | --- |
+| Search/Header | Autocomplete groups product/category/brand suggestions and mobile search submit remains icon-sized. | PASS | `Search` filter covers endpoint/markup/asset regressions. | Browser-check autocomplete dropdown position at 360px, 390px, 768px, desktop. |
+| Customer Account | Shop appears first, account nav is horizontally scrollable with active item metadata and notice-strip placeholder. | PASS | `Customer` filter covers account nav shell and entitled cashback visibility. | Browser-check gentle auto-scroll and pause-on-interaction behavior. |
+| Entitlements | Premium badge renders only for premium customers; standard customers do not see a fake badge; cashback surfaces stay entitlement-gated. | PASS | `Customer` and `Cashback` filters passed. | Smoke one premium and one standard customer in UAT. |
+| Dashboard | Customer Credit card includes Wishlist shortcut; cashback shortcut/card hidden when disabled. | PASS | `Customer`, `CustomerCredit`, `Wishlist`, `Cashback` filters passed. | Visual spot check only. |
+| Addresses/Returns | Customer-facing statuses use consistent compact badges and compact action/back buttons. | PASS | `Address` and `Return` filters passed. | Mobile visual check for wrapping. |
+| Orders | Customer order list/detail use compact status badges, readable timeline, MRP/GK price/GST/customer-credit breakdown. | PASS | `Order` filter covers updated order detail assertions. | Browser-check long product names and timeline wrapping. |
+| Order Item Brand | Historical brand name on old order items. | NOT CHANGED | `order_items` does not store a brand snapshot; showing current catalog brand would be historically unsafe. | Add an additive historical brand snapshot in a future scoped migration if required. |

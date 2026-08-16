@@ -6,7 +6,7 @@
 <section class="py-5">
     <div class="container">
         @include('frontend.customer.account-nav')
-        <h1 class="h3 mb-4">My Returns</h1>
+        <x-customer-page-header title="My Returns" />
 
         <div class="card border-0 shadow-sm">
             <div class="table-responsive">
@@ -26,10 +26,10 @@
                             <tr>
                                 <td>{{ $return->return_number }}</td>
                                 <td>{{ $return->order?->order_number }}</td>
-                                <td><span class="badge text-bg-light border">{{ str($return->status)->headline() }}</span></td>
+                                <td><x-customer-status-badge :status="$return->status" /></td>
                                 <td>Rs. {{ number_format((float) $return->refund_amount, 2) }}</td>
                                 <td>{{ $return->requested_at?->format('d M Y') }}</td>
-                                <td><a href="{{ route('customer.returns.show', $return) }}" class="btn btn-sm btn-outline-success">View</a></td>
+                                <td><a href="{{ route('customer.returns.show', $return) }}" class="btn btn-sm btn-outline-success gk-compact-action">View</a></td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="text-center text-muted py-5">No return requests yet.</td></tr>

@@ -4,13 +4,11 @@
 <section class="py-5">
     <div class="container">
         @include('frontend.customer.account-nav')
-        <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">Customer Credit</h1>
-                <div class="text-muted">Separate from Cashback Points.</div>
-            </div>
-            <a href="{{ route('customer.dashboard') }}" class="btn btn-outline-secondary">Back to Account</a>
-        </div>
+        <x-customer-page-header title="Customer Credit" subtitle="Separate from Cashback Points.">
+            <x-slot:actions>
+                <a href="{{ route('customer.dashboard') }}" class="btn btn-outline-secondary gk-compact-action">Back to Account</a>
+            </x-slot:actions>
+        </x-customer-page-header>
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <div class="text-muted small">Available Balance</div>

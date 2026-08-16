@@ -5,13 +5,11 @@
 @section('content')
 <section class="py-5">
     <div class="container">
-        <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">{{ $returnRequest->return_number }}</h1>
-                <div class="text-muted">Order {{ $returnRequest->order?->order_number }}</div>
-            </div>
-            <a href="{{ route('customer.returns.index') }}" class="btn btn-outline-secondary">Back</a>
-        </div>
+        <x-customer-page-header :title="$returnRequest->return_number" :subtitle="'Order '.$returnRequest->order?->order_number">
+            <x-slot:actions>
+                <a href="{{ route('customer.returns.index') }}" class="btn btn-outline-secondary gk-compact-action">Back</a>
+            </x-slot:actions>
+        </x-customer-page-header>
 
         @if (session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
@@ -49,7 +47,7 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white fw-semibold">Summary</div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between"><span>Status</span><span class="badge text-bg-light border">{{ str($returnRequest->status)->headline() }}</span></div>
+                        <div class="d-flex justify-content-between"><span>Status</span><x-customer-status-badge :status="$returnRequest->status" /></div>
                         <div class="d-flex justify-content-between mt-2"><span>Refund Amount</span><strong>Rs. {{ number_format((float) $returnRequest->refund_amount, 2) }}</strong></div>
                         @if ($returnRequest->customer_notes)
                             <div class="text-muted small mt-3">{{ $returnRequest->customer_notes }}</div>

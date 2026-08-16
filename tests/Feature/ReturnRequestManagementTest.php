@@ -301,6 +301,25 @@ class ReturnRequestManagementTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_customer_return_pages_show_shared_status_badges_and_back_actions(): void
+    {
+        $return = $this->returnRequest();
+
+        $this->withSession(['customer_id' => $return->customer_id])
+            ->get(route('customer.returns.index'))
+            ->assertOk()
+            ->assertSee('gk-account-page-header', false)
+            ->assertSee('gk-status-badge gk-status-badge-warning', false)
+            ->assertSee('gk-compact-action', false);
+
+        $this->withSession(['customer_id' => $return->customer_id])
+            ->get(route('customer.returns.show', $return))
+            ->assertOk()
+            ->assertSee('gk-account-page-header', false)
+            ->assertSee('Back', false)
+            ->assertSee('gk-status-badge gk-status-badge-warning', false);
+    }
+
     public function test_guest_blocked(): void
     {
         $return = $this->returnRequest();

@@ -106,6 +106,28 @@ class SearchCatalogDiscoveryTest extends TestCase
         $this->assertNotContains($hidden->name, collect($payload)->pluck('label')->all());
     }
 
+    public function test_header_autocomplete_groups_suggestions_and_mobile_search_button_stays_icon_sized(): void
+    {
+        $this->catalogProduct(['name' => 'Grouped Search Rice', 'slug' => 'grouped-search-rice']);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('data-catalog-search', false)
+            ->assertSee('data-catalog-suggestions', false)
+            ->assertSee('gk-search-mobile', false);
+
+        $searchScript = file_get_contents(public_path('assets/js/catalog-search.js'));
+        $searchStyles = file_get_contents(public_path('assets/css/style.css'));
+
+        $this->assertStringContainsString('gk-search-suggestion-group', $searchScript);
+        $this->assertStringContainsString('gk-search-suggestion-heading', $searchScript);
+        $this->assertStringContainsString('Products', $searchScript);
+        $this->assertStringContainsString('Categories/Subcategories', $searchScript);
+        $this->assertStringContainsString('Brands', $searchScript);
+        $this->assertStringContainsString('.gk-search-mobile button', $searchStyles);
+        $this->assertStringContainsString('width: 44px', $searchStyles);
+    }
+
     public function test_filters_combine_with_and_semantics_and_multi_brand_uses_or(): void
     {
         $tata = Brand::factory()->create(['name' => 'Tata', 'status' => true]);
