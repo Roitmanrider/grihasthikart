@@ -56,13 +56,17 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
             ->withQueryString();
     }
 
-    public function currentOffers(int $limit = 8)
+    public function currentOffers(int $limit = 8, ?int $stockLocationId = null)
     {
         return $this->model->newQuery()
             ->current()
+            ->when($stockLocationId !== null, fn ($query) => $query->where(function ($query) use ($stockLocationId) {
+                $query->whereNull('stock_location_id')->orWhere('stock_location_id', $stockLocationId);
+            }))
             ->whereHas('productVariant', fn ($query) => $query->active()->whereHas('product', fn ($query) => $query->active()))
             ->whereHas('productVariant.inventories', fn ($query) => $query
                 ->active()
+                ->when($stockLocationId !== null, fn ($query) => $query->where('stock_location_id', $stockLocationId))
                 ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) > 0'))
             ->with(['cartItems.cart', 'orderItems', 'productVariant.inventories', 'productVariant.product.brand', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage'])
             ->orderBy('display_order')

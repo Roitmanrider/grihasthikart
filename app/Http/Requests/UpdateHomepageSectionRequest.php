@@ -15,7 +15,10 @@ class UpdateHomepageSectionRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:120'],
+            'stock_location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
             'subtitle' => ['nullable', 'string', 'max:180'],
+            'icon' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
+            'remove_icon' => ['nullable', 'boolean'],
             'enabled' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'desktop_item_limit' => ['required', 'integer', 'min:1', 'max:24'],

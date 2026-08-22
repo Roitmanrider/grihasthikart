@@ -10,10 +10,12 @@ class HomepageSection extends Model
     use HasFactory;
 
     protected $fillable = [
+        'stock_location_id',
         'section_key',
         'section_type',
         'title',
         'subtitle',
+        'icon_path',
         'enabled',
         'sort_order',
         'desktop_item_limit',
@@ -38,6 +40,11 @@ class HomepageSection extends Model
     public function rootCategory()
     {
         return $this->belongsTo(Category::class, 'root_category_id');
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 
     public function selectedCategories()

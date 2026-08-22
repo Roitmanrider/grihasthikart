@@ -15,6 +15,15 @@
             @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
         <div class="col-md-6">
+            <label class="form-label" for="stock_location_id">Scope</label>
+            <select id="stock_location_id" name="stock_location_id" class="form-select">
+                <option value="">Global/default</option>
+                @foreach ($stores as $store)
+                    <option value="{{ $store->id }}" @selected((string) old('stock_location_id', $banner->stock_location_id) === (string) $store->id)>{{ $store->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-6">
             <label class="form-label" for="subtitle">Subtitle</label>
             <input id="subtitle" name="subtitle" class="form-control @error('subtitle') is-invalid @enderror" value="{{ old('subtitle', $banner->subtitle) }}">
             @error('subtitle') <div class="invalid-feedback">{{ $message }}</div> @enderror

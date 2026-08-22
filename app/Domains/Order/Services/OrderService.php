@@ -333,6 +333,7 @@ class OrderService
         $inventories = Inventory::query()
             ->active()
             ->whereIn('product_variant_id', $variantIds)
+            ->when($order->stock_location_id !== null, fn ($query) => $query->where('stock_location_id', $order->stock_location_id))
             ->orderBy('product_variant_id')
             ->orderBy('stock_location_id')
             ->lockForUpdate()
@@ -409,6 +410,9 @@ class OrderService
         $order = $this->orderRepository->create(array_merge($checkoutData, $totals, [
             'order_number' => $this->generateOrderNumber(),
             'cart_id' => $cart->id,
+            'stock_location_id' => $cart->stock_location_id,
+            'store_name_snapshot' => $cart->stockLocation?->name,
+            'store_code_snapshot' => $cart->stockLocation?->code,
             'session_id' => $sessionId,
             'coupon_id' => $cart->coupon_id,
             'coupon_code_snapshot' => $cart->coupon_code,
@@ -464,6 +468,7 @@ class OrderService
     {
         foreach ($cart->items as $item) {
             $productId = $item->productVariant?->product_id;
+            $brand = $item->productVariant?->product?->brand;
             $lineSubtotal = round((float) $item->quantity * (float) $item->unit_price, 2);
             $lineMrp = round((float) $item->quantity * (float) $item->mrp, 2);
             $taxRate = (float) ($item->gst_rate_snapshot ?? 0);
@@ -472,6 +477,8 @@ class OrderService
                 'order_id' => $order->id,
                 'product_variant_id' => $item->product_variant_id,
                 'product_id' => $productId,
+                'brand_id_snapshot' => $brand?->id,
+                'brand_name_snapshot' => $brand?->name,
                 'sale_type' => $item->sale_type,
                 'daily_offer_id' => $item->daily_offer_id,
                 'product_name_snapshot' => $item->product_name_snapshot,
@@ -504,6 +511,7 @@ class OrderService
                 : Inventory::query()
                     ->active()
                     ->where('product_variant_id', $item->product_variant_id)
+                    ->when($order->stock_location_id !== null, fn ($query) => $query->where('stock_location_id', $order->stock_location_id))
                     ->orderBy('stock_location_id')
                     ->lockForUpdate()
                     ->get();
@@ -598,6 +606,7 @@ class OrderService
         foreach ($order->items as $item) {
             $inventory = Inventory::query()
                 ->where('product_variant_id', $item->product_variant_id)
+                ->when($order->stock_location_id !== null, fn ($query) => $query->where('stock_location_id', $order->stock_location_id))
                 ->orderByDesc('stock_location_id')
                 ->first();
 
@@ -635,7 +644,7 @@ class OrderService
 
         /** @var Cart $lockedCart */
         $lockedCart = Cart::query()
-            ->with(['items.productVariant.product', 'items.dailyOffer', 'coupon'])
+            ->with(['items.productVariant.product.brand', 'items.dailyOffer', 'coupon', 'stockLocation'])
             ->whereKey($cart->id)
             ->lockForUpdate()
             ->firstOrFail();
@@ -690,6 +699,7 @@ class OrderService
         return Inventory::query()
             ->active()
             ->whereIn('product_variant_id', $variantIds)
+            ->when($cart->stock_location_id !== null, fn ($query) => $query->where('stock_location_id', $cart->stock_location_id))
             ->orderBy('product_variant_id')
             ->orderBy('stock_location_id')
             ->lockForUpdate()

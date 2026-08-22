@@ -13,6 +13,9 @@ class PurchaseEntry extends Model
 
     protected $fillable = [
         'supplier_id',
+        'stock_location_id',
+        'store_name_snapshot',
+        'store_code_snapshot',
         'purchase_number',
         'bill_number',
         'purchase_date',
@@ -46,6 +49,11 @@ class PurchaseEntry extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 
     public function movements()

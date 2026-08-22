@@ -3,6 +3,7 @@
 namespace App\Domains\Storefront\Services;
 
 use App\Domains\Catalog\Services\DailyOfferService;
+use App\Domains\Customer\Services\CustomerAuthService;
 use App\Models\AssociatedPartner;
 use App\Models\Category;
 use App\Models\HomepageBanner;
@@ -20,7 +21,9 @@ class HomepageContentService
 
     public function storefrontData(): array
     {
-        $sections = $this->renderSections();
+        $customer = app(CustomerAuthService::class)->currentCustomer(request()->session());
+        $storeId = $customer?->assigned_store_id ? (int) $customer->assigned_store_id : null;
+        $sections = $this->renderSections($storeId);
 
         return [
             'homepageSections' => $sections,
@@ -32,9 +35,9 @@ class HomepageContentService
         ];
     }
 
-    public function adminSections(): Collection
+    public function adminSections(?int $storeId = null): Collection
     {
-        $stored = $this->storedSections()->keyBy('section_key');
+        $stored = $this->storedSections($storeId)->keyBy('section_key');
 
         return $this->defaultDefinitions()
             ->map(function (array $definition) use ($stored) {
@@ -252,9 +255,9 @@ class HomepageContentService
         ]);
     }
 
-    private function renderSections(): Collection
+    private function renderSections(?int $storeId = null): Collection
     {
-        $configs = $this->resolvedSections();
+        $configs = $this->resolvedSections($storeId);
         $rendered = collect();
 
         foreach ($configs as $config) {
@@ -263,7 +266,7 @@ class HomepageContentService
             }
 
             match ($config['section_type']) {
-                'banner' => $rendered->push($this->bannerSection($config)),
+                'banner' => $rendered->push($this->bannerSection($config, $storeId)),
                 'category_strip' => $this->pushIfNotEmpty($rendered, $this->categoryStrip($config), 'categories'),
                 'category_section_group' => $rendered = $rendered->merge($this->categorySections($config)),
                 'category_section' => $this->pushIfNotEmpty($rendered, $this->configuredCategorySection($config), 'category'),
@@ -279,7 +282,7 @@ class HomepageContentService
         return $rendered->values();
     }
 
-    private function resolvedSections(): Collection
+    private function resolvedSections(?int $storeId = null): Collection
     {
         $defaults = $this->defaultDefinitions()->keyBy('section_key');
 
@@ -287,11 +290,21 @@ class HomepageContentService
             return $defaults->sortBy('sort_order')->values();
         }
 
-        $stored = HomepageSection::query()
+        $storedRows = HomepageSection::query()
             ->with(['rootCategory', 'selectedCategories', 'selectedProducts'])
+            ->where(function ($query) use ($storeId) {
+                $query->whereNull('stock_location_id');
+
+                if ($storeId) {
+                    $query->orWhere('stock_location_id', $storeId);
+                }
+            })
             ->orderBy('sort_order')
-            ->get()
-            ->keyBy('section_key');
+            ->get();
+
+        $stored = $storedRows
+            ->groupBy('section_key')
+            ->map(fn (Collection $sections) => $sections->sortBy(fn (HomepageSection $section) => $section->stock_location_id ? 1 : 0)->last());
 
         return $defaults
             ->merge($stored->map(fn (HomepageSection $section) => $section->toArray()))
@@ -307,7 +320,7 @@ class HomepageContentService
             ->values();
     }
 
-    private function storedSections(): Collection
+    private function storedSections(?int $storeId = null): Collection
     {
         if (! Schema::hasTable('homepage_sections')) {
             return collect();
@@ -315,14 +328,34 @@ class HomepageContentService
 
         return HomepageSection::query()
             ->with(['selectedCategories', 'selectedProducts'])
+            ->where(function ($query) use ($storeId) {
+                $query->whereNull('stock_location_id');
+
+                if ($storeId) {
+                    $query->orWhere('stock_location_id', $storeId);
+                }
+            })
             ->orderBy('sort_order')
             ->get();
     }
 
-    private function bannerSection(array $config): array
+    private function bannerSection(array $config, ?int $storeId): array
     {
         $banners = Schema::hasTable('homepage_banners')
-            ? HomepageBanner::query()->visible()->orderBy('sort_order')->orderBy('id')->limit($config['desktop_item_limit'])->get()
+            ? HomepageBanner::query()
+                ->visible()
+                ->where(function ($query) use ($storeId) {
+                    $query->whereNull('stock_location_id');
+
+                    if ($storeId) {
+                        $query->orWhere('stock_location_id', $storeId);
+                    }
+                })
+                ->orderByRaw('stock_location_id IS NULL')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->limit($config['desktop_item_limit'])
+                ->get()
             : collect();
 
         return [

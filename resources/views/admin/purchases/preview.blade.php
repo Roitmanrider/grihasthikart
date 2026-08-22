@@ -24,6 +24,7 @@
 
 <form method="POST" action="{{ route('admin.purchases.import') }}">
     @csrf
+    <input type="hidden" name="stock_location_id" value="{{ $data['stock_location_id'] }}">
     <input type="hidden" name="purchase_date" value="{{ $data['purchase_date'] }}">
     <input type="hidden" name="supplier_id" value="{{ $data['supplier_id'] ?? '' }}">
     <input type="hidden" name="bill_number" value="{{ $data['bill_number'] ?? '' }}">

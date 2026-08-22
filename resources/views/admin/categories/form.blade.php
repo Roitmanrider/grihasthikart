@@ -86,6 +86,7 @@
                 <input type="hidden" name="is_featured" value="0">
                 <input type="hidden" name="show_in_menu" value="0">
                 <input type="hidden" name="show_on_homepage" value="0">
+                <input type="hidden" name="rapid_price_update_enabled" value="0">
 
                 <div class="form-check form-switch mb-3">
                     <input type="checkbox" name="status" value="1" class="form-check-input" id="status" @checked(old('status', $category->status ?? true))>
@@ -105,6 +106,11 @@
                 <div class="form-check form-switch">
                     <input type="checkbox" name="show_on_homepage" value="1" class="form-check-input" id="show_on_homepage" @checked(old('show_on_homepage', $category->show_on_homepage ?? false))>
                     <label class="form-check-label" for="show_on_homepage">Show on homepage</label>
+                </div>
+
+                <div class="form-check form-switch mt-3">
+                    <input type="checkbox" name="rapid_price_update_enabled" value="1" class="form-check-input" id="rapid_price_update_enabled" @checked(old('rapid_price_update_enabled', $category->rapid_price_update_enabled ?? false))>
+                    <label class="form-check-label" for="rapid_price_update_enabled">Daily Fresh rapid pricing</label>
                 </div>
             </div>
         </div>

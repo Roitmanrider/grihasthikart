@@ -57,6 +57,10 @@
 
 </main>
 
+@if (request()->routeIs('customer.*'))
+    <x-customer-marketing-banners />
+@endif
+
 @include('partials.footer')
 
 @include('partials.mobile-menu')

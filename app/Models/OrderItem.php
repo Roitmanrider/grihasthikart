@@ -13,6 +13,8 @@ class OrderItem extends Model
         'order_id',
         'product_variant_id',
         'product_id',
+        'brand_id_snapshot',
+        'brand_name_snapshot',
         'sale_type',
         'daily_offer_id',
         'product_name_snapshot',

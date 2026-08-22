@@ -73,6 +73,11 @@ class ProductVariant extends Model
         return $this->hasMany(Inventory::class);
     }
 
+    public function storePrices()
+    {
+        return $this->hasMany(StoreVariantPrice::class);
+    }
+
     public function cartItems()
     {
         return $this->hasMany(CartItem::class);

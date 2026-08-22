@@ -19,9 +19,9 @@ class DailyOfferService
         return $this->repository->paginatedList($filters, $perPage);
     }
 
-    public function currentOffers(int $limit = 8)
+    public function currentOffers(int $limit = 8, ?int $stockLocationId = null)
     {
-        return $this->repository->currentOffers($limit);
+        return $this->repository->currentOffers($limit, $stockLocationId);
     }
 
     public function productVariantOptions()

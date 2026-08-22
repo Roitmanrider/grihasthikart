@@ -43,9 +43,9 @@ class ReplenishmentService
         return $items;
     }
 
-    public function summary(): array
+    public function summary(array $filters = []): array
     {
-        $base = $this->baseQuery([]);
+        $base = $this->baseQuery($filters);
 
         return [
             'in_stock' => (clone $base)->whereRaw($this->availableSql().' > COALESCE(reorder_level, -999999999)')->count(),
@@ -113,6 +113,7 @@ class ReplenishmentService
         $lastItem = $inventory->last_purchase_item;
 
         return [
+            'stock_location_id' => $inventory->stock_location_id,
             'supplier_id' => $inventory->last_supplier?->id,
             'items' => [[
                 'product_variant_id' => $inventory->product_variant_id,

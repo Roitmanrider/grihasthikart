@@ -60,6 +60,10 @@ class OrderRepository extends BaseRepository implements OrderRepositoryInterface
             }
         }
 
+        if (($filters['stock_location_id'] ?? null) !== null && $filters['stock_location_id'] !== '') {
+            $query->where('stock_location_id', (int) $filters['stock_location_id']);
+        }
+
         if (($filters['date_from'] ?? null) !== null && $filters['date_from'] !== '') {
             $query->whereDate('placed_at', '>=', $filters['date_from']);
         }

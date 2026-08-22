@@ -147,6 +147,7 @@ class CategoryService
         $data['is_featured'] = (bool) ($data['is_featured'] ?? false);
         $data['show_in_menu'] = (bool) ($data['show_in_menu'] ?? false);
         $data['show_on_homepage'] = (bool) ($data['show_on_homepage'] ?? false);
+        $data['rapid_price_update_enabled'] = (bool) ($data['rapid_price_update_enabled'] ?? false);
         $data['status'] = (bool) ($data['status'] ?? false);
 
         foreach (['image', 'banner'] as $field) {

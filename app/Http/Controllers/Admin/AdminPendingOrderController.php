@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Store\Services\AdminStoreContextService;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerCartRiskMonthly;
 use App\Models\PendingOrder;
@@ -12,12 +13,19 @@ use Illuminate\Validation\Rule;
 
 class AdminPendingOrderController extends Controller
 {
+    public function __construct(private readonly AdminStoreContextService $storeContext) {}
+
     public function index(Request $request)
     {
         $employeeFollowupEnabled = app(BusinessSettingService::class)
             ->get('checkout.cart_employee_followup_enabled', true);
         $query = PendingOrder::query()
             ->with(['customer', 'assignedAdmin', 'convertedOrder', 'cart.items.productVariant']);
+        $assignedStoreId = $this->storeContext->selectedStoreId($request);
+
+        if ($assignedStoreId) {
+            $query->where('stock_location_id', $assignedStoreId);
+        }
 
         $status = (string) $request->string('status', PendingOrder::STATUS_ACTIVE);
         $filters = collect((array) $request->input('filters', []))
@@ -75,6 +83,10 @@ class AdminPendingOrderController extends Controller
             ->where('status', PendingOrder::STATUS_ACTIVE)
             ->where('expires_at', '>', now());
 
+        if ($assignedStoreId) {
+            $followUpBase->where('stock_location_id', $assignedStoreId);
+        }
+
         if ($employeeFollowupEnabled) {
             $this->applyFollowUpEligibility($followUpBase);
         } else {
@@ -83,6 +95,9 @@ class AdminPendingOrderController extends Controller
 
         $quickCounts = $this->quickCounts($followUpBase);
         $assignableAdmins = User::query()
+            ->when($assignedStoreId, fn ($query) => $query->where(function ($query) use ($assignedStoreId) {
+                $query->where('assigned_store_id', $assignedStoreId)->orWhereNull('assigned_store_id');
+            }))
             ->orderBy('name')
             ->orderBy('email')
             ->get();
@@ -94,6 +109,7 @@ class AdminPendingOrderController extends Controller
 
     public function show(PendingOrder $pendingOrder)
     {
+        $this->authorizePendingStoreAccess($pendingOrder);
         $pendingOrder->load(['customer', 'assignedAdmin', 'convertedOrder', 'cart.items.productVariant.inventories', 'items.productVariant']);
         $riskHistory = CustomerCartRiskMonthly::query()
             ->where('customer_id', $pendingOrder->customer_id)
@@ -106,6 +122,7 @@ class AdminPendingOrderController extends Controller
 
     public function updateFollowUp(PendingOrder $pendingOrder, Request $request)
     {
+        $this->authorizePendingStoreAccess($pendingOrder);
         $data = $request->validate([
             'follow_up_status' => ['required', Rule::in(['NOT_CONTACTED', 'CALLED', 'WILL_ORDER', 'NO_ANSWER', 'NOT_INTERESTED', 'WATCH_CUSTOMER'])],
         ]);
@@ -120,6 +137,7 @@ class AdminPendingOrderController extends Controller
 
     public function assign(PendingOrder $pendingOrder, Request $request)
     {
+        $this->authorizePendingStoreAccess($pendingOrder);
         $data = $request->validate([
             'assigned_admin_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
@@ -134,12 +152,29 @@ class AdminPendingOrderController extends Controller
 
     public function unassign(PendingOrder $pendingOrder)
     {
+        $this->authorizePendingStoreAccess($pendingOrder);
         $pendingOrder->update([
             'assigned_admin_user_id' => null,
             'follow_up_updated_at' => now(),
         ]);
 
         return back()->with('success', 'Cart follow-up assignment cleared.');
+    }
+
+    private function assignedStoreId(Request $request): ?int
+    {
+        $user = $request->user();
+
+        return $user?->assigned_store_id && ! $user->isSuperAdmin() ? (int) $user->assigned_store_id : null;
+    }
+
+    private function authorizePendingStoreAccess(PendingOrder $pendingOrder): void
+    {
+        $user = request()->user();
+
+        if ($user?->assigned_store_id && ! $user->isSuperAdmin()) {
+            abort_unless((int) $user->assigned_store_id === (int) $pendingOrder->stock_location_id, 403);
+        }
     }
 
     private function applyFollowUpEligibility($query): void

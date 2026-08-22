@@ -25,8 +25,13 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search', 'product_variant_id', 'stock_location_id', 'status', 'low_stock', 'trashed', 'sort', 'direction']);
+        if ($request->user()?->assigned_store_id && ! $request->user()?->isSuperAdmin()) {
+            $filters['stock_location_id'] = $request->user()->assigned_store_id;
+        }
+
         $inventories = $this->inventoryService->paginate(
-            $request->only(['search', 'product_variant_id', 'stock_location_id', 'status', 'low_stock', 'trashed', 'sort', 'direction']),
+            $filters,
             (int) $request->input('per_page', 20)
         );
         $options = $this->inventoryService->options();
@@ -44,6 +49,7 @@ class InventoryController extends Controller
     public function store(StoreInventoryRequest $request)
     {
         $data = $request->validated();
+        $this->authorizeStoreAccess((int) $data['stock_location_id']);
 
         try {
             $this->inventoryService->createInventory(
@@ -64,6 +70,7 @@ class InventoryController extends Controller
 
     public function show(Inventory $inventory)
     {
+        $this->authorizeStoreAccess((int) $inventory->stock_location_id);
         $inventory = $this->inventoryRepository->findWithRelations($inventory->id);
         $movements = $this->inventoryRepository->movementHistory($inventory);
 
@@ -72,6 +79,7 @@ class InventoryController extends Controller
 
     public function edit(Inventory $inventory)
     {
+        $this->authorizeStoreAccess((int) $inventory->stock_location_id);
         $inventory->load(['productVariant.product', 'stockLocation']);
 
         return view('admin.inventories.edit', compact('inventory'));
@@ -79,6 +87,7 @@ class InventoryController extends Controller
 
     public function update(Inventory $inventory, UpdateInventoryRequest $request)
     {
+        $this->authorizeStoreAccess((int) $inventory->stock_location_id);
         $this->inventoryService->update($inventory, $request->validated());
 
         return redirect()
@@ -88,6 +97,7 @@ class InventoryController extends Controller
 
     public function adjust(Inventory $inventory)
     {
+        $this->authorizeStoreAccess((int) $inventory->stock_location_id);
         $inventory->load(['productVariant.product', 'stockLocation']);
 
         return view('admin.inventories.adjust', compact('inventory'));
@@ -95,6 +105,7 @@ class InventoryController extends Controller
 
     public function storeAdjustment(Inventory $inventory, AdjustInventoryRequest $request)
     {
+        $this->authorizeStoreAccess((int) $inventory->stock_location_id);
         $data = $request->validated();
 
         try {
@@ -118,6 +129,7 @@ class InventoryController extends Controller
     public function destroy(Inventory $inventory)
     {
         Gate::authorize('manage-inventory');
+        $this->authorizeStoreAccess((int) $inventory->stock_location_id);
         $this->inventoryService->delete($inventory);
 
         return redirect()
@@ -149,5 +161,14 @@ class InventoryController extends Controller
         return redirect()
             ->route('admin.inventories.index', $request->query())
             ->with('success', $count.' inventory records processed successfully.');
+    }
+
+    private function authorizeStoreAccess(int $stockLocationId): void
+    {
+        $user = request()->user();
+
+        if ($user?->assigned_store_id && ! $user->isSuperAdmin()) {
+            abort_unless((int) $user->assigned_store_id === $stockLocationId, 403);
+        }
     }
 }

@@ -8,11 +8,14 @@ use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Delivery\Services\DeliveryChargeService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Store\Services\StoreContextService;
+use App\Domains\Store\Services\StoreVariantPriceService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Customer;
 use App\Models\DailyOffer;
 use App\Models\ProductVariant;
+use App\Models\StockLocation;
 use Illuminate\Database\QueryException;
 use Illuminate\Session\Store;
 use Illuminate\Support\Carbon;
@@ -33,21 +36,28 @@ class CartService
         private readonly BusinessSettingService $settings,
         private readonly DeliveryChargeService $deliveryChargeService,
         private readonly CouponService $couponService,
-        private readonly CustomerCreditService $customerCreditService
+        private readonly CustomerCreditService $customerCreditService,
+        private readonly StoreContextService $storeContextService,
+        private readonly StoreVariantPriceService $storeVariantPriceService
     ) {}
 
     public function getOrCreateCartForSession(string $sessionId): Cart
     {
         return DB::transaction(function () use ($sessionId) {
             if ($customerId = $this->customerIdFromSessionIdentifier($sessionId)) {
+                $store = $this->storeContextService->resolveForSessionIdentifier($sessionId);
                 $cart = $this->repository->activeCartForCustomer($customerId);
 
                 if ($cart) {
+                    if (! $cart->stock_location_id && $store) {
+                        $cart->update(['stock_location_id' => $store->id]);
+                    }
+
                     return $cart;
                 }
 
                 try {
-                    return $this->repository->createCartForCustomer($customerId, $sessionId);
+                    return $this->repository->createCartForCustomer($customerId, $sessionId, $store?->id);
                 } catch (QueryException $exception) {
                     if (! $this->isUniqueViolation($exception, 'carts_one_active_per_customer_unique')) {
                         throw $exception;
@@ -57,8 +67,18 @@ class CartService
                 }
             }
 
-            return $this->repository->activeCartForSession($sessionId)
-                ?? $this->repository->createCartForSession($sessionId);
+            $store = $this->storeContextService->defaultStore();
+            $cart = $this->repository->activeCartForSession($sessionId);
+
+            if ($cart) {
+                if (! $cart->stock_location_id && $store) {
+                    $cart->update(['stock_location_id' => $store->id]);
+                }
+
+                return $cart;
+            }
+
+            return $this->repository->createCartForSession($sessionId, $store?->id);
         });
     }
 
@@ -93,10 +113,11 @@ class CartService
 
         return DB::transaction(function () use ($sessionId, $productVariantId, $quantity, $dailyOfferId) {
             $cart = $this->getOrCreateCartForSession($sessionId);
+            $store = $this->storeContextService->resolve($cart->customer, $cart);
             $variant = ProductVariant::query()
                 ->with(['product', 'attributeValues.attribute'])
                 ->findOrFail($productVariantId);
-            $dailyOffer = $dailyOfferId ? $this->currentDailyOfferForVariant($variant->id, $dailyOfferId) : null;
+            $dailyOffer = $dailyOfferId ? $this->currentDailyOfferForVariant($variant->id, $dailyOfferId, $store?->id) : null;
 
             if ($dailyOfferId !== null && $dailyOffer === null) {
                 throw new InvalidArgumentException('Daily offer is no longer available.');
@@ -111,7 +132,7 @@ class CartService
                 : 0;
             $targetQuantity = $quantity + $existingQuantity;
 
-            $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $targetQuantity, $existingQuantity);
+            $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $targetQuantity, $existingQuantity, $store?->id);
 
             if ($existingItem) {
                 $wasTrashed = $existingItem->trashed();
@@ -122,7 +143,7 @@ class CartService
 
                 $item = $this->repository->updateItem($existingItem, array_merge([
                     'quantity' => $targetQuantity,
-                ], $this->prepareCartItemSnapshot($variant, $dailyOffer), [
+                ], $this->prepareCartItemSnapshot($variant, $dailyOffer, $store), [
                     'daily_offer_reserved_until' => $dailyOffer
                         ? ($wasTrashed ? $this->dailyOfferHoldExpiresAt() : ($existingItem->daily_offer_reserved_until ?? $this->dailyOfferHoldExpiresAt()))
                         : null,
@@ -138,7 +159,7 @@ class CartService
                 'product_variant_id' => $variant->id,
                 'quantity' => $quantity,
                 'daily_offer_reserved_until' => $dailyOffer ? $this->dailyOfferHoldExpiresAt() : null,
-            ], $this->prepareCartItemSnapshot($variant, $dailyOffer)));
+            ], $this->prepareCartItemSnapshot($variant, $dailyOffer, $store)));
 
             $this->recordCartMutation($cart);
             $this->pendingOrderService->afterItemAddedOrUpdated($cart);
@@ -153,14 +174,15 @@ class CartService
 
         return DB::transaction(function () use ($sessionId, $cartItem, $quantity) {
             $cart = $this->getOrCreateCartForSession($sessionId);
+            $store = $this->storeContextService->resolve($cart->customer, $cart);
             $cartItem = $this->repository->findItem($cartItem->id);
             $this->ensureCartItemBelongsToCurrentCart($cart, $cartItem);
             $variant = $cartItem->productVariant?->load('product');
             $dailyOffer = $variant && $this->isDailyOfferSnapshot($cart, $cartItem, $variant)
-                ? $this->currentDailyOfferForVariant($cartItem->product_variant_id, $cartItem->daily_offer_id)
+                ? $this->currentDailyOfferForVariant($cartItem->product_variant_id, $cartItem->daily_offer_id, $store?->id)
                 : null;
 
-            $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $quantity, (float) $cartItem->quantity);
+            $this->validateEffectiveQuantityLimit($variant, $dailyOffer, $quantity, (float) $cartItem->quantity, $store?->id);
 
             $updated = $this->repository->updateItem($cartItem, ['quantity' => $quantity]);
             $this->recordCartMutation($cart);
@@ -298,9 +320,9 @@ class CartService
         }
     }
 
-    public function validateSufficientStock(int $productVariantId, float $quantity): void
+    public function validateSufficientStock(int $productVariantId, float $quantity, ?int $stockLocationId = null): void
     {
-        if ($this->inventoryService->getAvailableQuantity($productVariantId) < $quantity) {
+        if ($this->inventoryService->getAvailableQuantity($productVariantId, $stockLocationId) < $quantity) {
             throw new InvalidArgumentException('Requested quantity exceeds available stock.');
         }
     }
@@ -320,7 +342,8 @@ class CartService
                 continue;
             }
 
-            $dailyOffer = $this->currentDailyOfferForVariant($variant->id, $item->daily_offer_id);
+            $store = $this->storeContextService->resolve($cart->customer, $cart);
+            $dailyOffer = $this->currentDailyOfferForVariant($variant->id, $item->daily_offer_id, $store?->id);
 
             if (! $dailyOffer) {
                 continue;
@@ -329,7 +352,7 @@ class CartService
             $expectedPrice = $dailyOffer->offer_price;
 
             if ((float) $item->unit_price !== (float) $expectedPrice) {
-                $this->repository->updateItem($item, $this->prepareCartItemSnapshot($variant, $dailyOffer));
+                $this->repository->updateItem($item, $this->prepareCartItemSnapshot($variant, $dailyOffer, $store));
             }
         }
 
@@ -347,15 +370,16 @@ class CartService
         }
     }
 
-    public function prepareCartItemSnapshot(ProductVariant $variant, ?DailyOffer $dailyOffer = null): array
+    public function prepareCartItemSnapshot(ProductVariant $variant, ?DailyOffer $dailyOffer = null, ?StockLocation $store = null): array
     {
         $product = $variant->product;
+        $price = $this->storeVariantPriceService->effectivePrice($variant, $store);
 
         return [
-            'unit_price' => $dailyOffer?->offer_price ?? $variant->selling_price,
+            'unit_price' => $dailyOffer?->offer_price ?? $price['selling_price'],
             'sale_type' => $dailyOffer ? self::SALE_TYPE_DAILY_OFFER : self::SALE_TYPE_NORMAL,
             'daily_offer_id' => $dailyOffer?->id,
-            'mrp' => $variant->mrp,
+            'mrp' => $price['mrp'],
             'product_name_snapshot' => $product->name,
             'variant_name_snapshot' => $variant->variant_name,
             'sku_snapshot' => $variant->sku,
@@ -421,11 +445,14 @@ class CartService
             && str_contains($exception->getMessage(), $indexName);
     }
 
-    private function currentDailyOfferForVariant(int $productVariantId, ?int $dailyOfferId = null): ?DailyOffer
+    private function currentDailyOfferForVariant(int $productVariantId, ?int $dailyOfferId = null, ?int $stockLocationId = null): ?DailyOffer
     {
         return DailyOffer::query()
             ->current()
             ->where('product_variant_id', $productVariantId)
+            ->when($stockLocationId !== null, fn ($query) => $query->where(function ($query) use ($stockLocationId) {
+                $query->whereNull('stock_location_id')->orWhere('stock_location_id', $stockLocationId);
+            }))
             ->when($dailyOfferId !== null, fn ($query) => $query->whereKey($dailyOfferId))
             ->with(['cartItems.cart', 'orderItems'])
             ->orderBy('display_order')
@@ -445,13 +472,13 @@ class CartService
         return now()->addMinutes($holdMinutes);
     }
 
-    private function validateEffectiveQuantityLimit(?ProductVariant $variant, ?DailyOffer $dailyOffer, float $targetQuantity, float $existingQuantity = 0): void
+    private function validateEffectiveQuantityLimit(?ProductVariant $variant, ?DailyOffer $dailyOffer, float $targetQuantity, float $existingQuantity = 0, ?int $stockLocationId = null): void
     {
         if (! $variant) {
             throw new InvalidArgumentException('This product variant is not available.');
         }
 
-        $effectiveMax = $this->effectiveMaximumQuantity($variant, $dailyOffer, $existingQuantity);
+        $effectiveMax = $this->effectiveMaximumQuantity($variant, $dailyOffer, $existingQuantity, $stockLocationId);
 
         if ($effectiveMax <= 0) {
             throw new InvalidArgumentException('This variant is out of stock.');
@@ -462,7 +489,7 @@ class CartService
         }
     }
 
-    private function effectiveMaximumQuantity(ProductVariant $variant, ?DailyOffer $dailyOffer, float $existingQuantity = 0): float
+    private function effectiveMaximumQuantity(ProductVariant $variant, ?DailyOffer $dailyOffer, float $existingQuantity = 0, ?int $stockLocationId = null): float
     {
         $limits = [];
         $maximumOrderQuantity = $variant->product?->maximum_order_quantity;
@@ -477,26 +504,29 @@ class CartService
             }
 
             $limits[] = $existingQuantity + $dailyOffer->availableOfferQuantity();
-            $limits[] = $this->inventoryService->getAvailableQuantity($variant->id);
+            $limits[] = $this->inventoryService->getAvailableQuantity($variant->id, $dailyOffer->stock_location_id ?? $stockLocationId);
 
             return max(0, min($limits));
         }
 
-        $limits[] = $this->normalSellableQuantity($variant->id);
+        $limits[] = $this->normalSellableQuantity($variant->id, $stockLocationId);
 
         return max(0, min($limits));
     }
 
-    private function normalSellableQuantity(int $productVariantId): float
+    private function normalSellableQuantity(int $productVariantId, ?int $stockLocationId = null): float
     {
         $allocatedRemaining = DailyOffer::query()
             ->active()
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now(config('app.timezone'))))
             ->where('product_variant_id', $productVariantId)
+            ->when($stockLocationId !== null, fn ($query) => $query->where(function ($query) use ($stockLocationId) {
+                $query->whereNull('stock_location_id')->orWhere('stock_location_id', $stockLocationId);
+            }))
             ->with(['cartItems.cart', 'orderItems'])
             ->get()
             ->sum(fn (DailyOffer $offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));
 
-        return max(0, $this->inventoryService->getAvailableQuantity($productVariantId) - $allocatedRemaining);
+        return max(0, $this->inventoryService->getAvailableQuantity($productVariantId, $stockLocationId) - $allocatedRemaining);
     }
 }

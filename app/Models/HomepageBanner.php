@@ -11,6 +11,7 @@ class HomepageBanner extends Model
     use HasFactory;
 
     protected $fillable = [
+        'stock_location_id',
         'title',
         'subtitle',
         'cta_text',
@@ -38,5 +39,10 @@ class HomepageBanner extends Model
         return $query->where('enabled', true)
             ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()));
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 }

@@ -12,6 +12,7 @@ class DailyOffer extends Model
 
     protected $fillable = [
         'product_variant_id',
+        'stock_location_id',
         'title',
         'offer_price',
         'allocated_quantity',
@@ -36,6 +37,11 @@ class DailyOffer extends Model
     public function productVariant()
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 
     public function product()

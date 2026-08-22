@@ -13,6 +13,7 @@ class Cart extends Model
     protected $fillable = [
         'session_id',
         'customer_id',
+        'stock_location_id',
         'coupon_id',
         'coupon_code',
         'coupon_discount_amount',
@@ -40,6 +41,11 @@ class Cart extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 
     public function pendingOrders()

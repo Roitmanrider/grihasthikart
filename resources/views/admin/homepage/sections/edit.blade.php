@@ -21,7 +21,7 @@
         <div class="alert alert-danger">{{ $errors->first() }}</div>
     @endif
 
-    <form method="POST" action="{{ route('admin.homepage.sections.update', $defaults['section_key']) }}" class="card border-0 shadow-sm">
+    <form method="POST" enctype="multipart/form-data" action="{{ route('admin.homepage.sections.update', $defaults['section_key']) }}" class="card border-0 shadow-sm">
         @csrf
         @method('PUT')
         <div class="card-body row g-3">
@@ -29,6 +29,15 @@
                 <label class="form-label" for="title">Title</label>
                 <input id="title" name="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title', $current['title']) }}" required>
                 @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="stock_location_id">Scope</label>
+                <select id="stock_location_id" name="stock_location_id" class="form-select">
+                    <option value="">Global/default</option>
+                    @foreach ($stores as $store)
+                        <option value="{{ $store->id }}" @selected((string) old('stock_location_id', $current['stock_location_id'] ?? '') === (string) $store->id)>{{ $store->name }}</option>
+                    @endforeach
+                </select>
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="sort_order">Order</label>
@@ -39,6 +48,17 @@
                 <label class="form-label" for="subtitle">Subtitle</label>
                 <input id="subtitle" name="subtitle" class="form-control @error('subtitle') is-invalid @enderror" value="{{ old('subtitle', $current['subtitle'] ?? '') }}">
                 @error('subtitle') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="icon">Section Icon</label>
+                <input id="icon" type="file" name="icon" class="form-control">
+                @if (! empty($current['icon_path']))
+                    <label class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="remove_icon" value="1">
+                        Remove current icon
+                    </label>
+                    <div class="form-text">{{ $current['icon_path'] }}</div>
+                @endif
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="desktop_item_limit">Item Limit</label>

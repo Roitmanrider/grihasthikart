@@ -32,19 +32,21 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
             ->first();
     }
 
-    public function createCartForSession(string $sessionId): Cart
+    public function createCartForSession(string $sessionId, ?int $stockLocationId = null): Cart
     {
         return $this->model->newQuery()->create([
             'session_id' => $sessionId,
+            'stock_location_id' => $stockLocationId,
             'status' => 'active',
         ]);
     }
 
-    public function createCartForCustomer(int $customerId, string $sessionId): Cart
+    public function createCartForCustomer(int $customerId, string $sessionId, ?int $stockLocationId = null): Cart
     {
         return $this->model->newQuery()->create([
             'session_id' => $sessionId,
             'customer_id' => $customerId,
+            'stock_location_id' => $stockLocationId,
             'status' => 'active',
         ]);
     }

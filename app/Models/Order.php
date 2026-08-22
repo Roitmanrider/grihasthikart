@@ -32,6 +32,9 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'cart_id',
+        'stock_location_id',
+        'store_name_snapshot',
+        'store_code_snapshot',
         'session_id',
         'customer_id',
         'customer_name',
@@ -124,6 +127,11 @@ class Order extends Model
     public function cart()
     {
         return $this->belongsTo(Cart::class);
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 
     public function returnRequests()

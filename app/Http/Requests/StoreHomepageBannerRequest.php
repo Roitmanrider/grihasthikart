@@ -15,6 +15,7 @@ class StoreHomepageBannerRequest extends FormRequest
     {
         return [
             'title' => ['nullable', 'string', 'max:120'],
+            'stock_location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
             'subtitle' => ['nullable', 'string', 'max:180'],
             'cta_text' => ['nullable', 'string', 'max:60'],
             'cta_url' => ['nullable', 'string', 'max:255', $this->safeUrlRule()],

@@ -31,12 +31,20 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureRateLimiters();
 
+        Gate::before(function (User $user): ?bool {
+            if ($user->isSuperAdmin() || in_array($user->email, config('grihasthikart.admin_emails', []), true)) {
+                return true;
+            }
+
+            return null;
+        });
+
         Gate::define('manage-admin', function (User $user): bool {
             if (method_exists($user, 'hasPermissionTo')) {
                 return $user->hasPermissionTo('admin.manage');
             }
 
-            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+            return false;
         });
 
         Gate::define('manage-categories', function (User $user): bool {
@@ -108,7 +116,7 @@ class AppServiceProvider extends ServiceProvider
                 return $user->hasPermissionTo('catalog.daily-offers.manage');
             }
 
-            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+            return $user->isStoreManager();
         });
 
         Gate::define('manage-inventory', function (User $user): bool {
@@ -116,7 +124,7 @@ class AppServiceProvider extends ServiceProvider
                 return $user->hasPermissionTo('inventory.manage');
             }
 
-            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+            return $user->isStoreManager();
         });
 
         Gate::define('manage-orders', function (User $user): bool {
@@ -124,7 +132,7 @@ class AppServiceProvider extends ServiceProvider
                 return $user->hasPermissionTo('orders.manage');
             }
 
-            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+            return $user->isStoreManager() || $user->isCartFollowUpEmployee();
         });
 
         Gate::define('manage-payments', function (User $user): bool {
@@ -156,7 +164,7 @@ class AppServiceProvider extends ServiceProvider
                 return $user->hasPermissionTo('reports.manage');
             }
 
-            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+            return $user->isStoreManager();
         });
 
         Gate::define('manage-customers', function (User $user): bool {
@@ -164,7 +172,7 @@ class AppServiceProvider extends ServiceProvider
                 return $user->hasPermissionTo('customers.manage');
             }
 
-            return in_array($user->email, config('grihasthikart.admin_emails', []), true);
+            return $user->isStoreManager() || $user->isCartFollowUpEmployee();
         });
 
         Gate::define('manage-settings', function (User $user): bool {

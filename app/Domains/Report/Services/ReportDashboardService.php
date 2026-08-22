@@ -13,24 +13,24 @@ use Illuminate\Support\Facades\Schema;
 
 class ReportDashboardService
 {
-    public function dashboard(): array
+    public function dashboard(?int $stockLocationId = null): array
     {
         $today = now(config('app.timezone'))->toDateString();
         $monthStart = now(config('app.timezone'))->startOfMonth()->toDateString();
 
-        $sales = $this->salesSummary($today, $monthStart);
-        $purchase = $this->purchaseSummary($today, $monthStart);
+        $sales = $this->salesSummary($today, $monthStart, $stockLocationId);
+        $purchase = $this->purchaseSummary($today, $monthStart, $stockLocationId);
 
         return [
             'sales' => $sales,
-            'inventory' => $this->inventorySummary(),
+            'inventory' => $this->inventorySummary($stockLocationId),
             'purchase' => $purchase,
             'tax' => $this->taxSummary($sales['output_gst'], $purchase['input_gst']),
-            'returns' => $this->returnsSummary(),
+            'returns' => $this->returnsSummary($stockLocationId),
         ];
     }
 
-    private function salesSummary(string $today, string $monthStart): array
+    private function salesSummary(string $today, string $monthStart, ?int $stockLocationId): array
     {
         if (! Schema::hasTable('orders')) {
             return [
@@ -45,21 +45,22 @@ class ReportDashboardService
             ];
         }
 
-        $validOrders = Order::query()->whereNotIn('order_status', $this->cancelledStatuses());
+        $validOrders = $this->scopeStore(Order::query(), $stockLocationId)->whereNotIn('order_status', $this->cancelledStatuses());
+        $orders = $this->scopeStore(Order::query(), $stockLocationId);
 
         return [
             'today_sales' => round((float) (clone $validOrders)->whereDate('placed_at', $today)->sum('grand_total'), 2),
             'month_sales' => round((float) (clone $validOrders)->whereDate('placed_at', '>=', $monthStart)->sum('grand_total'), 2),
-            'total_orders' => Order::query()->count(),
-            'delivered_orders' => Order::query()->where('order_status', 'delivered')->count(),
-            'cancelled_orders' => Order::query()->whereIn('order_status', $this->cancelledStatuses())->count(),
-            'return_refund_amount' => $this->returnRefundAmount(),
-            'payment_methods' => $this->paymentMethodBreakdown(),
+            'total_orders' => (clone $orders)->count(),
+            'delivered_orders' => (clone $orders)->where('order_status', 'delivered')->count(),
+            'cancelled_orders' => (clone $orders)->whereIn('order_status', $this->cancelledStatuses())->count(),
+            'return_refund_amount' => $this->returnRefundAmount($stockLocationId),
+            'payment_methods' => $this->paymentMethodBreakdown($stockLocationId),
             'output_gst' => round((float) (clone $validOrders)->sum('tax_total'), 2),
         ];
     }
 
-    private function inventorySummary(): array
+    private function inventorySummary(?int $stockLocationId): array
     {
         if (! Schema::hasTable('inventories')) {
             return [
@@ -75,16 +76,18 @@ class ReportDashboardService
             'total_products' => $this->safeCount('products'),
             'total_variants' => $this->safeCount('product_variants'),
             'low_stock_count' => Inventory::query()
+                ->when($stockLocationId, fn ($query) => $query->where('stock_location_id', $stockLocationId))
                 ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= low_stock_threshold')
                 ->count(),
             'out_of_stock_count' => Inventory::query()
+                ->when($stockLocationId, fn ($query) => $query->where('stock_location_id', $stockLocationId))
                 ->whereRaw('(quantity_on_hand - reserved_quantity - damaged_quantity) <= 0')
                 ->count(),
-            'stock_value' => $this->stockValue(),
+            'stock_value' => $this->stockValue($stockLocationId),
         ];
     }
 
-    private function purchaseSummary(string $today, string $monthStart): array
+    private function purchaseSummary(string $today, string $monthStart, ?int $stockLocationId): array
     {
         if (! Schema::hasTable('purchase_entries')) {
             return [
@@ -96,16 +99,18 @@ class ReportDashboardService
             ];
         }
 
+        $purchases = PurchaseEntry::query()->when($stockLocationId, fn ($query) => $query->where('stock_location_id', $stockLocationId));
+
         return [
-            'today_purchases' => round((float) PurchaseEntry::query()->whereDate('purchase_date', $today)->sum('grand_total'), 2),
-            'month_purchases' => round((float) PurchaseEntry::query()->whereDate('purchase_date', '>=', $monthStart)->sum('grand_total'), 2),
-            'supplier_totals' => $this->supplierPurchaseTotals(),
-            'input_gst' => round((float) PurchaseEntry::query()->sum('gst_total'), 2),
+            'today_purchases' => round((float) (clone $purchases)->whereDate('purchase_date', $today)->sum('grand_total'), 2),
+            'month_purchases' => round((float) (clone $purchases)->whereDate('purchase_date', '>=', $monthStart)->sum('grand_total'), 2),
+            'supplier_totals' => $this->supplierPurchaseTotals($stockLocationId),
+            'input_gst' => round((float) (clone $purchases)->sum('gst_total'), 2),
             'available' => true,
         ];
     }
 
-    private function returnsSummary(): array
+    private function returnsSummary(?int $stockLocationId): array
     {
         if (! Schema::hasTable('return_requests')) {
             return [
@@ -118,12 +123,15 @@ class ReportDashboardService
             ];
         }
 
+        $returns = ReturnRequest::query()
+            ->when($stockLocationId, fn ($query) => $query->whereHas('order', fn ($query) => $query->where('stock_location_id', $stockLocationId)));
+
         return [
-            'requested' => ReturnRequest::query()->where('status', 'requested')->count(),
-            'approved' => ReturnRequest::query()->where('status', 'approved')->count(),
-            'rejected' => ReturnRequest::query()->where('status', 'rejected')->count(),
-            'refunded' => ReturnRequest::query()->where('status', 'refunded')->count(),
-            'refund_amount' => round((float) ReturnRequest::query()->sum('refund_amount'), 2),
+            'requested' => (clone $returns)->where('status', 'requested')->count(),
+            'approved' => (clone $returns)->where('status', 'approved')->count(),
+            'rejected' => (clone $returns)->where('status', 'rejected')->count(),
+            'refunded' => (clone $returns)->where('status', 'refunded')->count(),
+            'refund_amount' => round((float) (clone $returns)->sum('refund_amount'), 2),
             'available' => true,
         ];
     }
@@ -161,11 +169,11 @@ class ReportDashboardService
         return $amount > 0 ? $amount : round($inputGst / 2, 2);
     }
 
-    private function paymentMethodBreakdown(): array
+    private function paymentMethodBreakdown(?int $stockLocationId): array
     {
         $methods = $this->emptyPaymentMethods();
 
-        Order::query()
+        $this->scopeStore(Order::query(), $stockLocationId)
             ->select('payment_method', DB::raw('COUNT(*) as orders_count'), DB::raw('SUM(grand_total) as amount_total'))
             ->groupBy('payment_method')
             ->get()
@@ -189,34 +197,39 @@ class ReportDashboardService
         ];
     }
 
-    private function returnRefundAmount(): float
+    private function returnRefundAmount(?int $stockLocationId): float
     {
         if (! Schema::hasTable('return_requests')) {
             return 0.0;
         }
 
-        return round((float) ReturnRequest::query()->whereIn('status', ['approved', 'refunded', 'closed'])->sum('refund_amount'), 2);
+        return round((float) ReturnRequest::query()
+            ->when($stockLocationId, fn ($query) => $query->whereHas('order', fn ($query) => $query->where('stock_location_id', $stockLocationId)))
+            ->whereIn('status', ['approved', 'refunded', 'closed'])
+            ->sum('refund_amount'), 2);
     }
 
-    private function stockValue(): float
+    private function stockValue(?int $stockLocationId): float
     {
         if (! Schema::hasTable('product_variants')) {
             return 0.0;
         }
 
         return round((float) Inventory::query()
+            ->when($stockLocationId, fn ($query) => $query->where('inventories.stock_location_id', $stockLocationId))
             ->join('product_variants', 'product_variants.id', '=', 'inventories.product_variant_id')
             ->selectRaw('SUM(inventories.quantity_on_hand * COALESCE(product_variants.purchase_price, product_variants.selling_price, 0)) as stock_value')
             ->value('stock_value'), 2);
     }
 
-    private function supplierPurchaseTotals(): array
+    private function supplierPurchaseTotals(?int $stockLocationId): array
     {
         if (! Schema::hasColumn('purchase_entries', 'supplier_id')) {
             return [];
         }
 
         $query = PurchaseEntry::query()
+            ->when($stockLocationId, fn ($query) => $query->where('purchase_entries.stock_location_id', $stockLocationId))
             ->select('purchase_entries.supplier_id', DB::raw('COUNT(*) as purchases_count'), DB::raw('SUM(grand_total) as amount_total'))
             ->when(Schema::hasTable('suppliers'), function ($query) {
                 $query->leftJoin('suppliers', 'suppliers.id', '=', 'purchase_entries.supplier_id')
@@ -253,5 +266,10 @@ class ReportDashboardService
     private function cancelledStatuses(): array
     {
         return ['cancelled', 'cancelled_by_admin', 'cancelled_by_customer'];
+    }
+
+    private function scopeStore($query, ?int $stockLocationId)
+    {
+        return $query->when($stockLocationId, fn ($query) => $query->where('stock_location_id', $stockLocationId));
     }
 }

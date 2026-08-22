@@ -8,7 +8,10 @@ use App\Http\Controllers\Admin\AdminBusinessSettingController;
 use App\Http\Controllers\Admin\AdminCashbackController;
 use App\Http\Controllers\Admin\AdminContactMessageController;
 use App\Http\Controllers\Admin\AdminCouponController;
+use App\Http\Controllers\Admin\AdminCustomerAnnouncementController;
 use App\Http\Controllers\Admin\AdminCustomerController;
+use App\Http\Controllers\Admin\AdminCustomerMarketingBannerController;
+use App\Http\Controllers\Admin\AdminDailyFreshPriceController;
 use App\Http\Controllers\Admin\AdminDeliverySlotController;
 use App\Http\Controllers\Admin\AdminHomepageBannerController;
 use App\Http\Controllers\Admin\AdminHomepageSectionController;
@@ -23,8 +26,12 @@ use App\Http\Controllers\Admin\AdminReplenishmentController;
 use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\AdminReturnController;
 use App\Http\Controllers\Admin\AdminSiteMediaController;
+use App\Http\Controllers\Admin\AdminStaffController;
 use App\Http\Controllers\Admin\AdminStockAdjustmentController;
 use App\Http\Controllers\Admin\AdminStockVerificationController;
+use App\Http\Controllers\Admin\AdminStoreContextController;
+use App\Http\Controllers\Admin\AdminStoreController;
+use App\Http\Controllers\Admin\AdminStorefrontPageBackgroundController;
 use App\Http\Controllers\Admin\AdminStorefrontSeoSettingController;
 use App\Http\Controllers\Admin\AdminSupplierController;
 use App\Http\Controllers\Admin\AdminSystemHealthController;
@@ -85,6 +92,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     })->middleware(['auth', 'can:manage-admin'])->name('dashboard');
 
     Route::middleware(['auth', 'can:manage-admin'])->group(function () {
+        Route::patch('store-context', [AdminStoreContextController::class, 'update'])
+            ->name('store-context.update');
+        Route::get('staff', [AdminStaffController::class, 'index'])->name('staff.index');
+        Route::get('staff/{staff}/edit', [AdminStaffController::class, 'edit'])->name('staff.edit');
+        Route::patch('staff/{staff}', [AdminStaffController::class, 'update'])->name('staff.update');
+
         Route::get('notifications', [AdminNotificationController::class, 'index'])
             ->name('notifications.index');
         Route::patch('notifications/read-all', [AdminNotificationController::class, 'readAll'])
@@ -268,6 +281,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
     */
 
     Route::middleware(['auth', 'can:manage-inventory'])->group(function () {
+        Route::resource('stores', AdminStoreController::class)
+            ->parameters(['stores' => 'store'])
+            ->except('show');
+
+        Route::get('daily-fresh-prices', [AdminDailyFreshPriceController::class, 'index'])
+            ->name('daily-fresh-prices.index');
+        Route::post('daily-fresh-prices', [AdminDailyFreshPriceController::class, 'store'])
+            ->name('daily-fresh-prices.store');
+
         Route::get('stock-adjustments', [AdminStockAdjustmentController::class, 'index'])
             ->name('stock-adjustments.index');
         Route::get('stock-adjustments/create', [AdminStockAdjustmentController::class, 'create'])
@@ -479,6 +501,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('homepage/banners', AdminHomepageBannerController::class)
             ->except('show')
             ->names('homepage.banners');
+        Route::resource('announcements', AdminCustomerAnnouncementController::class)
+            ->except('show')
+            ->names('announcements');
+        Route::resource('marketing-banners', AdminCustomerMarketingBannerController::class)
+            ->except('show')
+            ->parameters(['marketing-banners' => 'marketingBanner'])
+            ->names('marketing-banners');
+        Route::get('page-backgrounds', [AdminStorefrontPageBackgroundController::class, 'index'])
+            ->name('page-backgrounds.index');
+        Route::post('page-backgrounds', [AdminStorefrontPageBackgroundController::class, 'store'])
+            ->name('page-backgrounds.store');
         Route::resource('homepage/partners', AdminAssociatedPartnerController::class)
             ->parameters(['partners' => 'partner'])
             ->except('show')

@@ -318,6 +318,7 @@ class PendingOrderService
                 return PendingOrder::query()->create([
                     'customer_id' => $cart->customer_id,
                     'cart_id' => $cart->id,
+                    'stock_location_id' => $cart->stock_location_id,
                     'reference' => $this->generateReference(),
                     'status' => PendingOrder::STATUS_ACTIVE,
                     'started_at' => now(),
@@ -407,6 +408,7 @@ class PendingOrderService
         $inventories = Inventory::query()
             ->active()
             ->where('product_variant_id', $productVariantId)
+            ->when($pending->stock_location_id !== null, fn ($query) => $query->where('stock_location_id', $pending->stock_location_id))
             ->orderBy('stock_location_id')
             ->get();
 

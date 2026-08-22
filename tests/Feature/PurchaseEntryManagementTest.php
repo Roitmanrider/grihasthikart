@@ -250,6 +250,7 @@ class PurchaseEntryManagementTest extends TestCase
 
         $preview = $this->actingAs($this->admin)
             ->post(route('admin.purchases.preview'), [
+                'stock_location_id' => $this->location->id,
                 'supplier_id' => $supplier->id,
                 'purchase_date' => now()->toDateString(),
                 'freight_allocation' => 50,
@@ -263,6 +264,7 @@ class PurchaseEntryManagementTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post(route('admin.purchases.import'), [
+                'stock_location_id' => $this->location->id,
                 'supplier_id' => $supplier->id,
                 'purchase_date' => now()->toDateString(),
                 'freight_allocation' => 50,
@@ -296,6 +298,7 @@ class PurchaseEntryManagementTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post(route('admin.purchases.preview'), [
+                'stock_location_id' => $this->location->id,
                 'purchase_date' => now()->toDateString(),
                 'csv_file' => UploadedFile::fake()->createWithContent('purchase.csv', $csv),
             ])
@@ -313,6 +316,7 @@ class PurchaseEntryManagementTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post(route('admin.purchases.preview'), [
+                'stock_location_id' => $this->location->id,
                 'purchase_date' => now()->toDateString(),
                 'csv_file' => UploadedFile::fake()->createWithContent('purchase.csv', $csv),
             ])
@@ -326,6 +330,7 @@ class PurchaseEntryManagementTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post(route('admin.purchases.import'), [
+                'stock_location_id' => $this->location->id,
                 'purchase_date' => now()->toDateString(),
                 'items' => [
                     [
@@ -365,6 +370,7 @@ class PurchaseEntryManagementTest extends TestCase
     private function payload(ProductVariant $variant): array
     {
         return [
+            'stock_location_id' => $this->location->id,
             'purchase_date' => now()->toDateString(),
             'bill_number' => 'BILL-100',
             'freight_allocation' => 0,

@@ -21,8 +21,13 @@ class AdminOrderController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->only(['search', 'order_status', 'payment_status', 'payment_method', 'date_from', 'date_to', 'stock_location_id']);
+        if ($request->user()?->assigned_store_id && ! $request->user()?->isSuperAdmin()) {
+            $filters['stock_location_id'] = $request->user()->assigned_store_id;
+        }
+
         $orders = $this->orderService->paginate(
-            $request->only(['search', 'order_status', 'payment_status', 'payment_method', 'date_from', 'date_to']),
+            $filters,
             (int) $request->input('per_page', 20)
         );
 
@@ -31,6 +36,7 @@ class AdminOrderController extends Controller
 
     public function show(Order $order)
     {
+        $this->authorizeStoreAccess($order);
         $order = $this->orderRepository->findWithDetails($order->id);
         $statusActions = $this->orderStatusService->actionsFor($order);
         $statusTimeline = $this->orderStatusService->timelineFor($order);
@@ -40,6 +46,7 @@ class AdminOrderController extends Controller
 
     public function updateStatus(Order $order, UpdateOrderStatusRequest $request)
     {
+        $this->authorizeStoreAccess($order);
         $data = $request->validated();
 
         try {
@@ -51,5 +58,14 @@ class AdminOrderController extends Controller
         return redirect()
             ->route('admin.orders.show', $order)
             ->with('success', 'Order status updated successfully.');
+    }
+
+    private function authorizeStoreAccess(Order $order): void
+    {
+        $user = request()->user();
+
+        if ($user?->assigned_store_id && ! $user->isSuperAdmin()) {
+            abort_unless((int) $user->assigned_store_id === (int) $order->stock_location_id, 403);
+        }
     }
 }

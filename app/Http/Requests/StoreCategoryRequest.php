@@ -40,6 +40,7 @@ class StoreCategoryRequest extends FormRequest
             'is_featured' => ['nullable', 'boolean'],
             'show_in_menu' => ['nullable', 'boolean'],
             'show_on_homepage' => ['nullable', 'boolean'],
+            'rapid_price_update_enabled' => ['nullable', 'boolean'],
             'status' => ['nullable', 'boolean'],
         ];
     }

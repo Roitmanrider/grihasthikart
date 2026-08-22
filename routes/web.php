@@ -9,6 +9,7 @@ use App\Http\Controllers\Frontend\CheckoutController;
 use App\Http\Controllers\Frontend\ContentPageController;
 use App\Http\Controllers\Frontend\CouponController;
 use App\Http\Controllers\Frontend\CustomerAddressController;
+use App\Http\Controllers\Frontend\CustomerAnnouncementController;
 use App\Http\Controllers\Frontend\CustomerAuthController;
 use App\Http\Controllers\Frontend\CustomerCashbackController;
 use App\Http\Controllers\Frontend\CustomerCouponController;
@@ -92,6 +93,7 @@ Route::post('/customer/logout', [CustomerAuthController::class, 'logout'])->name
 
 Route::middleware('customer.auth')->group(function () {
     Route::get('/account', [CustomerDashboardController::class, 'dashboard'])->name('customer.dashboard');
+    Route::post('/account/announcements/{announcement}/dismiss', [CustomerAnnouncementController::class, 'dismiss'])->name('customer.announcements.dismiss');
     Route::get('/account/profile', [CustomerProfileController::class, 'edit'])->name('customer.profile.edit');
     Route::patch('/account/profile', [CustomerProfileController::class, 'update'])->name('customer.profile.update');
     Route::get('/account/notifications', [CustomerNotificationController::class, 'index'])->name('customer.notifications.index');

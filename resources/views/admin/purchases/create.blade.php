@@ -25,6 +25,15 @@
         <form method="POST" action="{{ route('admin.purchases.preview') }}" enctype="multipart/form-data" class="row g-3">
             @csrf
             <div class="col-md-3">
+                <label class="form-label">Store</label>
+                <select name="stock_location_id" class="form-select" required>
+                    <option value="">Select store</option>
+                    @foreach ($options['locations'] as $location)
+                        <option value="{{ $location->id }}" @selected((string) old('stock_location_id', $selectedStoreId ?? '') === (string) $location->id)>{{ $location->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label">Purchase Date</label>
                 <input type="date" name="purchase_date" value="{{ now()->toDateString() }}" class="form-control" required>
             </div>
@@ -64,6 +73,15 @@
         <div class="card-header bg-white fw-semibold">Purchase Details</div>
         <div class="card-body">
             <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label" for="stock_location_id">Store</label>
+                    <select id="stock_location_id" name="stock_location_id" class="form-select" required>
+                        <option value="">Select store</option>
+                        @foreach ($options['locations'] as $location)
+                            <option value="{{ $location->id }}" @selected((string) old('stock_location_id', $selectedStoreId ?? '') === (string) $location->id)>{{ $location->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-3">
                     <label class="form-label" for="purchase_date">Purchase Date</label>
                     <input id="purchase_date" type="date" name="purchase_date" value="{{ old('purchase_date', now()->toDateString()) }}" class="form-control" required>

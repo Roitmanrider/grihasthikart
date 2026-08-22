@@ -1,6 +1,15 @@
 <div class="col-md-6"><label class="form-label">Name</label><input name="name" value="{{ old('name', $customer->name ?? '') }}" class="form-control" required></div>
 <div class="col-md-6"><label class="form-label">Mobile</label><input name="mobile" value="{{ old('mobile', $customer->mobile ?? '') }}" class="form-control" required></div>
 <div class="col-md-6"><label class="form-label">Email</label><input type="email" name="email" value="{{ old('email', $customer->email ?? '') }}" class="form-control"></div>
+<div class="col-md-6">
+    <label class="form-label">Assigned Store</label>
+    <select name="assigned_store_id" class="form-select">
+        <option value="">Default store</option>
+        @foreach (($stores ?? collect()) as $store)
+            <option value="{{ $store->id }}" @selected((string) old('assigned_store_id', $customer->assigned_store_id ?? '') === (string) $store->id)>{{ $store->name }}</option>
+        @endforeach
+    </select>
+</div>
 <div class="col-md-6"><label class="form-label">Monthly Cashback Threshold</label><input type="number" step="0.01" name="monthly_cashback_threshold" value="{{ old('monthly_cashback_threshold', $customer->monthly_cashback_threshold ?? '') }}" class="form-control"></div>
 <div class="col-md-6"><label class="form-label">Category Cashback Threshold %</label><input type="number" step="0.01" name="category_cashback_threshold_percent" value="{{ old('category_cashback_threshold_percent', $customer->category_cashback_threshold_percent ?? '') }}" class="form-control"></div>
 <div class="col-12"><label class="form-label">Notes</label><textarea name="notes" rows="3" class="form-control">{{ old('notes', $customer->notes ?? '') }}</textarea></div>

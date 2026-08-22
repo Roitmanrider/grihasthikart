@@ -13,6 +13,7 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
+use App\Models\StockLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -40,8 +41,9 @@ class AdminCustomerController extends Controller
     public function create()
     {
         $deliveryRule = $this->deliveryChargeService->resolve();
+        $stores = $this->storesForForm();
 
-        return view('admin.customers.create', compact('deliveryRule'));
+        return view('admin.customers.create', compact('deliveryRule', 'stores'));
     }
 
     public function store(StoreCustomerRequest $request)
@@ -64,8 +66,9 @@ class AdminCustomerController extends Controller
     public function edit(Customer $customer)
     {
         $deliveryRule = $this->deliveryChargeService->resolve($customer);
+        $stores = $this->storesForForm();
 
-        return view('admin.customers.edit', compact('customer', 'deliveryRule'));
+        return view('admin.customers.edit', compact('customer', 'deliveryRule', 'stores'));
     }
 
     public function update(Customer $customer, UpdateCustomerRequest $request)
@@ -166,5 +169,10 @@ class AdminCustomerController extends Controller
             'status' => ['nullable', 'boolean'],
             'rejection_reason' => ['nullable', 'string', 'max:255'],
         ]);
+    }
+
+    private function storesForForm()
+    {
+        return StockLocation::query()->active()->orderBy('display_order')->orderBy('name')->get();
     }
 }

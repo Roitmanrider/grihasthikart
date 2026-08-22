@@ -24,6 +24,7 @@ class PendingOrder extends Model
     protected $fillable = [
         'customer_id',
         'cart_id',
+        'stock_location_id',
         'anchor_cart_item_id',
         'reference',
         'status',
@@ -83,6 +84,11 @@ class PendingOrder extends Model
     public function cart()
     {
         return $this->belongsTo(Cart::class);
+    }
+
+    public function stockLocation()
+    {
+        return $this->belongsTo(StockLocation::class);
     }
 
     public function anchorCartItem()

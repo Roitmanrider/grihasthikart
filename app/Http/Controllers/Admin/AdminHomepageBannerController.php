@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHomepageBannerRequest;
 use App\Http\Requests\UpdateHomepageBannerRequest;
 use App\Models\HomepageBanner;
+use App\Models\StockLocation;
 use App\Services\MediaService;
 
 class AdminHomepageBannerController extends Controller
@@ -23,7 +24,10 @@ class AdminHomepageBannerController extends Controller
 
     public function create()
     {
-        return view('admin.homepage.banners.create', ['banner' => new HomepageBanner]);
+        return view('admin.homepage.banners.create', [
+            'banner' => new HomepageBanner,
+            'stores' => $this->stores(),
+        ]);
     }
 
     public function store(StoreHomepageBannerRequest $request)
@@ -42,7 +46,10 @@ class AdminHomepageBannerController extends Controller
 
     public function edit(HomepageBanner $banner)
     {
-        return view('admin.homepage.banners.edit', compact('banner'));
+        return view('admin.homepage.banners.edit', [
+            'banner' => $banner,
+            'stores' => $this->stores(),
+        ]);
     }
 
     public function update(UpdateHomepageBannerRequest $request, HomepageBanner $banner)
@@ -78,6 +85,7 @@ class AdminHomepageBannerController extends Controller
     {
         return [
             'title' => $data['title'] ?? null,
+            'stock_location_id' => $data['stock_location_id'] ?? null,
             'subtitle' => $data['subtitle'] ?? null,
             'cta_text' => $data['cta_text'] ?? null,
             'cta_url' => $data['cta_url'] ?? null,
@@ -88,5 +96,10 @@ class AdminHomepageBannerController extends Controller
             'starts_at' => $data['starts_at'] ?? null,
             'ends_at' => $data['ends_at'] ?? null,
         ];
+    }
+
+    private function stores()
+    {
+        return StockLocation::query()->active()->orderBy('display_order')->orderBy('name')->get();
     }
 }

@@ -14,14 +14,31 @@ Schedule::command('pending-orders:process')
 
 Schedule::command('cart-activity:cleanup')
     ->dailyAt('02:10')
+    ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 
 Schedule::command('cart-activity:generate-monthly-risk')
     ->monthlyOn(1, '02:30')
+    ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 
 Schedule::command('inventory:check-low-stock')
     ->everyFifteenMinutes()
+    ->withoutOverlapping();
+
+Schedule::command('announcements:cleanup')
+    ->dailyAt('02:40')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+Schedule::command('marketing-banners:cleanup')
+    ->dailyAt('02:50')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+Schedule::command('prices:cleanup-history')
+    ->dailyAt('03:00')
+    ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 
 Schedule::command('ops:scheduler-heartbeat')

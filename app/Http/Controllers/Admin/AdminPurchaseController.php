@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domains\Purchase\Services\PurchaseEntryService;
+use App\Domains\Store\Services\AdminStoreContextService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePurchaseEntryRequest;
 use App\Models\PurchaseEntry;
@@ -14,12 +15,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AdminPurchaseController extends Controller
 {
     public function __construct(
-        private readonly PurchaseEntryService $purchaseService
+        private readonly PurchaseEntryService $purchaseService,
+        private readonly AdminStoreContextService $storeContext
     ) {}
 
     public function index(Request $request)
     {
-        $purchases = $this->purchaseService->paginate((int) $request->input('per_page', 20));
+        $filters = [];
+        if ($storeId = $this->storeContext->selectedStoreId($request)) {
+            $filters['stock_location_id'] = $storeId;
+        }
+        $purchases = $this->purchaseService->paginate((int) $request->input('per_page', 20), $filters);
 
         return view('admin.purchases.index', compact('purchases'));
     }
@@ -27,14 +33,17 @@ class AdminPurchaseController extends Controller
     public function create()
     {
         $options = $this->purchaseService->options();
+        $selectedStoreId = $this->storeContext->selectedStoreId(request());
 
-        return view('admin.purchases.create', compact('options'));
+        return view('admin.purchases.create', compact('options', 'selectedStoreId'));
     }
 
     public function store(StorePurchaseEntryRequest $request)
     {
         try {
-            $purchase = $this->purchaseService->create($request->validated());
+            $data = $request->validated();
+            $this->authorizeStoreWrite($request, (int) $data['stock_location_id']);
+            $purchase = $this->purchaseService->create($data);
         } catch (InvalidArgumentException $exception) {
             return back()
                 ->withInput()
@@ -78,6 +87,7 @@ class AdminPurchaseController extends Controller
     public function preview(Request $request)
     {
         $data = $request->validate([
+            'stock_location_id' => ['required', 'integer', 'exists:stock_locations,id'],
             'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')->where('status', 'active')],
             'bill_number' => ['nullable', 'string', 'max:255'],
             'purchase_date' => ['required', 'date'],
@@ -85,6 +95,7 @@ class AdminPurchaseController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
             'csv_file' => ['required', 'file', 'mimes:csv,txt'],
         ]);
+        $this->authorizeStoreWrite($request, (int) $data['stock_location_id']);
 
         $preview = $this->purchaseService->previewCsv($request->file('csv_file'));
 
@@ -94,6 +105,7 @@ class AdminPurchaseController extends Controller
     public function import(Request $request)
     {
         $data = $request->validate([
+            'stock_location_id' => ['required', 'integer', 'exists:stock_locations,id'],
             'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')->where('status', 'active')],
             'bill_number' => ['nullable', 'string', 'max:255'],
             'purchase_date' => ['required', 'date'],
@@ -110,6 +122,7 @@ class AdminPurchaseController extends Controller
             'items.*.batch_number' => ['nullable', 'string', 'max:255'],
             'items.*.expiry_date' => ['nullable', 'date'],
         ]);
+        $this->authorizeStoreWrite($request, (int) $data['stock_location_id']);
 
         $variantIds = collect($data['items'])->pluck('product_variant_id');
 
@@ -134,6 +147,7 @@ class AdminPurchaseController extends Controller
 
     public function show(PurchaseEntry $purchase)
     {
+        $this->authorizeStoreRead(request(), $purchase);
         $purchase->load(['supplier', 'items.productVariant.product']);
 
         return view('admin.purchases.show', compact('purchase'));
@@ -141,8 +155,27 @@ class AdminPurchaseController extends Controller
 
     public function print(PurchaseEntry $purchase)
     {
+        $this->authorizeStoreRead(request(), $purchase);
         $purchase->load(['supplier', 'items.productVariant.product']);
 
         return view('admin.purchases.print', compact('purchase'));
+    }
+
+    private function authorizeStoreWrite(Request $request, int $stockLocationId): void
+    {
+        $user = $request->user();
+
+        if ($user?->assigned_store_id && ! $user->isSuperAdmin()) {
+            abort_unless((int) $user->assigned_store_id === $stockLocationId, 403);
+        }
+    }
+
+    private function authorizeStoreRead(Request $request, PurchaseEntry $purchase): void
+    {
+        $user = $request->user();
+
+        if ($user?->assigned_store_id && ! $user->isSuperAdmin()) {
+            abort_unless((int) $user->assigned_store_id === (int) $purchase->stock_location_id, 403);
+        }
     }
 }

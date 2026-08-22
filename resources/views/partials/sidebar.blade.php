@@ -144,6 +144,21 @@
             Homepage Banners
         </a>
 
+        <a class="nav-link {{ request()->routeIs('admin.announcements.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.announcements.index') }}">
+            Announcements
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.marketing-banners.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.marketing-banners.index') }}">
+            Marketing Banners
+        </a>
+
+        <a class="nav-link {{ request()->routeIs('admin.page-backgrounds.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+           href="{{ route('admin.page-backgrounds.index') }}">
+            Page Backgrounds
+        </a>
+
         <a class="nav-link {{ request()->routeIs('admin.homepage.partners.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.homepage.partners.index') }}">
             Associated Partners

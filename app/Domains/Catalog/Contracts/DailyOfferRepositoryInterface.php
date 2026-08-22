@@ -9,7 +9,7 @@ interface DailyOfferRepositoryInterface
 {
     public function paginatedList(array $filters = [], int $perPage = 20);
 
-    public function currentOffers(int $limit = 8);
+    public function currentOffers(int $limit = 8, ?int $stockLocationId = null);
 
     public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null): bool;
 

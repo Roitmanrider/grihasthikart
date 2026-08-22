@@ -16,6 +16,7 @@ class Customer extends Model
         'email',
         'status',
         'is_premium',
+        'assigned_store_id',
         'cashback_enabled',
         'monthly_cashback_threshold',
         'category_cashback_threshold_percent',
@@ -53,6 +54,11 @@ class Customer extends Model
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function assignedStore()
+    {
+        return $this->belongsTo(StockLocation::class, 'assigned_store_id');
     }
 
     public function carts()

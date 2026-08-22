@@ -25,6 +25,7 @@ class Category extends Model
         'is_featured',
         'show_in_menu',
         'show_on_homepage',
+        'rapid_price_update_enabled',
         'status',
         'created_by',
         'updated_by',
@@ -35,6 +36,7 @@ class Category extends Model
         'is_featured' => 'boolean',
         'show_in_menu' => 'boolean',
         'show_on_homepage' => 'boolean',
+        'rapid_price_update_enabled' => 'boolean',
         'status' => 'boolean',
     ];
 

@@ -21,11 +21,12 @@ class PurchaseEntryService
         private readonly InventoryService $inventoryService
     ) {}
 
-    public function paginate(int $perPage = 20)
+    public function paginate(int $perPage = 20, array $filters = [])
     {
         return PurchaseEntry::query()
-            ->with('supplier')
+            ->with(['supplier', 'stockLocation'])
             ->withCount('items')
+            ->when(($filters['stock_location_id'] ?? null), fn ($query) => $query->where('stock_location_id', (int) $filters['stock_location_id']))
             ->latest('purchase_date')
             ->latest()
             ->paginate($perPage)
@@ -38,8 +39,12 @@ class PurchaseEntryService
         $totals = $this->totals($items);
 
         return DB::transaction(function () use ($data, $items, $totals) {
+            $location = StockLocation::query()->active()->findOrFail((int) $data['stock_location_id']);
             $purchase = PurchaseEntry::query()->create([
                 'supplier_id' => $data['supplier_id'] ?? null,
+                'stock_location_id' => $location->id,
+                'store_name_snapshot' => $location->name,
+                'store_code_snapshot' => $location->code,
                 'purchase_number' => $this->generatePurchaseNumber(),
                 'bill_number' => $data['bill_number'] ?? null,
                 'purchase_date' => $data['purchase_date'],
@@ -76,7 +81,7 @@ class PurchaseEntryService
                     'expiry_date' => $item['expiry_date'] ?? null,
                 ]);
 
-                $inventory = $this->inventoryForVariant($variant);
+                $inventory = $this->inventoryForVariant($variant, $location);
                 $this->inventoryService->adjustStock(
                     $inventory,
                     'purchase',
@@ -107,6 +112,7 @@ class PurchaseEntryService
         return [
             'variants' => $variants,
             'suppliers' => $suppliers,
+            'locations' => StockLocation::query()->active()->orderBy('display_order')->orderBy('name')->get(),
         ];
     }
 
@@ -352,19 +358,8 @@ class PurchaseEntryService
         return $rows;
     }
 
-    private function inventoryForVariant(ProductVariant $variant): Inventory
+    private function inventoryForVariant(ProductVariant $variant, StockLocation $location): Inventory
     {
-        $location = StockLocation::query()
-            ->active()
-            ->orderByDesc('is_default')
-            ->orderBy('display_order')
-            ->orderBy('id')
-            ->first();
-
-        if (! $location) {
-            throw new InvalidArgumentException('Create an active stock location before posting purchases.');
-        }
-
         /** @var Inventory $inventory */
         $inventory = Inventory::query()->firstOrCreate(
             [

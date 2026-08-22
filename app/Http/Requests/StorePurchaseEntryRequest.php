@@ -37,6 +37,7 @@ class StorePurchaseEntryRequest extends FormRequest
         }
 
         return [
+            'stock_location_id' => ['required', 'integer', 'exists:stock_locations,id'],
             'supplier_id' => $supplierRule,
             'bill_number' => ['nullable', 'string', 'max:255'],
             'purchase_date' => ['required', 'date'],

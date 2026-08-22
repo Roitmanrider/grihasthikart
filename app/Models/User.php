@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'role', 'assigned_store_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -28,5 +28,25 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function assignedStore()
+    {
+        return $this->belongsTo(StockLocation::class, 'assigned_store_id');
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'SUPER_ADMIN';
+    }
+
+    public function isStoreManager(): bool
+    {
+        return $this->role === 'STORE_MANAGER';
+    }
+
+    public function isCartFollowUpEmployee(): bool
+    {
+        return $this->role === 'CART_FOLLOW_UP_EMPLOYEE';
     }
 }
