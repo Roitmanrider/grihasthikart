@@ -94,7 +94,7 @@ ALTER TABLE `store_price_update_batches` ADD INDEX `store_price_update_batches_s
 ALTER TABLE `store_price_update_batches` ADD INDEX `store_price_update_batches_scheduled_for_index` (`scheduled_for`);
 
 CREATE TABLE `store_price_update_batch_items` (`id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, `store_price_update_batch_id` BIGINT UNSIGNED NOT NULL, `product_variant_id` BIGINT UNSIGNED NOT NULL, `mrp` DECIMAL(12, 2) NULL, `selling_price` DECIMAL(12, 2) NOT NULL, `created_at` TIMESTAMP NULL, `updated_at` TIMESTAMP NULL) DEFAULT CHARACTER SET utf8mb4 COLLATE 'utf8mb4_unicode_ci';
-ALTER TABLE `store_price_update_batch_items` ADD CONSTRAINT `store_price_update_batch_items_store_price_update_batch_id_foreign` FOREIGN KEY (`store_price_update_batch_id`) REFERENCES `store_price_update_batches` (`id`) ON DELETE CASCADE;
+ALTER TABLE `store_price_update_batch_items` ADD CONSTRAINT `spubi_batch_id_fk` FOREIGN KEY (`store_price_update_batch_id`) REFERENCES `store_price_update_batches` (`id`) ON DELETE CASCADE;
 ALTER TABLE `store_price_update_batch_items` ADD CONSTRAINT `store_price_update_batch_items_product_variant_id_foreign` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE;
 ALTER TABLE `store_price_update_batch_items` ADD UNIQUE `store_price_batch_items_unique` (`store_price_update_batch_id`, `product_variant_id`);
 
@@ -133,7 +133,7 @@ ALTER TABLE `customer_announcements` ADD INDEX `customer_announcements_inactive_
 ALTER TABLE `customer_announcements` ADD INDEX `customer_announcements_cleanup_eligible_at_index` (`cleanup_eligible_at`);
 
 CREATE TABLE `customer_announcement_stock_location` (`id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, `customer_announcement_id` BIGINT UNSIGNED NOT NULL, `stock_location_id` BIGINT UNSIGNED NOT NULL) DEFAULT CHARACTER SET utf8mb4 COLLATE 'utf8mb4_unicode_ci';
-ALTER TABLE `customer_announcement_stock_location` ADD CONSTRAINT `customer_announcement_stock_location_customer_announcement_id_foreign` FOREIGN KEY (`customer_announcement_id`) REFERENCES `customer_announcements` (`id`) ON DELETE CASCADE;
+ALTER TABLE `customer_announcement_stock_location` ADD CONSTRAINT `casl_announcement_id_fk` FOREIGN KEY (`customer_announcement_id`) REFERENCES `customer_announcements` (`id`) ON DELETE CASCADE;
 ALTER TABLE `customer_announcement_stock_location` ADD CONSTRAINT `customer_announcement_stock_location_stock_location_id_foreign` FOREIGN KEY (`stock_location_id`) REFERENCES `stock_locations` (`id`) ON DELETE CASCADE;
 ALTER TABLE `customer_announcement_stock_location` ADD UNIQUE `announcement_store_unique` (`customer_announcement_id`, `stock_location_id`);
 
@@ -143,7 +143,7 @@ ALTER TABLE `customer_announcement_customer` ADD CONSTRAINT `customer_announceme
 ALTER TABLE `customer_announcement_customer` ADD UNIQUE `announcement_customer_unique` (`customer_announcement_id`, `customer_id`);
 
 CREATE TABLE `customer_announcement_dismissals` (`id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, `customer_announcement_id` BIGINT UNSIGNED NOT NULL, `customer_id` BIGINT UNSIGNED NOT NULL, `dismissed_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, `created_at` TIMESTAMP NULL, `updated_at` TIMESTAMP NULL) DEFAULT CHARACTER SET utf8mb4 COLLATE 'utf8mb4_unicode_ci';
-ALTER TABLE `customer_announcement_dismissals` ADD CONSTRAINT `customer_announcement_dismissals_customer_announcement_id_foreign` FOREIGN KEY (`customer_announcement_id`) REFERENCES `customer_announcements` (`id`) ON DELETE CASCADE;
+ALTER TABLE `customer_announcement_dismissals` ADD CONSTRAINT `cad_announcement_id_fk` FOREIGN KEY (`customer_announcement_id`) REFERENCES `customer_announcements` (`id`) ON DELETE CASCADE;
 ALTER TABLE `customer_announcement_dismissals` ADD CONSTRAINT `customer_announcement_dismissals_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE;
 ALTER TABLE `customer_announcement_dismissals` ADD UNIQUE `announcement_dismissals_unique` (`customer_announcement_id`, `customer_id`);
 
@@ -158,6 +158,6 @@ ALTER TABLE `customer_marketing_banners` ADD INDEX `customer_marketing_banners_i
 ALTER TABLE `customer_marketing_banners` ADD INDEX `customer_marketing_banners_cleanup_eligible_at_index` (`cleanup_eligible_at`);
 
 CREATE TABLE `customer_marketing_banner_stock_location` (`id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, `customer_marketing_banner_id` BIGINT UNSIGNED NOT NULL, `stock_location_id` BIGINT UNSIGNED NOT NULL) DEFAULT CHARACTER SET utf8mb4 COLLATE 'utf8mb4_unicode_ci';
-ALTER TABLE `customer_marketing_banner_stock_location` ADD CONSTRAINT `customer_marketing_banner_stock_location_customer_marketing_banner_id_foreign` FOREIGN KEY (`customer_marketing_banner_id`) REFERENCES `customer_marketing_banners` (`id`) ON DELETE CASCADE;
-ALTER TABLE `customer_marketing_banner_stock_location` ADD CONSTRAINT `customer_marketing_banner_stock_location_stock_location_id_foreign` FOREIGN KEY (`stock_location_id`) REFERENCES `stock_locations` (`id`) ON DELETE CASCADE;
+ALTER TABLE `customer_marketing_banner_stock_location` ADD CONSTRAINT `cmbsl_banner_id_fk` FOREIGN KEY (`customer_marketing_banner_id`) REFERENCES `customer_marketing_banners` (`id`) ON DELETE CASCADE;
+ALTER TABLE `customer_marketing_banner_stock_location` ADD CONSTRAINT `cmbsl_store_id_fk` FOREIGN KEY (`stock_location_id`) REFERENCES `stock_locations` (`id`) ON DELETE CASCADE;
 ALTER TABLE `customer_marketing_banner_stock_location` ADD UNIQUE `marketing_banner_store_unique` (`customer_marketing_banner_id`, `stock_location_id`);

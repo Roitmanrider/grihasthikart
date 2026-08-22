@@ -55,12 +55,16 @@ return new class extends Migration
 
         Schema::create('store_price_update_batch_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('store_price_update_batch_id')->constrained('store_price_update_batches')->cascadeOnDelete();
+            $table->foreignId('store_price_update_batch_id');
             $table->foreignId('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
             $table->decimal('mrp', 12, 2)->nullable();
             $table->decimal('selling_price', 12, 2);
             $table->timestamps();
 
+            $table->foreign('store_price_update_batch_id', 'spubi_batch_id_fk')
+                ->references('id')
+                ->on('store_price_update_batches')
+                ->cascadeOnDelete();
             $table->unique(['store_price_update_batch_id', 'product_variant_id'], 'store_price_batch_items_unique');
         });
 
@@ -129,8 +133,12 @@ return new class extends Migration
 
         Schema::create('customer_announcement_stock_location', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_announcement_id')->constrained('customer_announcements')->cascadeOnDelete();
+            $table->foreignId('customer_announcement_id');
             $table->foreignId('stock_location_id')->constrained('stock_locations')->cascadeOnDelete();
+            $table->foreign('customer_announcement_id', 'casl_announcement_id_fk')
+                ->references('id')
+                ->on('customer_announcements')
+                ->cascadeOnDelete();
             $table->unique(['customer_announcement_id', 'stock_location_id'], 'announcement_store_unique');
         });
 
@@ -143,11 +151,15 @@ return new class extends Migration
 
         Schema::create('customer_announcement_dismissals', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_announcement_id')->constrained('customer_announcements')->cascadeOnDelete();
+            $table->foreignId('customer_announcement_id');
             $table->foreignId('customer_id')->constrained('customers')->cascadeOnDelete();
             $table->timestamp('dismissed_at')->useCurrent();
             $table->timestamps();
 
+            $table->foreign('customer_announcement_id', 'cad_announcement_id_fk')
+                ->references('id')
+                ->on('customer_announcements')
+                ->cascadeOnDelete();
             $table->unique(['customer_announcement_id', 'customer_id'], 'announcement_dismissals_unique');
         });
 
@@ -173,8 +185,16 @@ return new class extends Migration
 
         Schema::create('customer_marketing_banner_stock_location', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_marketing_banner_id')->constrained('customer_marketing_banners')->cascadeOnDelete();
-            $table->foreignId('stock_location_id')->constrained('stock_locations')->cascadeOnDelete();
+            $table->foreignId('customer_marketing_banner_id');
+            $table->foreignId('stock_location_id');
+            $table->foreign('customer_marketing_banner_id', 'cmbsl_banner_id_fk')
+                ->references('id')
+                ->on('customer_marketing_banners')
+                ->cascadeOnDelete();
+            $table->foreign('stock_location_id', 'cmbsl_store_id_fk')
+                ->references('id')
+                ->on('stock_locations')
+                ->cascadeOnDelete();
             $table->unique(['customer_marketing_banner_id', 'stock_location_id'], 'marketing_banner_store_unique');
         });
     }
