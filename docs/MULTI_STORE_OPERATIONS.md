@@ -134,3 +134,14 @@ The migrations add store assignment columns, store price tables, homepage store 
 7. Announcements: create all/store/customer audience, dismiss as customer, run dry-run cleanup.
 8. Marketing banners: create more than five applicable banners and confirm only five render.
 9. Scheduler/System Health: confirm heartbeat and cleanup commands appear in `schedule:list`.
+
+## Milestone 4.24A Daily Offers Store Rules
+
+- Store CRUD is a Super Admin operation exposed under Operations > Stores. Deactivation keeps the stock location row and disables online orders; historical rows are not deleted.
+- Super Admin may keep All Stores selected for read/list/report views. Creating or changing store-scoped records, including Daily Offers and Daily Offers section settings, requires a selected store.
+- Store Managers see their assigned store label in the admin header and have read-only Daily Offers access for that assigned store.
+- Daily Offer create/update/delete/restore/duplicate/section-settings actions are Super Admin/admin-email mutation paths only.
+- Daily Offer allocation, current-offer lookup, duplicate variant windows, and display order conflicts are scoped by `stock_location_id`.
+- Expired Daily Offers are immutable history. Use Duplicate as New Offer to prefill reusable product/title/price/allocation/badge data while resetting schedule, lifecycle, and display order.
+- Daily Offers section message, auto-slide flag, and slide interval are stored in `homepage_sections.configuration` for the store-scoped `daily_offers` section. No new table or migration is required.
+- Storefront Daily Offer discount badges use `((Unit MRP - offer_price) / Unit MRP) * 100`, only when Unit MRP is positive and above the offer price.

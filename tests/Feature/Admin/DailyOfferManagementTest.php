@@ -3,17 +3,20 @@
 namespace Tests\Feature\Admin;
 
 use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Store\Services\AdminStoreContextService;
 use App\Domains\Storefront\Services\StorefrontAccessService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\DailyOffer;
 use App\Models\DeliverySlot;
+use App\Models\HomepageSection;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockLocation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +28,8 @@ class DailyOfferManagementTest extends TestCase
 
     private User $admin;
 
+    private StockLocation $store;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -34,7 +39,9 @@ class DailyOfferManagementTest extends TestCase
         app(BusinessSettingService::class)->set('storefront.access_mode', StorefrontAccessService::PUBLIC_STOREFRONT);
         app(BusinessSettingService::class)->set('storefront.allow_guest_checkout', true);
 
+        $this->store = StockLocation::factory()->default()->create();
         $this->admin = User::factory()->create(['email' => 'admin@example.com']);
+        $this->withSession([AdminStoreContextService::SESSION_KEY => $this->store->id]);
     }
 
     protected function tearDown(): void
@@ -66,7 +73,7 @@ class DailyOfferManagementTest extends TestCase
             'title' => 'Banana Robusta Deal',
             'offer_price' => 30,
             'allocated_quantity' => 5,
-            'starts_at' => now()->subHour()->format('Y-m-d H:i:s'),
+            'starts_at' => now()->addMinute()->format('Y-m-d H:i:s'),
             'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
             'is_active' => 1,
             'display_order' => 1,
@@ -101,8 +108,11 @@ class DailyOfferManagementTest extends TestCase
                 'title' => 'Updated Deal',
                 'offer_price' => 28,
                 'allocated_quantity' => 5,
+                'starts_at' => $offer->starts_at->format('Y-m-d H:i:s'),
+                'ends_at' => $offer->ends_at->format('Y-m-d H:i:s'),
                 'is_active' => 0,
                 'display_order' => 4,
+                'max_quantity_per_order' => 3,
             ])
             ->assertRedirect(route('admin.daily-offers.index'));
 
@@ -131,6 +141,107 @@ class DailyOfferManagementTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.daily-offers.show', $offer))->assertOk()->assertSee('Daily Offer Details')->assertSee($variant->sku);
     }
 
+    public function test_store_manager_can_view_assigned_store_daily_offers_but_cannot_mutate(): void
+    {
+        $variant = $this->variant();
+        $offer = DailyOffer::factory()->create([
+            'stock_location_id' => $this->store->id,
+            'product_variant_id' => $variant->id,
+            'title' => 'Manager Visible Offer',
+        ]);
+        $manager = User::factory()->create([
+            'role' => 'STORE_MANAGER',
+            'assigned_store_id' => $this->store->id,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.daily-offers.index'))
+            ->assertOk()
+            ->assertSee('Manager Visible Offer')
+            ->assertDontSee('Add Daily Offer');
+
+        $this->actingAs($manager)->get(route('admin.daily-offers.create'))->assertForbidden();
+        $this->actingAs($manager)->get(route('admin.daily-offers.edit', $offer))->assertForbidden();
+        $this->actingAs($manager)->delete(route('admin.daily-offers.destroy', $offer))->assertForbidden();
+    }
+
+    public function test_expired_daily_offer_is_read_only_and_can_be_duplicated_as_new(): void
+    {
+        $variant = $this->variant();
+        $expired = DailyOffer::factory()->expired()->create([
+            'stock_location_id' => $this->store->id,
+            'product_variant_id' => $variant->id,
+            'title' => 'Expired Duplicate Source',
+            'display_order' => 6,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.daily-offers.edit', $expired))
+            ->assertRedirect(route('admin.daily-offers.show', $expired))
+            ->assertSessionHasErrors('daily_offer');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.daily-offers.duplicate', $expired))
+            ->assertOk()
+            ->assertSee('Create Daily Offer')
+            ->assertSee('Expired Duplicate Source')
+            ->assertSee('value="1"', false);
+
+        $this->assertSame(1, DailyOffer::query()->where('product_variant_id', $variant->id)->count());
+    }
+
+    public function test_display_order_is_unique_for_overlapping_daily_offers_in_same_store(): void
+    {
+        $firstVariant = $this->variant(['sku' => 'GK-ORDER-FIRST']);
+        $secondVariant = $this->variant(['sku' => 'GK-ORDER-SECOND']);
+        $this->stock($firstVariant);
+        $this->stock($secondVariant);
+
+        DailyOffer::factory()->create([
+            'stock_location_id' => $this->store->id,
+            'product_variant_id' => $firstVariant->id,
+            'starts_at' => now()->addHour(),
+            'ends_at' => now()->addHours(3),
+            'display_order' => 8,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.daily-offers.create'))
+            ->post(route('admin.daily-offers.store'), [
+                'product_variant_id' => $secondVariant->id,
+                'offer_price' => 30,
+                'allocated_quantity' => 5,
+                'starts_at' => now()->addHours(2)->format('Y-m-d H:i:s'),
+                'ends_at' => now()->addHours(4)->format('Y-m-d H:i:s'),
+                'is_active' => 1,
+                'display_order' => 8,
+                'max_quantity_per_order' => 3,
+            ])
+            ->assertRedirect(route('admin.daily-offers.create'))
+            ->assertSessionHasErrors('display_order');
+    }
+
+    public function test_super_admin_can_update_store_daily_offer_section_settings(): void
+    {
+        $this->actingAs($this->admin)
+            ->put(route('admin.daily-offers.section-settings.update'), [
+                'stock_location_id' => $this->store->id,
+                'section_message' => 'Fresh deals for this store',
+                'auto_slide' => 0,
+                'slide_interval' => 7,
+            ])
+            ->assertRedirect(route('admin.daily-offers.index'));
+
+        $section = HomepageSection::query()
+            ->where('section_key', 'daily_offers')
+            ->where('stock_location_id', $this->store->id)
+            ->firstOrFail();
+
+        $this->assertSame('Fresh deals for this store', $section->subtitle);
+        $this->assertFalse($section->configuration['auto_slide']);
+        $this->assertSame(7, $section->configuration['slide_interval']);
+    }
+
     public function test_invalid_offer_price_and_schedule_are_rejected(): void
     {
         $variant = $this->variant(['mrp' => 100, 'selling_price' => 90]);
@@ -144,6 +255,8 @@ class DailyOfferManagementTest extends TestCase
                 'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
                 'ends_at' => now()->subDay()->format('Y-m-d H:i:s'),
                 'is_active' => 1,
+                'display_order' => 1,
+                'max_quantity_per_order' => 3,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
             ->assertSessionHasErrors(['ends_at']);
@@ -154,7 +267,11 @@ class DailyOfferManagementTest extends TestCase
                 'product_variant_id' => $variant->id,
                 'offer_price' => 101,
                 'allocated_quantity' => 5,
+                'starts_at' => now()->addMinute()->format('Y-m-d H:i:s'),
+                'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
                 'is_active' => 1,
+                'display_order' => 1,
+                'max_quantity_per_order' => 3,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
             ->assertSessionHasErrors('offer_price');
@@ -175,7 +292,11 @@ class DailyOfferManagementTest extends TestCase
                 'product_variant_id' => $variant->id,
                 'offer_price' => 30,
                 'allocated_quantity' => 5,
+                'starts_at' => now()->addMinute()->format('Y-m-d H:i:s'),
+                'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
                 'is_active' => 1,
+                'display_order' => 1,
+                'max_quantity_per_order' => 3,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
             ->assertSessionHasErrors('product_variant_id');
@@ -201,6 +322,8 @@ class DailyOfferManagementTest extends TestCase
                 'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
                 'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
                 'is_active' => 1,
+                'display_order' => 1,
+                'max_quantity_per_order' => 3,
             ])
             ->assertRedirect(route('admin.daily-offers.index'));
 
@@ -218,9 +341,11 @@ class DailyOfferManagementTest extends TestCase
                 'product_variant_id' => $variant->id,
                 'offer_price' => 30,
                 'allocated_quantity' => 4,
-                'starts_at' => now()->subMinute()->format('Y-m-d H:i:s'),
+                'starts_at' => now()->addMinute()->format('Y-m-d H:i:s'),
                 'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
                 'is_active' => 1,
+                'display_order' => 1,
+                'max_quantity_per_order' => 3,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
             ->assertSessionHasErrors('daily_offer');
@@ -239,9 +364,10 @@ class DailyOfferManagementTest extends TestCase
                 'offer_price' => 30,
                 'allocated_quantity' => 5,
                 'max_quantity_per_order' => 5,
-                'starts_at' => now()->subMinute()->format('Y-m-d H:i:s'),
+                'starts_at' => now()->addMinute()->format('Y-m-d H:i:s'),
                 'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
                 'is_active' => 1,
+                'display_order' => 1,
             ])
             ->assertRedirect(route('admin.daily-offers.create'))
             ->assertSessionHasErrors(['max_quantity_per_order' => 'Daily Offer maximum quantity cannot exceed the product maximum of 2.']);
@@ -709,9 +835,11 @@ class DailyOfferManagementTest extends TestCase
             'product_variant_id' => $variant->id,
             'offer_price' => 25,
             'allocated_quantity' => 10,
-            'starts_at' => now()->subMinute()->format('Y-m-d H:i:s'),
-            'ends_at' => now()->addHour()->format('Y-m-d H:i:s'),
+            'starts_at' => $offer->starts_at->format('Y-m-d H:i:s'),
+            'ends_at' => $offer->ends_at->format('Y-m-d H:i:s'),
             'is_active' => 1,
+            'display_order' => $offer->display_order,
+            'max_quantity_per_order' => 3,
         ]);
 
         $item->refresh();
@@ -750,6 +878,7 @@ class DailyOfferManagementTest extends TestCase
     {
         return Inventory::factory()->create([
             'product_variant_id' => $variant->id,
+            'stock_location_id' => $this->store->id,
             'quantity_on_hand' => $quantity,
             'reserved_quantity' => 0,
             'damaged_quantity' => 0,

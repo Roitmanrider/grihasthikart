@@ -267,7 +267,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['auth', 'can:manage-daily-offers'])->group(function () {
+    Route::middleware(['auth', 'can:view-daily-offers'])->group(function () {
+        Route::put('daily-offers/section-settings', [DailyOfferController::class, 'updateSectionSettings'])
+            ->name('daily-offers.section-settings.update');
+        Route::get('daily-offers/{dailyOffer}/duplicate', [DailyOfferController::class, 'duplicate'])
+            ->name('daily-offers.duplicate');
         Route::patch('daily-offers/{dailyOffer}/restore', [DailyOfferController::class, 'restore'])
             ->name('daily-offers.restore');
 

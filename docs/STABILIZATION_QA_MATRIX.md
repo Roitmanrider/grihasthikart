@@ -132,3 +132,16 @@ No deployment, ZIP, production SQL, migration, or multi-store schema change was 
 | Account Floating Shop | Customer account pages include persistent accessible floating Shop link without JS. | PASS | `Customer`/`Address` coverage includes account nav shell. | Check overlap with mobile bottom nav. |
 | Scheduler Heartbeat | Heartbeat is written to cache and persistent `storage/framework/scheduler-heartbeat.json`; System Health reads file fallback. | PASS | `SystemHealth` filter passed. | After deployment, confirm cron `php artisan schedule:run` updates within 10 minutes. |
 | Razorpay Provider | Real provider test mode E2E remains unavailable. | NOT TESTED | No keys available; no provider flow run. | Manual required before final release. |
+
+## Milestone 4.24A Daily Offers, Store Context & Live Acceptance Corrections
+
+No deployment, ZIP, production SQL, migration, checkout, payment, or Staff Operations Portal change was performed.
+
+| Area | Scenario | Result | Evidence | Manual Requirement |
+| --- | --- | --- | --- | --- |
+| Store Management | Super Admin has visible Stores entry under Operations; Store Manager does not get Store CRUD. | PASS | `Store` filter and sidebar/controller source. | Browser-check Super Admin/Store Manager sidebars. |
+| Store Context | Super Admin can use All Stores for read views; writes require a selected store. Store Manager sees fixed assigned-store context. | PASS | `DailyOffer` filter includes selected-store fixtures and store-manager access assertions. | Verify top-bar selector persistence in browser. |
+| Daily Offers Auth | Store Manager can view assigned-store Daily Offers only and cannot create/edit/delete. | PASS | `DailyOffer` filter. | Direct URL smoke for another store. |
+| Daily Offers Lifecycle | Expired offers are read-only and can be duplicated as a new unsaved offer. | PASS | `DailyOffer` filter. | Browser-check expired action menu. |
+| Daily Offers Validation | New writes require store, current/future starts, future ends, display order >= 1, max qty/order >= 1, and same-store overlapping display order uniqueness. | PASS | `DailyOffer` filter. | Admin form smoke with invalid dates/order. |
+| Storefront Daily Offers | Section message replaces hardcoded timezone copy; card shows custom badge, MRP-based discount, Unit MRP/GK Offer labels, day/hour/min countdown, quantity limit, stock state, and carousel controls. | PASS SOURCE | `Homepage`, `Catalog`, and `DailyOffer` filters. | Real-browser check at mobile/tablet/desktop breakpoints. |

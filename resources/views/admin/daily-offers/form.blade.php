@@ -1,12 +1,20 @@
 <div class="col-12">
+    <input type="hidden" name="stock_location_id" value="{{ old('stock_location_id', $dailyOffer->stock_location_id ?? $selectedStore?->id) }}">
+    <div class="alert alert-light border mb-0">
+        Store: <span class="fw-semibold">{{ $selectedStore?->name ?? 'Select a store from the top bar before saving.' }}</span>
+    </div>
+</div>
+
+<div class="col-12">
     <label class="form-label">Product Variant</label>
     <select name="product_variant_id" class="form-select" required>
         <option value="">Select product variant</option>
         @foreach ($variants as $variant)
             @php
-                $physicalAvailable = (float) $variant->inventories->sum('available_quantity');
+                $storeId = (int) old('stock_location_id', $dailyOffer->stock_location_id ?? $selectedStore?->id);
+                $physicalAvailable = (float) $variant->inventories->where('stock_location_id', $storeId)->sum('available_quantity');
                 $activeAllocated = $variant->dailyOffers
-                    ->filter(fn ($offer) => $offer->is_active && (! $offer->ends_at || $offer->ends_at->isFuture()))
+                    ->filter(fn ($offer) => (int) $offer->stock_location_id === $storeId && $offer->is_active && (! $offer->ends_at || $offer->ends_at->isFuture()) && (! $dailyOffer->id || $offer->id !== $dailyOffer->id))
                     ->sum(fn ($offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));
                 $unallocatedStock = max(0, $physicalAvailable - $activeAllocated);
             @endphp
@@ -52,14 +60,14 @@
 
 <div class="col-md-2">
     <label class="form-label">Max Qty / Order</label>
-    <input type="number" min="1" name="max_quantity_per_order" value="{{ old('max_quantity_per_order', $dailyOffer->max_quantity_per_order ?? '') }}" class="form-control">
+    <input type="number" min="1" name="max_quantity_per_order" value="{{ old('max_quantity_per_order', $dailyOffer->max_quantity_per_order ?? 1) }}" class="form-control" required>
     <div class="form-text" id="dailyOfferProductMaxHint"></div>
     @error('max_quantity_per_order') <div class="text-danger small">{{ $message }}</div> @enderror
 </div>
 
 <div class="col-md-2">
     <label class="form-label">Display Order</label>
-    <input type="number" min="0" name="display_order" value="{{ old('display_order', $dailyOffer->display_order ?? 0) }}" class="form-control">
+    <input type="number" min="1" name="display_order" value="{{ old('display_order', $dailyOffer->display_order ?? 1) }}" class="form-control" required>
 </div>
 
 @push('scripts')

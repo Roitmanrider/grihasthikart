@@ -6,20 +6,59 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-1">Daily Offers</h1>
-            <div class="text-muted">Control the homepage Daily Offers section.</div>
+            <div class="text-muted">
+                Control the homepage Daily Offers section.
+                @if ($selectedStore)
+                    <span class="fw-semibold">Store: {{ $selectedStore->name }}</span>
+                @else
+                    <span class="fw-semibold">All Stores read-only context</span>
+                @endif
+            </div>
             <div class="small text-muted mt-1">
                 Current app time: <span class="fw-semibold">{{ now(config('app.timezone'))->format('d M Y, h:i A T') }}</span>
             </div>
         </div>
-        <a href="{{ route('admin.daily-offers.create') }}" class="btn btn-success">Add Daily Offer</a>
+        @if ($canManageDailyOffers && $selectedStoreId)
+            <a href="{{ route('admin.daily-offers.create') }}" class="btn btn-success">Add Daily Offer</a>
+        @endif
     </div>
-
-    @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
 
     @if ($errors->any())
         <div class="alert alert-danger">{{ $errors->first() }}</div>
+    @endif
+
+    @if ($canManageDailyOffers && ! $selectedStoreId)
+        <div class="alert alert-warning">Select a store from the top bar before creating or changing Daily Offers.</div>
+    @endif
+
+    @if ($canManageDailyOffers && $selectedStoreId)
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="POST" action="{{ route('admin.daily-offers.section-settings.update') }}" class="row g-3 align-items-end">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="stock_location_id" value="{{ $selectedStoreId }}">
+                    <div class="col-md-6">
+                        <label class="form-label">Section Message</label>
+                        <input name="section_message" value="{{ old('section_message', $sectionSettings['section_message']) }}" class="form-control" maxlength="255" placeholder="Optional Daily Offers message">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Auto Slide</label>
+                        <select name="auto_slide" class="form-select">
+                            <option value="1" @selected(old('auto_slide', $sectionSettings['auto_slide']) == true)>On</option>
+                            <option value="0" @selected(old('auto_slide', $sectionSettings['auto_slide']) == false)>Off</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Interval</label>
+                        <input type="number" min="3" max="15" name="slide_interval" value="{{ old('slide_interval', $sectionSettings['slide_interval']) }}" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-success w-100">Save Section</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     @endif
 
     <div class="card border-0 shadow-sm mb-4">
@@ -71,6 +110,7 @@
                         <th>Normal Price</th>
                         <th>Offer Price</th>
                         <th>Discount</th>
+                        <th>Store</th>
                         <th>Allocation</th>
                         <th>Schedule</th>
                         <th>Lifecycle</th>
@@ -101,10 +141,8 @@
                                 <div class="fw-semibold">Rs. {{ number_format((float) $offer->offer_price, 2) }}</div>
                                 <div class="small text-muted">MRP Rs. {{ number_format((float) ($variant?->mrp ?? 0), 2) }}</div>
                             </td>
-                            <td>
-                                <div>Rs. {{ number_format($offer->discountAmount(), 2) }}</div>
-                                <div class="small text-muted">{{ number_format($offer->discountPercentage(), 2) }}%</div>
-                            </td>
+                            <td>{{ $offer->discountBadge() ?: '-' }}</td>
+                            <td>{{ $offer->stockLocation?->name ?? '-' }}</td>
                             <td>
                                 <div class="small">Allocated: {{ number_format((float) $offer->allocated_quantity, 0) }}</div>
                                 <div class="small">Sold: {{ number_format($offer->soldQuantity(), 0) }}</div>
@@ -130,24 +168,30 @@
                             <td class="text-end">
                                 @if (! $offer->trashed())
                                     <a href="{{ route('admin.daily-offers.show', $offer) }}" class="btn btn-sm btn-outline-secondary">View</a>
-                                    <a href="{{ route('admin.daily-offers.edit', $offer) }}" class="btn btn-sm btn-outline-success">Edit</a>
-                                    <form method="POST" action="{{ route('admin.daily-offers.destroy', $offer) }}" class="d-inline" onsubmit="return confirm('Delete this daily offer?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </form>
+                                    @if ($canManageDailyOffers && $offer->lifecycleState() === 'Expired')
+                                        <a href="{{ route('admin.daily-offers.duplicate', $offer) }}" class="btn btn-sm btn-outline-success">Duplicate as New</a>
+                                    @elseif ($canManageDailyOffers)
+                                        <a href="{{ route('admin.daily-offers.edit', $offer) }}" class="btn btn-sm btn-outline-success">Edit</a>
+                                        <form method="POST" action="{{ route('admin.daily-offers.destroy', $offer) }}" class="d-inline" onsubmit="return confirm('Delete this daily offer?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    @endif
                                 @else
+                                    @if ($canManageDailyOffers)
                                     <form method="POST" action="{{ route('admin.daily-offers.restore', $offer->id) }}" class="d-inline">
                                         @csrf
                                         @method('PATCH')
                                         <button class="btn btn-sm btn-outline-success">Restore</button>
                                     </form>
+                                    @endif
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center text-muted py-5">No daily offers found.</td>
+                            <td colspan="12" class="text-center text-muted py-5">No daily offers found.</td>
                         </tr>
                     @endforelse
                 </tbody>

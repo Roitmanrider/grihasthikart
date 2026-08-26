@@ -11,7 +11,7 @@ interface DailyOfferRepositoryInterface
 
     public function currentOffers(int $limit = 8, ?int $stockLocationId = null);
 
-    public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null): bool;
+    public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null, ?int $stockLocationId = null): bool;
 
     public function productVariantOptions();
 

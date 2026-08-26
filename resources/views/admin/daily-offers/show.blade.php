@@ -15,7 +15,11 @@
             <div class="text-muted">{{ $product?->name }} / {{ $variant?->variant_name }} / {{ $variant?->sku }}</div>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.daily-offers.edit', $dailyOffer) }}" class="btn btn-success">Edit</a>
+            @if ($canManageDailyOffers && $dailyOffer->lifecycleState() === 'Expired')
+                <a href="{{ route('admin.daily-offers.duplicate', $dailyOffer) }}" class="btn btn-success">Duplicate as New</a>
+            @elseif ($canManageDailyOffers)
+                <a href="{{ route('admin.daily-offers.edit', $dailyOffer) }}" class="btn btn-success">Edit</a>
+            @endif
             <a href="{{ route('admin.daily-offers.index') }}" class="btn btn-outline-secondary">Back</a>
         </div>
     </div>
@@ -34,6 +38,10 @@
                 <div class="col-md-4">
                     <div class="small text-muted">SKU</div>
                     <div class="fw-semibold">{{ $variant?->sku ?? '-' }}</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="small text-muted">Store</div>
+                    <div class="fw-semibold">{{ $dailyOffer->stockLocation?->name ?? '-' }}</div>
                 </div>
                 <div class="col-md-3">
                     <div class="small text-muted">Normal Selling Price</div>

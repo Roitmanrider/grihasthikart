@@ -18,7 +18,7 @@
     <form method="POST" action="{{ route('admin.daily-offers.store') }}" class="card border-0 shadow-sm">
         @csrf
         <div class="card-body row g-3">
-            @include('admin.daily-offers.form', ['dailyOffer' => null])
+            @include('admin.daily-offers.form')
         </div>
     </form>
 @endsection

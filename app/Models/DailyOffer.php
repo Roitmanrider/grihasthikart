@@ -88,11 +88,7 @@ class DailyOffer extends Model
 
     public function discountBadge(): ?string
     {
-        if ($this->badge_text) {
-            return $this->badge_text;
-        }
-
-        $normalPrice = (float) ($this->productVariant?->selling_price ?? 0);
+        $normalPrice = (float) ($this->productVariant?->mrp ?? 0);
         $offerPrice = (float) $this->offer_price;
 
         if ($normalPrice <= 0 || $offerPrice <= 0 || $offerPrice >= $normalPrice) {
@@ -203,9 +199,12 @@ class DailyOffer extends Model
             return 'Expired';
         }
 
-        $hours = intdiv($seconds, 3600);
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
         $minutes = intdiv($seconds % 3600, 60);
 
-        return $hours > 0 ? $hours.'h '.$minutes.'m remaining' : $minutes.'m remaining';
+        return $days > 0
+            ? $days.'d '.$hours.'h '.$minutes.'m left'
+            : ($hours > 0 ? $hours.'h '.$minutes.'m left' : $minutes.'m left');
     }
 }

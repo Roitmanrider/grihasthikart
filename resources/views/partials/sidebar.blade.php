@@ -45,6 +45,13 @@
 
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Operations</div>
 
+        @if (auth()->user()?->isSuperAdmin())
+            <a class="nav-link {{ request()->routeIs('admin.stores.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+               href="{{ route('admin.stores.index') }}">
+                Stores
+            </a>
+        @endif
+
         <a class="nav-link {{ request()->routeIs('admin.inventories.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
            href="{{ route('admin.inventories.index') }}">
             Inventory

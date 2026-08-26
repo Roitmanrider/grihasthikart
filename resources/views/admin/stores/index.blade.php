@@ -43,7 +43,7 @@
                                 <form method="POST" action="{{ route('admin.stores.destroy', $store) }}" class="d-inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                    <button class="btn btn-sm btn-outline-danger">Deactivate</button>
                                 </form>
                             @endunless
                         </td>

@@ -450,9 +450,7 @@ class CartService
         return DailyOffer::query()
             ->current()
             ->where('product_variant_id', $productVariantId)
-            ->when($stockLocationId !== null, fn ($query) => $query->where(function ($query) use ($stockLocationId) {
-                $query->whereNull('stock_location_id')->orWhere('stock_location_id', $stockLocationId);
-            }))
+            ->when($stockLocationId !== null, fn ($query) => $query->where('stock_location_id', $stockLocationId))
             ->when($dailyOfferId !== null, fn ($query) => $query->whereKey($dailyOfferId))
             ->with(['cartItems.cart', 'orderItems'])
             ->orderBy('display_order')
@@ -520,9 +518,7 @@ class CartService
             ->active()
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now(config('app.timezone'))))
             ->where('product_variant_id', $productVariantId)
-            ->when($stockLocationId !== null, fn ($query) => $query->where(function ($query) use ($stockLocationId) {
-                $query->whereNull('stock_location_id')->orWhere('stock_location_id', $stockLocationId);
-            }))
+            ->when($stockLocationId !== null, fn ($query) => $query->where('stock_location_id', $stockLocationId))
             ->with(['cartItems.cart', 'orderItems'])
             ->get()
             ->sum(fn (DailyOffer $offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));

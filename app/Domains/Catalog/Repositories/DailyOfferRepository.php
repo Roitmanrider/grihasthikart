@@ -17,7 +17,7 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
     public function paginatedList(array $filters = [], int $perPage = 20)
     {
         $query = $this->model->newQuery()
-            ->with(['cartItems.cart', 'orderItems', 'productVariant.inventories', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage']);
+            ->with(['cartItems.cart', 'orderItems', 'stockLocation', 'productVariant.inventories', 'productVariant.product.categories.parent', 'productVariant.primaryImage', 'productVariant.product.primaryImage']);
 
         if (($filters['search'] ?? null) !== null && $filters['search'] !== '') {
             $search = $filters['search'];
@@ -43,6 +43,10 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
                 ->whereDate('ends_at', '>=', $filters['date']);
         }
 
+        if (array_key_exists('stock_location_id', $filters) && $filters['stock_location_id'] !== null && $filters['stock_location_id'] !== '') {
+            $query->where('stock_location_id', (int) $filters['stock_location_id']);
+        }
+
         if (($filters['trashed'] ?? null) === 'only') {
             $query->onlyTrashed();
         } elseif (($filters['trashed'] ?? null) === 'with') {
@@ -60,9 +64,7 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
     {
         return $this->model->newQuery()
             ->current()
-            ->when($stockLocationId !== null, fn ($query) => $query->where(function ($query) use ($stockLocationId) {
-                $query->whereNull('stock_location_id')->orWhere('stock_location_id', $stockLocationId);
-            }))
+            ->when($stockLocationId !== null, fn ($query) => $query->where('stock_location_id', $stockLocationId))
             ->whereHas('productVariant', fn ($query) => $query->active()->whereHas('product', fn ($query) => $query->active()))
             ->whereHas('productVariant.inventories', fn ($query) => $query
                 ->active()
@@ -77,10 +79,11 @@ class DailyOfferRepository extends BaseRepository implements DailyOfferRepositor
             ->values();
     }
 
-    public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null): bool
+    public function activeOfferExistsForVariant(int $productVariantId, ?int $ignoreId = null, mixed $startsAt = null, mixed $endsAt = null, ?int $stockLocationId = null): bool
     {
         $query = $this->model->newQuery()
             ->where('product_variant_id', $productVariantId)
+            ->when($stockLocationId !== null, fn ($query) => $query->where('stock_location_id', $stockLocationId))
             ->where('is_active', true);
 
         if ($ignoreId !== null) {

@@ -20,7 +20,7 @@ class InventoryFactory extends Factory
 
         return [
             'product_variant_id' => ProductVariant::factory(),
-            'stock_location_id' => StockLocation::factory(),
+            'stock_location_id' => fn () => StockLocation::query()->where('is_default', true)->value('id') ?? StockLocation::factory()->default(),
             'quantity_on_hand' => $quantityOnHand,
             'reserved_quantity' => fake()->randomFloat(3, 0, 5),
             'damaged_quantity' => fake()->randomFloat(3, 0, 2),

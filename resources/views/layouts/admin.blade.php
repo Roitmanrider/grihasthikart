@@ -13,12 +13,13 @@
         <main class="container-fluid py-4">
 
             <div class="d-flex flex-wrap justify-content-end align-items-center gap-3 mb-3">
+                @php
+                    $adminStoreContext = app(\App\Domains\Store\Services\AdminStoreContextService::class);
+                    $selectedAdminStoreId = $adminStoreContext->selectedStoreId(request());
+                    $assignedAdminStore = auth()->user()?->assignedStore;
+                @endphp
                 @if (auth()->user()?->isSuperAdmin())
-                    @php
-                        $adminStoreContext = app(\App\Domains\Store\Services\AdminStoreContextService::class);
-                        $adminStoreOptions = $adminStoreContext->storesForSelector(auth()->user());
-                        $selectedAdminStoreId = $adminStoreContext->selectedStoreId(request());
-                    @endphp
+                    @php($adminStoreOptions = $adminStoreContext->storesForSelector(auth()->user()))
                     <form method="POST" action="{{ route('admin.store-context.update') }}" class="d-flex align-items-center gap-2">
                         @csrf
                         @method('PATCH')
@@ -30,6 +31,11 @@
                             @endforeach
                         </select>
                     </form>
+                @elseif (auth()->user()?->isStoreManager())
+                    <div class="small text-muted">
+                        Store:
+                        <span class="fw-semibold text-dark">{{ $assignedAdminStore?->name ?? 'Assigned Store' }}</span>
+                    </div>
                 @endif
                 <div class="small text-muted">
                     Current app time:

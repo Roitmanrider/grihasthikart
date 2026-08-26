@@ -91,7 +91,17 @@ class DailyOfferService
             }
         }
 
-        if ($allocatedQuantity > $this->availableUnallocatedQuantity($variant->id, $ignoreId)) {
+        $stockLocationId = (int) ($data['stock_location_id'] ?? 0);
+
+        if ($stockLocationId <= 0) {
+            throw new InvalidArgumentException('Daily offer store is required.');
+        }
+
+        if ($offerMax !== null && $offerMax !== '' && (int) $offerMax > $allocatedQuantity) {
+            throw new InvalidArgumentException('Daily Offer maximum quantity cannot exceed allocated offer quantity.');
+        }
+
+        if ($allocatedQuantity > $this->availableUnallocatedQuantity($variant->id, $stockLocationId, $ignoreId)) {
             throw new InvalidArgumentException('Allocated quantity cannot exceed available unallocated stock.');
         }
 
@@ -99,7 +109,7 @@ class DailyOfferService
             throw new InvalidArgumentException('Daily offer end date must be after the start date.');
         }
 
-        if (($data['is_active'] ?? true) && $this->repository->activeOfferExistsForVariant($variant->id, $ignoreId, $data['starts_at'] ?? null, $data['ends_at'] ?? null)) {
+        if (($data['is_active'] ?? true) && $this->repository->activeOfferExistsForVariant($variant->id, $ignoreId, $data['starts_at'] ?? null, $data['ends_at'] ?? null, $stockLocationId)) {
             throw new InvalidArgumentException('This product variant already has an overlapping active daily offer.');
         }
     }
@@ -110,19 +120,20 @@ class DailyOfferService
         $data['starts_at'] = $data['starts_at'] ?? null;
         $data['ends_at'] = $data['ends_at'] ?? null;
         $data['is_active'] = (bool) ($data['is_active'] ?? false);
-        $data['display_order'] = $data['display_order'] ?? 0;
+        $data['display_order'] = $data['display_order'] ?? 1;
         $data['allocated_quantity'] = $data['allocated_quantity'] ?? 0;
-        $data['max_quantity_per_order'] = $data['max_quantity_per_order'] ?? null;
+        $data['max_quantity_per_order'] = $data['max_quantity_per_order'] ?? 1;
         $data['badge_text'] = $data['badge_text'] ?? null;
 
         return $data;
     }
 
-    private function availableUnallocatedQuantity(int $productVariantId, ?int $ignoreOfferId = null): float
+    private function availableUnallocatedQuantity(int $productVariantId, int $stockLocationId, ?int $ignoreOfferId = null): float
     {
         $physicalAvailable = (float) Inventory::query()
             ->active()
             ->where('product_variant_id', $productVariantId)
+            ->where('stock_location_id', $stockLocationId)
             ->get()
             ->sum('available_quantity');
 
@@ -130,6 +141,7 @@ class DailyOfferService
             ->active()
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now(config('app.timezone'))))
             ->where('product_variant_id', $productVariantId)
+            ->where('stock_location_id', $stockLocationId)
             ->when($ignoreOfferId !== null, fn ($query) => $query->whereKeyNot($ignoreOfferId))
             ->get()
             ->sum(fn (DailyOffer $offer) => max(0, (float) $offer->allocated_quantity - $offer->soldQuantity()));

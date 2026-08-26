@@ -211,7 +211,7 @@ class HomepageContentService
                 'section_key' => 'daily_offers',
                 'section_type' => 'daily_offers',
                 'title' => 'Daily Offers',
-                'subtitle' => 'Fresh deals updated in '.config('app.timezone'),
+                'subtitle' => null,
                 'enabled' => true,
                 'sort_order' => 50,
                 'desktop_item_limit' => 8,
@@ -221,6 +221,7 @@ class HomepageContentService
                 'view_all_enabled' => true,
                 'view_all_text' => 'View All',
                 'view_all_url' => null,
+                'configuration' => ['auto_slide' => true, 'slide_interval' => 5],
             ],
             [
                 'section_key' => 'trust_icons',
@@ -272,7 +273,7 @@ class HomepageContentService
                 'category_section' => $this->pushIfNotEmpty($rendered, $this->configuredCategorySection($config), 'category'),
                 'products' => $this->pushIfNotEmpty($rendered, $this->productSection($config), 'products'),
                 'cta' => $rendered->push($this->ctaSection($config)),
-                'daily_offers' => $rendered->push($this->dailyOffersSection($config)),
+                'daily_offers' => $rendered->push($this->dailyOffersSection($config, $storeId)),
                 'trust' => $rendered->push($this->trustSection($config)),
                 'partners' => $rendered->push($this->partnersSection($config)),
                 default => null,
@@ -485,13 +486,13 @@ class HomepageContentService
         ];
     }
 
-    private function dailyOffersSection(array $config): array
+    private function dailyOffersSection(array $config, ?int $storeId = null): array
     {
         return [
             'key' => 'daily_offers',
             'type' => 'daily_offers',
             'config' => $config,
-            'dailyOffers' => $this->dailyOfferService->currentOffers($config['desktop_item_limit']),
+            'dailyOffers' => $this->dailyOfferService->currentOffers($config['desktop_item_limit'], $storeId),
         ];
     }
 

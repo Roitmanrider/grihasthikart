@@ -165,10 +165,7 @@ class CustomerService
             $offer = DailyOffer::query()
                 ->current()
                 ->whereKey($item->daily_offer_id)
-                ->where(function ($query) use ($storeId) {
-                    $query->whereNull('stock_location_id')
-                        ->when($storeId !== null, fn ($query) => $query->orWhere('stock_location_id', $storeId));
-                })
+                ->when($storeId !== null, fn ($query) => $query->where('stock_location_id', $storeId))
                 ->with(['cartItems.cart', 'orderItems'])
                 ->first();
 

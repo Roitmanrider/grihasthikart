@@ -57,12 +57,15 @@ class AdminStoreController extends Controller
         $this->authorizeStoreAdministration();
 
         if ($store->is_default) {
-            return back()->withErrors(['store' => 'Default store cannot be deleted.']);
+            return back()->withErrors(['store' => 'Default store cannot be deactivated.']);
         }
 
-        $store->delete();
+        $store->forceFill([
+            'status' => false,
+            'accepts_online_orders' => false,
+        ])->save();
 
-        return redirect()->route('admin.stores.index')->with('success', 'Store deleted successfully.');
+        return redirect()->route('admin.stores.index')->with('success', 'Store deactivated successfully.');
     }
 
     private function authorizeStoreAdministration(): void
