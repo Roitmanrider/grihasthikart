@@ -295,7 +295,11 @@ class StaffOperationsPortalTest extends TestCase
     public function test_one_person_store_request_remains_available_to_super_admin_fallback(): void
     {
         $agentManager = $this->staff(['DELIVERY_AGENT', 'STORE_MANAGER']);
-        $superAdmin = User::factory()->create(['role' => 'SUPER_ADMIN', 'staff_active' => true]);
+        $superAdmin = User::factory()->create([
+            'role' => 'SUPER_ADMIN',
+            'staff_roles' => ['STORE_MANAGER'],
+            'staff_active' => true,
+        ]);
         $attempt = $this->deliveryAttempt($agentManager);
         $approval = app(DeliveryWorkflowService::class)->requestApproval($attempt, $agentManager, 'RETURN_TO_STORE', 'CUSTOMER_REFUSED', 'Package returned');
 

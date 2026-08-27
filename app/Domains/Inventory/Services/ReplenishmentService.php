@@ -31,9 +31,9 @@ class ReplenishmentService
         return $paginator;
     }
 
-    public function dashboardItems(int $limit = 5): Collection
+    public function dashboardItems(int $limit = 5, array $filters = []): Collection
     {
-        $items = $this->baseQuery(['stock_status' => 'reorder_needed'])
+        $items = $this->baseQuery($filters + ['stock_status' => 'reorder_needed'])
             ->orderByRaw($this->criticalityOrderSql())
             ->limit($limit)
             ->get();

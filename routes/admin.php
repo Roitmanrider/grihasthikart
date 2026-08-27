@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Inventory\Services\ReplenishmentService;
+use App\Domains\Store\Services\AdminStoreContextService;
 use App\Http\Controllers\Admin\AdminAssociatedPartnerController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminBusinessContactSettingController;
@@ -67,27 +68,40 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->name('logout');
 
     Route::get('/', function () {
+        $storeContext = app(AdminStoreContextService::class);
+        $selectedStoreId = $storeContext->selectedStoreId(request());
+        $orderQuery = Order::query();
+        $pendingOrderQuery = Order::query()->whereIn('order_status', ['pending', 'placed', 'confirmed', 'picking', 'preparing', 'packed', 'ready_for_delivery', 'out_for_delivery']);
+        $paymentQuery = Payment::query()->whereIn('payment_status', ['pending', 'awaiting_verification']);
+        $addressQuery = CustomerAddress::query()
+            ->whereHas('customer')
+            ->where('status', true)
+            ->where('is_approved', false);
+
+        if ($selectedStoreId) {
+            $orderQuery->where('stock_location_id', $selectedStoreId);
+            $pendingOrderQuery->where('stock_location_id', $selectedStoreId);
+            $paymentQuery->whereHas('order', fn ($query) => $query->where('stock_location_id', $selectedStoreId));
+            $addressQuery->whereHas('customer', fn ($query) => $query->where('assigned_store_id', $selectedStoreId));
+        }
+
+        $replenishmentFilters = $selectedStoreId ? ['stock_location_id' => $selectedStoreId] : [];
+
         return view('admin.dashboard.index', [
             'totalProducts' => Product::query()->count(),
-            'totalOrders' => Order::query()->count(),
-            'pendingOrders' => Order::query()->whereIn('order_status', ['pending', 'placed', 'confirmed', 'picking', 'preparing', 'packed', 'ready_for_delivery', 'out_for_delivery'])->count(),
-            'lowStockItems' => app(ReplenishmentService::class)->summary()['reorder_needed'],
-            'lowStockPreview' => app(ReplenishmentService::class)->dashboardItems(),
-            'pendingPayments' => Payment::query()->whereIn('payment_status', ['pending', 'awaiting_verification'])->count(),
+            'totalOrders' => $orderQuery->count(),
+            'pendingOrders' => $pendingOrderQuery->count(),
+            'lowStockItems' => app(ReplenishmentService::class)->summary($replenishmentFilters)['reorder_needed'],
+            'lowStockPreview' => app(ReplenishmentService::class)->dashboardItems(filters: $replenishmentFilters),
+            'pendingPayments' => $paymentQuery->count(),
             'pendingCashbackRedemptions' => CashbackRedemptionRequest::query()->where('status', 'pending')->count(),
-            'pendingAddressCount' => CustomerAddress::query()
-                ->whereHas('customer')
-                ->where('status', true)
-                ->where('is_approved', false)
-                ->count(),
-            'pendingAddresses' => CustomerAddress::query()
+            'pendingAddressCount' => (clone $addressQuery)->count(),
+            'pendingAddresses' => $addressQuery
                 ->with('customer')
-                ->whereHas('customer')
-                ->where('status', true)
-                ->where('is_approved', false)
                 ->latest()
                 ->limit(5)
                 ->get(),
+            'selectedStoreId' => $selectedStoreId,
         ]);
     })->middleware(['auth', 'can:manage-admin'])->name('dashboard');
 
@@ -95,6 +109,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('store-context', [AdminStoreContextController::class, 'update'])
             ->name('store-context.update');
         Route::get('staff', [AdminStaffController::class, 'index'])->name('staff.index');
+        Route::get('staff/create', [AdminStaffController::class, 'create'])->name('staff.create');
+        Route::post('staff', [AdminStaffController::class, 'store'])->name('staff.store');
         Route::get('staff/{staff}/edit', [AdminStaffController::class, 'edit'])->name('staff.edit');
         Route::patch('staff/{staff}', [AdminStaffController::class, 'update'])->name('staff.update');
 

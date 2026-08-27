@@ -45,10 +45,14 @@
 
         <div class="text-uppercase text-muted small fw-semibold mt-3 mb-1">Operations</div>
 
-        @if (auth()->user()?->isSuperAdmin())
+        @if (auth()->user()?->canManageStores())
             <a class="nav-link {{ request()->routeIs('admin.stores.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
                href="{{ route('admin.stores.index') }}">
                 Stores
+            </a>
+            <a class="nav-link {{ request()->routeIs('admin.staff.*') ? 'active fw-semibold text-success' : 'text-dark' }}"
+               href="{{ route('admin.staff.index') }}">
+                Staff / Employees
             </a>
         @endif
 

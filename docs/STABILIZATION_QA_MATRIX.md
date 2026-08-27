@@ -161,3 +161,17 @@ No deployment, ZIP, production SQL execution, native mobile app, checkout rewrit
 | Maker-Checker | Self approval denied; independent manager approval allowed. | PASS | `Staff` filter. | One-person-store Super Admin fallback smoke. |
 | Staff Notifications | Workstream unread counts and mark-read behavior. | PASS | `Staff` filter. | Polling/future realtime not implemented. |
 | Staff Predeploy Hardening | OTP plaintext is not persisted in notifications/events, customer OTP access is ownership/lifecycle scoped, staff screens do not show OTP, invalid OTP attempts are capped, cleanup does not delete active credentials, task assignment requires assign permission, one-person store falls back to Super Admin, and cross-store approval is denied. | PASS | `Staff` filter. | Run the 4.24B manual UAT checklist before production SQL. |
+
+## Milestone 4.24C Admin Store Context, Stores Navigation & Staff Access
+
+No deployment, ZIP, production SQL execution, migration, checkout, payment, order, or inventory architecture change was performed.
+
+| Area | Scenario | Result | Evidence | Manual Requirement |
+| --- | --- | --- | --- | --- |
+| Admin Principal Access | Existing configured admin email users can access Store CRUD and see Stores navigation. | PASS | `AdminStoreContextNavigation`, `Store`, and full suite. | Browser-check Admin > Operations > Stores. |
+| Store Context Selector | Dashboard/admin topbar shows Store Context for admin principals, lists All Stores plus active stores, and persists valid selections. | PASS | `AdminStoreContextNavigation`, `Dashboard`, and `DailyOffer` filters. | Verify selector persistence in browser. |
+| Store Manager Boundary | Store Managers see a fixed assigned-store label and cannot access Stores CRUD or arbitrary switching. | PASS | `AdminStoreContextNavigation` and `Store` filters. | Direct URL smoke as Store Manager. |
+| Daily Offers Store Context | Daily Offers reads the selected Store Context and no longer asks for topbar selection when a concrete store is selected. | PASS | `AdminStoreContextNavigation` and `DailyOffer` filters. | Fresh UAT for selected-store create/list/edit read paths. |
+| Staff / Employees Admin | Staff / Employees is visible in Operations and supports admin employee provisioning with roles, store, active status, allows, and denials. | PASS | `AdminStoreContextNavigation` and `Staff` filters. | Create one test employee in Admin UI. |
+| Staff Portal Admission | `/staff` redirects guests to Staff login; active operational staff may enter; inactive/plain/Super Admin without staff roles are denied. | PASS | `AdminStoreContextNavigation` and `Staff` filters. | Browser login/logout smoke. |
+| Manual UAT Mapping | SET-01 ST-01-02,04,05,06,07,08,09,10,11,12 and SET-02 ST-02-01 through ST-02-12. | READY FOR FRESH LIVE UAT | Automated coverage and source audit complete. | Execute live acceptance checklist manually; these rows are not marked as live-passed. |

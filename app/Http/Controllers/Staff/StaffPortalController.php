@@ -262,7 +262,11 @@ class StaffPortalController extends Controller
     private function authorizeStaff(Request $request, ?string $permission = null): void
     {
         $user = $request->user();
-        abort_unless($user && $user->staff_active && $this->permissions->isOperationalStaff($user), 403);
+        if (! $user) {
+            abort(redirect()->route('staff.login'));
+        }
+
+        abort_unless($user->staff_active && $this->permissions->isOperationalStaff($user), 403);
 
         if ($permission) {
             abort_unless($this->permissions->has($user, $permission), 403);

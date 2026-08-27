@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiters();
 
         Gate::before(function (User $user): ?bool {
-            if ($user->isSuperAdmin() || in_array($user->email, config('grihasthikart.admin_emails', []), true)) {
+            if ($user->isAdminPrincipal()) {
                 return true;
             }
 

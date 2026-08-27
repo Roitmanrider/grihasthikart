@@ -18,20 +18,30 @@ class AdminStoreContextService
             return null;
         }
 
-        if (! $user->isSuperAdmin() && $user->assigned_store_id) {
+        if (! $user->canSwitchStoreContext() && $user->assigned_store_id) {
             return (int) $user->assigned_store_id;
         }
 
         $selected = $request->session()->get(self::SESSION_KEY);
 
-        return $selected ? (int) $selected : null;
+        if (! $selected) {
+            return null;
+        }
+
+        if (! StockLocation::query()->active()->whereKey($selected)->exists()) {
+            $request->session()->forget(self::SESSION_KEY);
+
+            return null;
+        }
+
+        return (int) $selected;
     }
 
     public function storesForSelector(User $user)
     {
         return StockLocation::query()
             ->active()
-            ->when(! $user->isSuperAdmin() && $user->assigned_store_id, fn ($query) => $query->whereKey($user->assigned_store_id))
+            ->when(! $user->canSwitchStoreContext() && $user->assigned_store_id, fn ($query) => $query->whereKey($user->assigned_store_id))
             ->orderBy('display_order')
             ->orderBy('name')
             ->get();
@@ -50,7 +60,7 @@ class AdminStoreContextService
     {
         $user = $request->user();
 
-        if ($user?->assigned_store_id && ! $user->isSuperAdmin()) {
+        if ($user?->assigned_store_id && ! $user->canSwitchStoreContext()) {
             return (int) $user->assigned_store_id;
         }
 

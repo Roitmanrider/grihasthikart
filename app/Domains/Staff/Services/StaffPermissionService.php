@@ -113,8 +113,7 @@ class StaffPermissionService
 
     public function isOperationalStaff(User $user): bool
     {
-        return $user->isSuperAdmin()
-            || ! empty($user->staff_roles)
+        return ! empty($user->staff_roles)
             || in_array($user->role, array_keys(self::ROLE_BUNDLES), true);
     }
 

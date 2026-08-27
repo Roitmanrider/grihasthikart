@@ -80,3 +80,16 @@ The portal controllers call reusable services:
 - `StaffPermissionService`
 
 Future staff/mobile API controllers should reuse those services rather than reimplement workflow logic in API actions.
+
+## Milestone 4.24C Admin Employee Access
+
+- Super Admin/admin-email users manage employees from Admin > Operations > Staff / Employees.
+- Staff creation provisions an existing `users` account with name, email, temporary password, assigned store, active flag, operational role bundles, explicit allow permissions, and denied permission overrides.
+- Non-Super Admin operational roles require `assigned_store_id`.
+- Denied permissions continue to override role grants and explicit allows.
+- Super Admin status alone does not grant Staff Portal admission. A Super Admin must also be intentionally configured as active operational staff through `staff_roles` before `/staff` access is allowed.
+- Unauthenticated `/staff` requests redirect to the Staff login page.
+- Active operational staff may enter `/staff`; inactive staff, plain users, and Super Admin users without operational staff roles receive 403.
+- No migration is required for this access cleanup.
+
+Fresh live UAT status: SET-02 staff management and staff portal access scenarios ST-02-01 through ST-02-12 are ready for verification.

@@ -155,3 +155,16 @@ The migrations add store assignment columns, store price tables, homepage store 
 - `staff_notifications` stores one logical workstream notification per event and supports unread counts by workstream.
 - Delivery OTP credentials are temporary and cleaned by `delivery-otps:cleanup`; delivery evidence/audit remains in `delivery_events`.
 - `docs/4_24b_phpmyadmin.sql` contains the manual production SQL for Hostinger/phpMyAdmin.
+
+## Milestone 4.24C Admin Store Context And Navigation
+
+- Store administration is exposed under Admin > Operations > Stores for admin principals only. An admin principal is a `SUPER_ADMIN` user or a configured admin email in `config/grihasthikart.admin_emails`.
+- Admin principals see the top-bar Store Context selector on the dashboard and admin pages. The selector contains All Stores plus active stores only and persists the selected active store in the admin session.
+- If a selected store is later inactive or unavailable, the stale session value is forgotten and the admin falls back to All Stores.
+- Store Managers see a fixed `Store: {assigned store}` label and do not receive an arbitrary store selector, Stores navigation, or Stores CRUD access.
+- Daily Offers uses the selected admin Store Context. All Stores remains valid for read/list views, while store-scoped mutations still require one concrete store.
+- Dashboard operational counts now respect the selected Store Context where the underlying data is store-scoped; global catalog/cashback totals remain global.
+- Staff provisioning is available under Admin > Operations > Staff / Employees without creating a separate employee table.
+- No migration, production SQL, deployment, or ZIP is required for this cleanup.
+
+Fresh live UAT status: SET-01 store-context scenarios ST-01-02, ST-01-04, ST-01-05, ST-01-06, ST-01-07, ST-01-08, ST-01-09, ST-01-10, ST-01-11, and ST-01-12 are ready for verification.

@@ -70,7 +70,7 @@ class AdminStoreController extends Controller
 
     private function authorizeStoreAdministration(): void
     {
-        abort_unless(request()->user()?->can('manage-admin'), 403);
+        abort_unless(request()->user()?->canManageStores(), 403);
     }
 
     private function validated(Request $request, ?StockLocation $store = null): array

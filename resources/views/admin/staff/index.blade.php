@@ -5,9 +5,10 @@
 @section('admin-content')
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="h3 mb-1">Staff</h1>
+        <h1 class="h3 mb-1">Staff / Employees</h1>
         <div class="text-muted">Assign admin roles and operational store access.</div>
     </div>
+    <a href="{{ route('admin.staff.create') }}" class="btn btn-success">Add Staff</a>
 </div>
 
 <div class="card border-0 shadow-sm">

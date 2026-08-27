@@ -1,20 +1,39 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Staff')
+@section('title', ($creating ?? false) ? 'Add Staff' : 'Edit Staff')
 
 @section('admin-content')
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="h3 mb-1">Edit Staff</h1>
-        <div class="text-muted">{{ $staff->name }} / {{ $staff->email }}</div>
+        <h1 class="h3 mb-1">{{ ($creating ?? false) ? 'Add Staff' : 'Edit Staff' }}</h1>
+        <div class="text-muted">{{ ($creating ?? false) ? 'Create a user account for Staff Portal access.' : $staff->name.' / '.$staff->email }}</div>
     </div>
     <a href="{{ route('admin.staff.index') }}" class="btn btn-outline-secondary">Back</a>
 </div>
 
-<form method="POST" action="{{ route('admin.staff.update', $staff) }}" class="card border-0 shadow-sm">
+<form method="POST" action="{{ ($creating ?? false) ? route('admin.staff.store') : route('admin.staff.update', $staff) }}" class="card border-0 shadow-sm">
     @csrf
-    @method('PATCH')
+    @unless ($creating ?? false)
+        @method('PATCH')
+    @endunless
     <div class="card-body row g-3">
+        @if ($creating ?? false)
+            <div class="col-md-4">
+                <label class="form-label">Employee Name</label>
+                <input name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}" required>
+                @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Email</label>
+                <input name="email" type="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required>
+                @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Temporary Password</label>
+                <input name="password" type="password" class="form-control @error('password') is-invalid @enderror" required>
+                @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+        @endif
         <div class="col-md-6">
             <label class="form-label">Legacy Primary Role</label>
             <select name="role" class="form-select">
@@ -85,7 +104,7 @@
         </div>
     </div>
     <div class="card-footer bg-white text-end">
-        <button class="btn btn-success">Update Staff</button>
+        <button class="btn btn-success">{{ ($creating ?? false) ? 'Create Staff' : 'Update Staff' }}</button>
     </div>
 </form>
 @endsection

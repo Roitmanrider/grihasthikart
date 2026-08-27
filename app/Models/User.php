@@ -45,6 +45,22 @@ class User extends Authenticatable
         return $this->role === 'SUPER_ADMIN';
     }
 
+    public function isAdminPrincipal(): bool
+    {
+        return $this->isSuperAdmin()
+            || in_array($this->email, config('grihasthikart.admin_emails', []), true);
+    }
+
+    public function canManageStores(): bool
+    {
+        return $this->isAdminPrincipal();
+    }
+
+    public function canSwitchStoreContext(): bool
+    {
+        return $this->canManageStores();
+    }
+
     public function isStoreManager(): bool
     {
         return $this->role === 'STORE_MANAGER';

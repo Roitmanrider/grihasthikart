@@ -18,13 +18,13 @@
                     $selectedAdminStoreId = $adminStoreContext->selectedStoreId(request());
                     $assignedAdminStore = auth()->user()?->assignedStore;
                 @endphp
-                @if (auth()->user()?->isSuperAdmin())
+                @if (auth()->user()?->canSwitchStoreContext())
                     @php($adminStoreOptions = $adminStoreContext->storesForSelector(auth()->user()))
-                    <form method="POST" action="{{ route('admin.store-context.update') }}" class="d-flex align-items-center gap-2">
+                    <form method="POST" action="{{ route('admin.store-context.update') }}" class="d-flex flex-wrap align-items-center gap-2">
                         @csrf
                         @method('PATCH')
-                        <label class="small text-muted" for="admin_store_context">Store</label>
-                        <select id="admin_store_context" name="stock_location_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <label class="small text-muted" for="admin_store_context">Store Context</label>
+                        <select id="admin_store_context" name="stock_location_id" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
                             <option value="">All Stores</option>
                             @foreach ($adminStoreOptions as $storeOption)
                                 <option value="{{ $storeOption->id }}" @selected((int) $selectedAdminStoreId === (int) $storeOption->id)>{{ $storeOption->name }}</option>
