@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Domains\Customer\Services\CustomerAuthService;
+use App\Domains\Staff\Services\DeliveryOtpAccessService;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use InvalidArgumentException;
@@ -10,7 +11,8 @@ use InvalidArgumentException;
 class CustomerNotificationController extends Controller
 {
     public function __construct(
-        private readonly CustomerAuthService $authService
+        private readonly CustomerAuthService $authService,
+        private readonly DeliveryOtpAccessService $deliveryOtpAccessService
     ) {}
 
     public function index()
@@ -21,8 +23,12 @@ class CustomerNotificationController extends Controller
             ->forCustomer($customer)
             ->latest()
             ->paginate(10);
+        $deliveryOtpCodes = [];
+        foreach ($notifications->getCollection() as $notification) {
+            $deliveryOtpCodes[$notification->id] = $this->deliveryOtpAccessService->activeCodeForCustomerNotification($customer, $notification);
+        }
 
-        return view('frontend.customer.notifications.index', compact('customer', 'notifications'));
+        return view('frontend.customer.notifications.index', compact('customer', 'notifications', 'deliveryOtpCodes'));
     }
 
     public function open(Notification $notification)

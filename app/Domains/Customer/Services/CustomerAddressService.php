@@ -156,7 +156,7 @@ class CustomerAddressService
 
     private function changesDeliveryData(CustomerAddress $address, array $data): bool
     {
-        foreach (['recipient_name', 'mobile', 'address_line1', 'address_line2', 'city', 'state', 'pincode', 'landmark'] as $field) {
+        foreach (['recipient_name', 'mobile', 'address_line1', 'address_line2', 'city', 'state', 'pincode', 'landmark', 'latitude', 'longitude', 'geofence_radius_meters'] as $field) {
             if (array_key_exists($field, $data) && (string) ($data[$field] ?? '') !== (string) ($address->{$field} ?? '')) {
                 return true;
             }

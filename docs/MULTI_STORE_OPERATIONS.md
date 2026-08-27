@@ -145,3 +145,13 @@ The migrations add store assignment columns, store price tables, homepage store 
 - Expired Daily Offers are immutable history. Use Duplicate as New Offer to prefill reusable product/title/price/allocation/badge data while resetting schedule, lifecycle, and display order.
 - Daily Offers section message, auto-slide flag, and slide interval are stored in `homepage_sections.configuration` for the store-scoped `daily_offers` section. No new table or migration is required.
 - Storefront Daily Offer discount badges use `((Unit MRP - offer_price) / Unit MRP) * 100`, only when Unit MRP is positive and above the offer price.
+
+## Milestone 4.24B Staff Operations
+
+- Staff portal routes live under `/staff` during transition and are designed for future `staff.grihasthikart.in`.
+- Staff employees use `users` with additive multi-role JSON fields. The legacy `role` column remains for current Super Admin/admin compatibility.
+- Staff operations are store-scoped by `assigned_store_id`; Super Admin remains global.
+- `order_staff_assignments` separates permission from assignment and supports reusable task types such as `PICKING`, `PACKING`, and `DELIVERY`.
+- `staff_notifications` stores one logical workstream notification per event and supports unread counts by workstream.
+- Delivery OTP credentials are temporary and cleaned by `delivery-otps:cleanup`; delivery evidence/audit remains in `delivery_events`.
+- `docs/4_24b_phpmyadmin.sql` contains the manual production SQL for Hostinger/phpMyAdmin.

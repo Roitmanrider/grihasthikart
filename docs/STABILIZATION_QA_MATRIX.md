@@ -145,3 +145,19 @@ No deployment, ZIP, production SQL, migration, checkout, payment, or Staff Opera
 | Daily Offers Lifecycle | Expired offers are read-only and can be duplicated as a new unsaved offer. | PASS | `DailyOffer` filter. | Browser-check expired action menu. |
 | Daily Offers Validation | New writes require store, current/future starts, future ends, display order >= 1, max qty/order >= 1, and same-store overlapping display order uniqueness. | PASS | `DailyOffer` filter. | Admin form smoke with invalid dates/order. |
 | Storefront Daily Offers | Section message replaces hardcoded timezone copy; card shows custom badge, MRP-based discount, Unit MRP/GK Offer labels, day/hour/min countdown, quantity limit, stock state, and carousel controls. | PASS SOURCE | `Homepage`, `Catalog`, and `DailyOffer` filters. | Real-browser check at mobile/tablet/desktop breakpoints. |
+
+## Milestone 4.24B Staff Operations Portal
+
+No deployment, ZIP, production SQL execution, native mobile app, checkout rewrite, or payment change was performed.
+
+| Area | Scenario | Result | Evidence | Manual Requirement |
+| --- | --- | --- | --- | --- |
+| Staff Roles | Multi-role employee permission union, custom allow, denied override. | PASS | `Staff` filter. | Super Admin staff form smoke. |
+| Staff Portal Security | Staff login works; staff cannot access Super Admin dashboard without admin authorization. | PASS | `Staff` filter. | Browser login/logout on `/staff`. |
+| Store Scope | Store A staff cannot manipulate Store B task IDs. | PASS | `Staff` filter. | Direct URL/POST smoke. |
+| Pick/Pack | Same multi-role employee can pick and pack. | PASS | `Staff` filter. | Browser queue smoke. |
+| Delivery OTP | OTP generated on Out for Delivery, customer can view, staff verifies without seeing plaintext. | PASS | `Staff` filter. | Browser customer notification/order detail smoke. |
+| GPS Evidence | Far GPS flags review but does not block valid OTP delivery. | PASS | `Staff` filter. | Device location permission smoke. |
+| Maker-Checker | Self approval denied; independent manager approval allowed. | PASS | `Staff` filter. | One-person-store Super Admin fallback smoke. |
+| Staff Notifications | Workstream unread counts and mark-read behavior. | PASS | `Staff` filter. | Polling/future realtime not implemented. |
+| Staff Predeploy Hardening | OTP plaintext is not persisted in notifications/events, customer OTP access is ownership/lifecycle scoped, staff screens do not show OTP, invalid OTP attempts are capped, cleanup does not delete active credentials, task assignment requires assign permission, one-person store falls back to Super Admin, and cross-store approval is denied. | PASS | `Staff` filter. | Run the 4.24B manual UAT checklist before production SQL. |

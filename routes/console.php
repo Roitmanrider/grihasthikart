@@ -44,3 +44,8 @@ Schedule::command('prices:cleanup-history')
 Schedule::command('ops:scheduler-heartbeat')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('delivery-otps:cleanup')
+    ->dailyAt('03:10')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();

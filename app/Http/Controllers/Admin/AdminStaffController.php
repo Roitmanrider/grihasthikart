@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domains\Staff\Services\StaffPermissionService;
 use App\Http\Controllers\Controller;
 use App\Models\StockLocation;
 use App\Models\User;
@@ -10,6 +11,10 @@ use Illuminate\Validation\Rule;
 
 class AdminStaffController extends Controller
 {
+    public function __construct(
+        private readonly StaffPermissionService $staffPermissions
+    ) {}
+
     public function index()
     {
         return view('admin.staff.index', [
@@ -23,6 +28,9 @@ class AdminStaffController extends Controller
             'staff' => $staff,
             'stores' => StockLocation::query()->active()->orderBy('display_order')->orderBy('name')->get(),
             'roles' => $this->roles(),
+            'staffRoles' => $this->staffPermissions->roles(),
+            'allPermissions' => $this->staffPermissions->allPermissions(),
+            'approvalPermissions' => StaffPermissionService::APPROVAL_PERMISSIONS,
         ]);
     }
 
@@ -30,14 +38,28 @@ class AdminStaffController extends Controller
     {
         $data = $request->validate([
             'role' => ['nullable', Rule::in(array_keys($this->roles()))],
+            'staff_roles' => ['nullable', 'array'],
+            'staff_roles.*' => [Rule::in(array_keys($this->staffPermissions->roles()))],
+            'additional_permissions' => ['nullable', 'array'],
+            'additional_permissions.*' => [Rule::in($this->staffPermissions->allPermissions())],
+            'denied_permissions' => ['nullable', 'array'],
+            'denied_permissions.*' => [Rule::in($this->staffPermissions->allPermissions())],
             'assigned_store_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where('status', true)],
+            'staff_active' => ['nullable', 'boolean'],
         ]);
 
         if (($data['role'] ?? null) === 'SUPER_ADMIN') {
             $data['assigned_store_id'] = null;
-        } elseif (! empty($data['role']) && empty($data['assigned_store_id'])) {
+        } elseif ((! empty($data['role']) || ! empty($data['staff_roles'])) && empty($data['assigned_store_id'])) {
             return back()->withInput()->withErrors(['assigned_store_id' => 'Assign a store for store staff roles.']);
         }
+
+        $data['staff_roles'] = array_values($data['staff_roles'] ?? []);
+        $data['additional_permissions'] = array_values($data['additional_permissions'] ?? []);
+        $data['denied_permissions'] = array_values($data['denied_permissions'] ?? []);
+        $data['staff_active'] = (bool) ($data['staff_active'] ?? false);
+        $data['staff_approved_at'] = $data['staff_roles'] ? now() : null;
+        $data['staff_approved_by'] = $data['staff_roles'] ? $request->user()?->id : null;
 
         $staff->update($data);
 
@@ -49,6 +71,9 @@ class AdminStaffController extends Controller
         return [
             'SUPER_ADMIN' => 'Super Admin',
             'STORE_MANAGER' => 'Store Manager',
+            'INVENTORY_STAFF' => 'Inventory Staff',
+            'PICKER_PACKER' => 'Picker / Packer',
+            'DELIVERY_AGENT' => 'Delivery Agent',
             'CART_FOLLOW_UP_EMPLOYEE' => 'Cart Follow-up Employee',
         ];
     }

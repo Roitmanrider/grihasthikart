@@ -24,6 +24,9 @@ class CustomerAddressFactory extends Factory
             'state' => fake()->state(),
             'pincode' => fake()->numerify('######'),
             'landmark' => null,
+            'latitude' => null,
+            'longitude' => null,
+            'geofence_radius_meters' => null,
             'is_default' => false,
             'is_approved' => true,
             'approval_status' => fn (array $attributes) => ($attributes['is_approved'] ?? false)

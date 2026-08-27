@@ -8,6 +8,7 @@ use App\Domains\Customer\Services\CustomerCreditService;
 use App\Domains\Order\Services\OrderService;
 use App\Domains\Order\Services\OrderStatusService;
 use App\Domains\Setting\Services\BusinessSettingService;
+use App\Domains\Staff\Services\DeliveryOtpAccessService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelCustomerOrderRequest;
 use App\Models\Coupon;
@@ -22,7 +23,8 @@ class CustomerDashboardController extends Controller
         private readonly OrderService $orderService,
         private readonly BusinessSettingService $settingService,
         private readonly CustomerCreditService $customerCreditService,
-        private readonly CashbackService $cashbackService
+        private readonly CashbackService $cashbackService,
+        private readonly DeliveryOtpAccessService $deliveryOtpAccessService
     ) {}
 
     public function dashboard()
@@ -89,8 +91,9 @@ class CustomerDashboardController extends Controller
         $statusTimeline = $this->orderStatusService->timelineFor($order);
         $canCancel = $this->orderStatusService->canCustomerCancel($order);
         $customerInvoiceEnabled = $this->settingService->customerInvoiceEnabled();
+        $deliveryOtpCode = $this->deliveryOtpAccessService->activeCodeForCustomerOrder($customer, $order);
 
-        return view('frontend.customer.orders.show', compact('customer', 'order', 'statusTimeline', 'canCancel', 'customerInvoiceEnabled'));
+        return view('frontend.customer.orders.show', compact('customer', 'order', 'statusTimeline', 'canCancel', 'customerInvoiceEnabled', 'deliveryOtpCode'));
     }
 
     public function cancelOrder(string $orderNumber, CancelCustomerOrderRequest $request)

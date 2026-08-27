@@ -52,6 +52,13 @@
             </div>
         @endif
 
+        @if (! empty($deliveryOtpCode))
+            <div class="alert alert-warning border">
+                <div class="fw-semibold">Delivery OTP for Order {{ $order->order_number }}: {{ $deliveryOtpCode }}</div>
+                <div>Share this OTP only after you receive your order.</div>
+            </div>
+        @endif
+
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white fw-semibold">Order Timeline</div>
             <div class="card-body">

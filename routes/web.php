@@ -24,9 +24,36 @@ use App\Http\Controllers\Frontend\PaymentController;
 use App\Http\Controllers\Frontend\ProductCatalogController;
 use App\Http\Controllers\Frontend\RazorpayWebhookController;
 use App\Http\Controllers\Frontend\WishlistController;
+use App\Http\Controllers\Staff\StaffAuthController;
+use App\Http\Controllers\Staff\StaffPortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
+
+Route::prefix('staff')->name('staff.')->group(function () {
+    Route::get('login', [StaffAuthController::class, 'showLogin'])->name('login');
+    Route::post('login', [StaffAuthController::class, 'login'])->middleware('throttle:staff-login')->name('login.submit');
+    Route::post('logout', [StaffAuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/', [StaffPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('notifications', [StaffPortalController::class, 'notifications'])->name('notifications.index');
+        Route::patch('notifications/read-all', [StaffPortalController::class, 'readWorkstream'])->name('notifications.read-all');
+        Route::patch('notifications/{notification}/read', [StaffPortalController::class, 'readNotification'])->name('notifications.read');
+        Route::get('picking', [StaffPortalController::class, 'picking'])->name('picking.index');
+        Route::get('packing', [StaffPortalController::class, 'packing'])->name('packing.index');
+        Route::post('assignments', [StaffPortalController::class, 'assign'])->name('assignments.assign');
+        Route::patch('assignments/{assignment}/start', [StaffPortalController::class, 'startTask'])->name('assignments.start');
+        Route::patch('assignments/{assignment}/complete', [StaffPortalController::class, 'completeTask'])->name('assignments.complete');
+        Route::get('deliveries', [StaffPortalController::class, 'deliveries'])->name('deliveries.index');
+        Route::patch('deliveries/{assignment}/start', [StaffPortalController::class, 'startDelivery'])->name('deliveries.start');
+        Route::patch('delivery-attempts/{attempt}/verify-otp', [StaffPortalController::class, 'verifyDelivery'])->name('delivery-attempts.verify-otp');
+        Route::patch('delivery-attempts/{attempt}/exception', [StaffPortalController::class, 'deliveryException'])->name('delivery-attempts.exception');
+        Route::post('delivery-attempts/{attempt}/approvals', [StaffPortalController::class, 'requestApproval'])->name('delivery-attempts.approvals.store');
+        Route::get('approvals', [StaffPortalController::class, 'approvals'])->name('approvals.index');
+        Route::patch('approvals/{approval}/decide', [StaffPortalController::class, 'decideApproval'])->name('approvals.decide');
+    });
+});
 
 Route::post('/checkout/razorpay/webhook', RazorpayWebhookController::class)->name('checkout.razorpay.webhook');
 

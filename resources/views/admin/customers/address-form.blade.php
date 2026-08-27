@@ -39,6 +39,18 @@
     <input name="landmark" value="{{ old('landmark', $address?->landmark) }}" class="form-control form-control-sm">
 </div>
 <div class="col-md-4">
+    <label class="form-label">Latitude</label>
+    <input type="number" step="0.0000001" name="latitude" value="{{ old('latitude', $address?->latitude) }}" class="form-control form-control-sm">
+</div>
+<div class="col-md-4">
+    <label class="form-label">Longitude</label>
+    <input type="number" step="0.0000001" name="longitude" value="{{ old('longitude', $address?->longitude) }}" class="form-control form-control-sm">
+</div>
+<div class="col-md-4">
+    <label class="form-label">Geofence Radius (m)</label>
+    <input type="number" min="25" max="5000" name="geofence_radius_meters" value="{{ old('geofence_radius_meters', $address?->geofence_radius_meters) }}" class="form-control form-control-sm">
+</div>
+<div class="col-md-4">
     <div class="form-check">
         <input type="hidden" name="is_approved" value="0">
         <input class="form-check-input" type="checkbox" name="is_approved" value="1" id="addressApproved{{ $address?->id ?? 'New' }}" @checked(old('is_approved', $address?->is_approved ?? true))>

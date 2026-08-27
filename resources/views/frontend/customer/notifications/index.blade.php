@@ -21,12 +21,20 @@
         <div class="card border-0 shadow-sm">
             <div class="list-group list-group-flush">
                 @forelse ($notifications as $notification)
+                    @php
+                        $deliveryOtpCode = $deliveryOtpCodes[$notification->id] ?? null;
+                    @endphp
                     <div class="list-group-item py-3 {{ $notification->read_at ? '' : 'bg-success-subtle' }}">
                         <div class="d-flex flex-wrap justify-content-between gap-2">
                             <div>
                                 <div class="fw-semibold">{{ $notification->title }}</div>
                                 @if ($notification->message)
                                     <div class="text-muted small mt-1">{{ $notification->message }}</div>
+                                @endif
+                                @if ($deliveryOtpCode)
+                                    <div class="alert alert-warning py-2 mt-2 mb-0">
+                                        Delivery OTP: <strong>{{ $deliveryOtpCode }}</strong>
+                                    </div>
                                 @endif
                                 <div class="small text-muted mt-2">{{ $notification->created_at->diffForHumans() }}</div>
                             </div>

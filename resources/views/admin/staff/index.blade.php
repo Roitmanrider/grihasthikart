@@ -17,7 +17,7 @@
                 <tr>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Role</th>
+                    <th>Roles</th>
                     <th>Store</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -27,7 +27,12 @@
                     <tr>
                         <td>{{ $user->name }}</td>
                         <td>{{ $user->email }}</td>
-                        <td>{{ str($user->role ?: 'unassigned')->replace('_', ' ')->headline() }}</td>
+                        <td>
+                            <div>{{ str($user->role ?: 'unassigned')->replace('_', ' ')->headline() }}</div>
+                            @if ($user->staff_roles)
+                                <div class="small text-muted">{{ collect($user->staff_roles)->map(fn ($role) => str($role)->replace('_', ' ')->headline())->join(', ') }}</div>
+                            @endif
+                        </td>
                         <td>{{ $user->assignedStore?->name ?: 'All Stores' }}</td>
                         <td class="text-end"><a href="{{ route('admin.staff.edit', $user) }}" class="btn btn-sm btn-outline-primary">Edit</a></td>
                     </tr>

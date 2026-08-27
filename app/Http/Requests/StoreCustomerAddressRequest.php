@@ -25,6 +25,9 @@ class StoreCustomerAddressRequest extends FormRequest
             'state' => ['required', 'string', 'max:100'],
             'pincode' => ['required', 'string', 'max:10'],
             'landmark' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'geofence_radius_meters' => ['nullable', 'integer', 'min:25', 'max:5000'],
             'is_default' => ['nullable', 'boolean'],
         ];
     }

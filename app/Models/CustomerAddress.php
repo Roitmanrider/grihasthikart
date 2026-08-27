@@ -21,6 +21,9 @@ class CustomerAddress extends Model
         'state',
         'pincode',
         'landmark',
+        'latitude',
+        'longitude',
+        'geofence_radius_meters',
         'is_default',
         'is_approved',
         'approval_status',
@@ -34,6 +37,9 @@ class CustomerAddress extends Model
         'is_approved' => 'boolean',
         'approval_status_changed_at' => 'datetime',
         'status' => 'boolean',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
+        'geofence_radius_meters' => 'integer',
     ];
 
     public function customer()
